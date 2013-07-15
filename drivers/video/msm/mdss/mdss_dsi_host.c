@@ -360,12 +360,6 @@ void mdss_dsi_host_init(struct mipi_panel_info *pinfo,
 #else
 		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x3C, 0x10000000);
 #endif
-	if (ctrl_pdata->shared_pdata.broadcast_enable)
-		if (pdata->panel_info.pdest == DISPLAY_1) {
-			pr_debug("%s: Broadcast mode enabled.\n",
-				 __func__);
-			left_ctrl_pdata = ctrl_pdata;
-		}
 
 	data = 0;
 	if (pinfo->te_sel)
