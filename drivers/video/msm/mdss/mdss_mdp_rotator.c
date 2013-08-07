@@ -98,7 +98,7 @@ static struct mdss_mdp_pipe *mdss_mdp_rotator_pipe_alloc(void)
 
 	mixer = mdss_mdp_wb_mixer_alloc(1);
 	if (!mixer) {
-		pr_err("wb mixer alloc failed\n");
+		pr_debug("wb mixer alloc failed\n");
 		return NULL;
 	}
 
