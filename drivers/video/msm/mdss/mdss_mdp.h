@@ -360,9 +360,6 @@ struct mdss_mdp_pipe {
 	u8 vert_deci;
 	struct mdss_mdp_img_rect src;
 	struct mdss_mdp_img_rect dst;
-	u32 phase_step_x;
-	u32 phase_step_y;
-
 	struct mdss_mdp_format_params *src_fmt;
 	struct mdss_mdp_plane_sizes src_planes;
 
@@ -391,6 +388,9 @@ struct mdss_mdp_pipe {
 
 	struct mdp_overlay_pp_params pp_cfg;
 	struct mdss_pipe_pp_res pp_res;
+	struct mdp_scale_data scale;
+	u8 chroma_sample_h;
+	u8 chroma_sample_v;
 };
 
 struct mdss_mdp_writeback_arg {
@@ -669,6 +669,7 @@ void mdss_mdp_underrun_clk_info(void);
 int mdss_mdp_wb_set_secure(struct msm_fb_data_type *mfd, int enable);
 int mdss_mdp_wb_get_secure(struct msm_fb_data_type *mfd, uint8_t *enable);
 
+int mdss_mdp_pipe_program_pixel_extn(struct mdss_mdp_pipe *pipe);
 #define mfd_to_mdp5_data(mfd) (mfd->mdp.private1)
 #define mfd_to_mdata(mfd) (((struct mdss_overlay_private *)\
 				(mfd->mdp.private1))->mdata)
