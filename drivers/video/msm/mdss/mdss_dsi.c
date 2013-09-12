@@ -469,7 +469,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 
 	pdata->panel_info.panel_power_on = 1;
 
-	ret = mdss_dsi_enable_bus_clocks(ctrl_pdata);
+	ret = mdss_dsi_bus_clk_start(ctrl_pdata);
 	if (ret) {
 		pr_err("%s: failed to enable bus clocks. rc=%d\n", __func__,
 			ret);
@@ -480,7 +480,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 
 	mdss_dsi_phy_sw_reset((ctrl_pdata->ctrl_base));
 	mdss_dsi_phy_init(pdata);
-	mdss_dsi_disable_bus_clocks(ctrl_pdata);
+	mdss_dsi_bus_clk_stop(ctrl_pdata);
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, 1);
 
@@ -1071,8 +1071,6 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 	return dsi_pan_node;
 }
 
-struct mutex dual_clk_lock;
-
 static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -1130,9 +1128,6 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	else
 		pdev->id = 2;
 		
-	if (index == 0)
-		mutex_init(&dual_clk_lock);		
-
 	mdss_dsi_mres = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!mdss_dsi_mres) {
 		pr_err("%s:%d unable to get the MDSS resources",
