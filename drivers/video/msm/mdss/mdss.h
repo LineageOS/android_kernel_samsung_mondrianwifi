@@ -79,6 +79,11 @@ struct mdss_intr {
 	spinlock_t lock;
 };
 
+struct mdss_fudge_factor {
+	u32 numer;
+	u32 denom;
+};
+
 struct mdss_data_type {
 	u32 mdp_rev;
 	struct clk *mdp_clk[MDSS_MAX_CLK];
@@ -126,6 +131,11 @@ struct mdss_data_type {
 
 	u32 max_bw_low;
 	u32 max_bw_high;
+
+	struct mdss_fudge_factor ab_factor;
+	struct mdss_fudge_factor ib_factor;
+	struct mdss_fudge_factor high_ib_factor;
+	struct mdss_fudge_factor clk_factor;
 
 	struct mdss_hw_settings *hw_settings;
 
