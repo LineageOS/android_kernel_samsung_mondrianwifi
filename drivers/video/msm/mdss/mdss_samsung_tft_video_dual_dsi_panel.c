@@ -21,6 +21,9 @@
 #include <linux/leds.h>
 #include <linux/pwm.h>
 #include <linux/err.h>
+
+#include <asm/system_info.h>
+
 #include <linux/lcd.h>
 #include <linux/syscalls.h>
 #include <linux/uaccess.h>
@@ -28,11 +31,18 @@
 #if defined(CONFIG_CABC_TUNING)
 #include "cabc_tuning.h"
 #endif
+
 #include "mdss_dsi.h"
 #include "mdss_samsung_tft_video_dual_dsi_panel.h"
 #define DT_CMD_HDR 6
+#define GAMMA_COMPAT 11
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
+
+static struct mdss_dsi_ctrl_pdata *local_pdata;
+static struct work_struct send_cmds_work;
+struct mdss_panel_data *cmds_panel_data;
+static struct kobject *module_kobj;
 
 static struct mdss_dsi_phy_ctrl phy_params;
 static struct mipi_samsung_driver_data msd;
@@ -304,9 +314,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 
 	if (ctrl->ndx == DSI_CTRL_1) {
-		if (ctrl->on_cmds.cmd_cnt) {
-			mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
-		}
+		if (local_pdata->on_cmds.cmd_cnt)
+			mdss_dsi_panel_cmds_send(ctrl, &local_pdata->on_cmds);
+
 		panel_power_state = 1;
 
 		if(bl_backup)
@@ -361,7 +371,6 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 		if (ctrl->off_cmds.cmd_cnt)
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 	}
-
 
 	pr_info("%s: ctrl ndx=%d -- \n", __func__, ctrl->ndx);
 	return 0;
@@ -880,6 +889,183 @@ error:
 	return -EINVAL;
 }
 
+static int read_local_on_cmds(char *buf, size_t cmd)
+{
+	int i, len = 0;
+	int dlen;
+
+	if (system_rev != GAMMA_COMPAT) {
+		pr_err("Incompatible hardware revision: %d\n", system_rev);
+		return -EINVAL;
+	}
+
+	/* Skip last bit */
+	dlen = local_pdata->on_cmds.cmds[cmd].dchdr.dlen - 1;
+	if (!dlen)
+		return -ENOMEM;
+
+	/* Skip first bit */
+	for (i = 1; i < dlen; i++)
+		len += sprintf(buf + len, "%d ",
+			       local_pdata->on_cmds.cmds[cmd].payload[i]);
+
+	len += sprintf(buf + len, "\n");
+
+	return len;
+}
+
+static unsigned int cnt;
+
+static int write_local_on_cmds(struct device *dev, const char *buf,
+			       size_t cmd)
+{
+	int i, rc = 0;
+	int dlen;
+	unsigned int val;
+	char tmp[3];
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+
+	if (cnt) {
+		cnt = 0;
+		return -EINVAL;
+	}
+
+	if (system_rev != GAMMA_COMPAT) {
+		pr_err("Incompatible hardware revision: %d\n", system_rev);
+		return -EINVAL;
+	}
+
+	if (cmds_panel_data == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl = container_of(cmds_panel_data, struct mdss_dsi_ctrl_pdata,
+			    panel_data);
+
+	/*
+	 * Last bit is not written because it's either fixed at 0x00 for
+	 * RGB or a duplicate of the previous bit for the white point.
+	 */
+	dlen = local_pdata->on_cmds.cmds[cmd].dchdr.dlen - 1;
+	if (!dlen)
+		return -EINVAL;
+
+	/* Skip first bit again */
+	for (i = 1; i < dlen; i++) {
+		rc = sscanf(buf, "%u", &val);
+		if (rc != 1)
+			return -EINVAL;
+
+		if (val > 255) {
+			pr_err("%s: Invalid input data %u (0-255)\n", __func__, val);
+			return -EINVAL;
+		}
+
+		local_pdata->on_cmds.cmds[cmd].payload[i] = val;
+		/*
+		 * Duplicate positive/negative polarities for both,
+		 * white point and RGB values.
+		 */
+		if (cmd == 5)
+			local_pdata->on_cmds.cmds[cmd].payload[i + 1] = val;
+		else
+			local_pdata->on_cmds.cmds[cmd + 2].payload[i] = val;
+
+		sscanf(buf, "%s", tmp);
+		buf += strlen(tmp) + 1;
+		cnt = strlen(tmp);
+	}
+
+	pr_info("%s\n", __func__);
+
+	return rc;
+}
+
+static void send_local_on_cmds(struct work_struct *work)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+
+	if (cmds_panel_data == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+
+	ctrl = container_of(cmds_panel_data, struct mdss_dsi_ctrl_pdata,
+			    panel_data);
+
+	if (local_pdata->on_cmds.cmd_cnt)
+		mdss_dsi_panel_cmds_send(ctrl, &local_pdata->on_cmds);
+
+	pr_info("%s\n", __func__);
+}
+
+/************************** sysfs interface ************************/
+
+static ssize_t write_kgamma_send(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	if (!cmds_panel_data->panel_info.panel_power_on) {
+		pr_err("%s: Panel off, failed to send commands\n", __func__);
+		return -EPERM;
+	}
+
+	schedule_work(&send_cmds_work);
+
+	return count;
+}
+
+static DEVICE_ATTR(kgamma_send, 0644, NULL, write_kgamma_send);
+
+#define read_one(file_name, cmd)				\
+static ssize_t read_##file_name					\
+(struct device *dev, struct device_attribute *attr, char *buf)  \
+{								\
+	return read_local_on_cmds(buf, cmd);			\
+}
+
+read_one(kgamma_w,  5);
+read_one(kgamma_r,  7);
+read_one(kgamma_g, 11);
+read_one(kgamma_b, 15);
+
+#define write_one(file_name, cmd)				\
+static ssize_t write_##file_name				\
+(struct device *dev, struct device_attribute *attr, 		\
+		const char *buf, size_t count)  		\
+{								\
+	return write_local_on_cmds(dev, buf, cmd);		\
+}
+
+write_one(kgamma_w,  5);
+write_one(kgamma_r,  7);
+write_one(kgamma_g, 11);
+write_one(kgamma_b, 15);
+
+#define define_one_rw(_name)					\
+static DEVICE_ATTR(_name, 0644, read_##_name, write_##_name);
+
+define_one_rw(kgamma_w);
+define_one_rw(kgamma_r);
+define_one_rw(kgamma_g);
+define_one_rw(kgamma_b);
+
+static struct attribute *dsi_panel_attributes[] = {
+	&dev_attr_kgamma_w.attr,
+	&dev_attr_kgamma_r.attr,
+	&dev_attr_kgamma_g.attr,
+	&dev_attr_kgamma_b.attr,
+	&dev_attr_kgamma_send.attr,
+	NULL
+};
+
+static struct attribute_group dsi_panel_attribute_group = {
+	.attrs = dsi_panel_attributes,
+};
+
+/**************************** sysfs end **************************/
+
 int mdss_dsi_panel_init(struct device_node *node,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	bool cmd_cfg_cont_splash)
@@ -971,7 +1157,23 @@ int mdss_dsi_panel_init(struct device_node *node,
 		cabc_tuning_init(ctrl_pdata);
 #endif
 
-	return 0;
+	INIT_WORK(&send_cmds_work, send_local_on_cmds);
+
+	local_pdata = ctrl_pdata;
+	if (!local_pdata)
+		return -EINVAL;
+
+	module_kobj = kobject_create_and_add("dsi_panel", &module_kset->kobj);
+	if (!module_kobj) {
+		pr_err("%s: kobject create failed\n", __func__);
+		return -ENOMEM;
+	}
+
+	rc = sysfs_create_group(module_kobj, &dsi_panel_attribute_group);
+	if (rc)
+		pr_err("%s: sysfs create failed: %d\n", panel_name, rc);
+
+	return rc;
 }
 
 static int atoi(const char *name)
