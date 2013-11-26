@@ -69,12 +69,19 @@ static u32 mdss_mdp_smp_mmb_reserve(struct mdss_mdp_pipe *pipe, struct mdss_mdp_
 	 */
 	if (pipe->src_fmt->is_yuv || (pipe->flags & MDP_BACKEND_COMPOSITION)) {
 		if (i != 0 && n != i) {
-			pr_debug("Can't change mmb configuration in set call\n");
+			pr_debug("Can't change mmb config, num_blks: %d alloc: %d\n",
+			n, i);
 			return 0;
 		}
 	}
 
-	/* reserve more blocks if needed, but can't free mmb at this point */
+	/*
+	 * Clear previous SMP reservations and reserve according to the
+	 * latest configuration
+	 */
+	mdss_mdp_smp_mmb_free(smp_map->reserved, false);
+
+	/* Reserve mmb blocks*/
 	for (; i < n; i++) {
 		if (bitmap_full(mdata->mmb_alloc_map, SMP_MB_CNT))
 			break;
@@ -295,7 +302,7 @@ int mdss_mdp_smp_reserve(struct mdss_mdp_pipe *pipe)
 		for (i = (MAX_PLANES - 1); i >= ps.num_planes; i--) {
 			if (bitmap_weight(pipe->smp_map[i].allocated, SMP_MB_CNT)) {
 				pr_debug("Extra mmb identified for pnum=%d plane=%d\n",
-				pipe->num, i);
+					pipe->num, i);
 				mutex_unlock(&mdss_mdp_smp_lock);
 				return -EAGAIN;
 			}
