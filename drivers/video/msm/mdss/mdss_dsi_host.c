@@ -1384,39 +1384,56 @@ void mdss_dsi_cmd_mdp_busy(struct mdss_dsi_ctrl_pdata *ctrl)
 				__func__, current->pid);
 }
 
-void mdss_dsi_cmdlist_tx(struct mdss_dsi_ctrl_pdata *ctrl,
+int mdss_dsi_cmdlist_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 				struct dcs_cmd_req *req)
 {
-	int ret;
+	int ret, ret_val = -EINVAL;
 
 	ret = mdss_dsi_cmds_tx(ctrl, req->cmds, req->cmds_cnt);
 
+	if (!IS_ERR_VALUE(ret))
+		ret_val = 0;
+
 	if (req->cb)
 		req->cb(ret);
+
+	return ret_val;
 }
 
-void mdss_dsi_cmdlist_rx(struct mdss_dsi_ctrl_pdata *ctrl,
+int mdss_dsi_cmdlist_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 				struct dcs_cmd_req *req)
 {
 	struct dsi_buf *rp;
-	int len = 0;
+	int len = 0, ret = -EINVAL;
 
 	if (req->rbuf) {
 		rp = &ctrl->rx_buf;
 		len = mdss_dsi_cmds_rx(ctrl, req->cmds, req->rlen);
 		memcpy(req->rbuf, rp->data, rp->len);
+		/*
+		 * For dual DSI cases, early return of controller - 0
+		 * is valid. Hence, for those cases the return value
+		 * is zero even though we don't send any commands.
+		 *
+		 */
+		if ((ctrl->shared_pdata.broadcast_enable &&
+			ctrl->ndx == DSI_CTRL_0) || (len != 0))
+			ret = 0;
 	} else {
 		pr_err("%s: No rx buffer provided\n", __func__);
 	}
 
 	if (req->cb)
 		req->cb(len);
+
+	return ret;
 }
 
 void mdss_mdp_clk_ctrl(int enable, int isr);
-void mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
+int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 {
 	struct dcs_cmd_req *req;
+	int ret = -EINVAL;
 
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL) || defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)\
 	|| defined(CONFIG_FB_MSM_MIPI_SAMSUNG_YOUM_CMD_FULL_HD_PT_PANEL)
@@ -1452,11 +1469,11 @@ void mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	mdss_dsi_clk_ctrl(ctrl, 1);
 
 	if (req->flags & CMD_REQ_RX)
-		mdss_dsi_cmdlist_rx(ctrl, req);
+		ret = mdss_dsi_cmdlist_rx(ctrl, req);
 	else if (req->flags & CMD_REQ_SINGLE_TX)
 		mdss_dsi_cmds_single_tx(ctrl,req->cmds,req->cmds_cnt);
 	else
-		mdss_dsi_cmdlist_tx(ctrl, req);
+		ret = mdss_dsi_cmdlist_tx(ctrl, req);
 
 	mdss_dsi_clk_ctrl(ctrl, 0);
 	mdss_bus_bandwidth_ctrl(0);
@@ -1475,6 +1492,8 @@ need_lock:
 #endif
 #endif
 	pr_debug("%s : -- \n",__func__);
+
+	return ret;
 }
 
 static void dsi_send_events(struct mdss_dsi_ctrl_pdata *ctrl, u32 events)
