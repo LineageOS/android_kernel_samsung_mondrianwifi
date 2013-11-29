@@ -656,23 +656,30 @@ int msm_dsi_cmds_rx(struct mdss_panel_data *pdata,
 		rp->len = 0;
 		goto end;
 	}
-	/*
-	 * once cmd_dma_done interrupt received,
-	 * return data from client is ready and stored
-	 * at RDBK_DATA register already
-	 */
-	dsi_buf_init(rp);
-	if (pdata->panel_info.mipi.no_max_pkt_size) {
-		/*
-		 * expect rlen = n * 4
-		 * short alignement for start addr
-		 */
-		rp->data += 2;
+
+	if (req->cb)
+		req->cb(len);
+}
+int msm_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
+{
+	struct dcs_cmd_req *req;
+	int dsi_on;
+	int ret = -EINVAL;
+
+	mutex_lock(&ctrl->mutex);
+	dsi_on = dsi_host_private->dsi_on;
+	mutex_unlock(&ctrl->mutex);
+	if (!dsi_on) {
+		pr_err("try to send DSI commands while dsi is off\n");
+		return ret;
 	}
 
 	msm_dsi_cmd_dma_rx(rp, cnt);
 
-	msm_dsi_disable_irq();
+	if (!req) {
+		mutex_unlock(&ctrl->cmd_mutex);
+		return ret;
+	}
 
 	if (pdata->panel_info.mipi.no_max_pkt_size) {
 		/*
@@ -709,11 +716,8 @@ int msm_dsi_cmds_rx(struct mdss_panel_data *pdata,
 		break;
 	}
 
-	if (video_mode)
-		MIPI_OUTP(ctrl_base + DSI_CTRL,
-					dsi_ctrl); /* restore */
-end:
-	return rp->len;
+	mutex_unlock(&ctrl->cmd_mutex);
+	return 0;
 }
 
 static int msm_dsi_cal_clk_rate(struct mdss_panel_data *pdata,
