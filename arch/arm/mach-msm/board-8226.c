@@ -40,9 +40,6 @@
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
 #include <mach/restart.h>
-#ifdef CONFIG_ION_MSM
-#include <mach/ion.h>
-#endif
 #ifdef CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
 #endif
@@ -70,21 +67,6 @@
 #include <linux/proc_avc.h>
 #endif
 
-#if defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT)
-#include <mach/msm8x26-thermistor.h>
-#endif
-
-static struct memtype_reserve msm8226_reserve_table[] __initdata = {
-	[MEMTYPE_SMI] = {
-	},
-	[MEMTYPE_EBI0] = {
-		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
-	},
-	[MEMTYPE_EBI1] = {
-		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
-	},
-};
-
 #ifdef CONFIG_ANDROID_PERSISTENT_RAM
 /* CONFIG_SEC_DEBUG reserving memory for persistent RAM*/
 #define RAMCONSOLE_PHYS_ADDR 0x1FB00000
@@ -102,10 +84,6 @@ static struct persistent_ram per_ram __initdata = {
        .size = SZ_1M
 };
 #endif
-static int msm8226_paddr_to_memtype(unsigned int paddr)
-{
-	return MEMTYPE_EBI1;
-}
 
 static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
@@ -125,22 +103,14 @@ static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	{}
 };
 
-static struct reserve_info msm8226_reserve_info __initdata = {
-	.memtype_reserve_table = msm8226_reserve_table,
-	.paddr_to_memtype = msm8226_paddr_to_memtype,
-};
-
 static void __init msm8226_early_memory(void)
 {
-	reserve_info = &msm8226_reserve_info;
-	of_scan_flat_dt(dt_scan_for_memory_hole, msm8226_reserve_table);
+	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
 }
 
 static void __init msm8226_reserve(void)
 {
-	reserve_info = &msm8226_reserve_info;
-	of_scan_flat_dt(dt_scan_for_memory_reserve, msm8226_reserve_table);
-	msm_reserve();
+	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
 #ifdef CONFIG_ANDROID_PERSISTENT_RAM
 	persistent_ram_early_init(&per_ram);
 #endif
@@ -173,11 +143,6 @@ void __init msm8226_add_drivers(void)
 	fan53555_regulator_init();
 	cpr_regulator_init();
 	tsens_tm_init_driver();
-#if defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT)
-#ifdef CONFIG_SEC_THERMISTOR
-	platform_device_register(&sec_device_thermistor);
-#endif
-#endif
 	msm_thermal_device_init();
 }
 struct class *sec_class;
@@ -198,21 +163,17 @@ static void samsung_sys_class_init(void)
 };
 
 #if defined(CONFIG_BATTERY_SAMSUNG)
-#if (defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT) ||defined(CONFIG_SEC_BERLUTI_PROJECT) || \
-defined(CONFIG_SEC_VICTOR_PROJECT) || defined(CONFIG_SEC_FRESCONEOLTE_PROJECT) || defined(CONFIG_SEC_AFYON_PROJECT)) || \
-defined(CONFIG_SEC_S3VE_PROJECT)
+#if (defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT) ||defined(CONFIG_SEC_BERLUTI_PROJECT))
 /* Dummy init function for models that use QUALCOMM PMIC PM8226 charger*/
 void __init samsung_init_battery(void)
 {
-	pr_err("%s: Battery init dummy, using QUALCOMM PM8226 internal BMS \n", __func__);
+	pr_err("%s: Battery init dummy, using PM8226 internal charger \n", __func__);
 };
 #else
 extern void __init samsung_init_battery(void);
 #endif
 #endif
-#ifdef CONFIG_MACH_AFYONLTE_TMO
-extern void __init board_tsp_init(void);
-#endif
+
 void __init msm8226_init(void)
 {
 	struct of_dev_auxdata *adata = msm8226_auxdata_lookup;
@@ -234,9 +195,6 @@ void __init msm8226_init(void)
 	msm8226_add_drivers();
 #if defined(CONFIG_BATTERY_SAMSUNG)
 	samsung_init_battery();
-#endif
-#ifdef CONFIG_MACH_AFYONLTE_TMO
-board_tsp_init();
 #endif
 }
 
