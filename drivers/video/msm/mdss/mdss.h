@@ -191,6 +191,7 @@ struct mdss_data_type {
 	struct mdss_panel_cfg pan_cfg;
 
 	struct mdss_prefill_data prefill_data;
+	int handoff_pending;
 };
 extern struct mdss_data_type *mdss_res;
 

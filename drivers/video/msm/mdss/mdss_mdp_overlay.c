@@ -2713,11 +2713,8 @@ int mdss_panel_register_done(struct mdss_panel_data *pdata)
 	 */
 	if (pdata->panel_info.cont_splash_enabled && first_register) {
 		pr_info("%s ++ \n", __func__);
-		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 		mdss_mdp_footswitch_ctrl_splash(1);
-#ifdef CONFIG_FB_MSM_EDP_SAMSUNG
-		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
-#endif
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 		first_register=false;
 	}
 	return 0;
