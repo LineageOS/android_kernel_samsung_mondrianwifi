@@ -35,7 +35,7 @@
 #ifdef CONFIG_ARCH_MSM8226
 #include <linux/regulator/consumer.h>
 #endif
-#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 #include <linux/qpnp/pin.h>
 #endif
 
@@ -67,7 +67,7 @@ struct sec_jack_info {
 	unsigned int cur_jack_type;
 };
 
-#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 int pm8941_mpp4;
 
 static struct qpnp_pin_cfg pm8941_mpp4_endis = {
@@ -129,7 +129,13 @@ static struct gpio_event_platform_data sec_jack_input_data = {
 extern void msm8226_enable_ear_micbias(bool state);
 #endif
 
-#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_MACH_KLTE_JPN)
+#define MAX_DETECT_LIMIT 3
+static void determine_jack_type(struct sec_jack_info *hi);
+static int detect_count = 0;
+#endif
+
+#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 static void mpp_control(bool onoff)
 {
 	if(onoff) {
@@ -223,9 +229,9 @@ static void set_sec_micbias_state(struct sec_jack_info *hi, bool state)
 
 #ifdef CONFIG_ARCH_MSM8226
         if(pdata->ear_micbias_gpio > 0)
-                gpio_set_value_cansleep(pdata->ear_micbias_gpio, state); /*Uses external Mic Bias*/
+           gpio_set_value_cansleep(pdata->ear_micbias_gpio, state); /*Uses external Mic Bias*/
         else
-		msm8226_enable_ear_micbias(state); /* Uses WCD Mic Bias*/
+			msm8226_enable_ear_micbias(state); /* Uses WCD Mic Bias*/
 #else 
 	 gpio_set_value_cansleep(pdata->ear_micbias_gpio, state);	
 #endif
@@ -318,12 +324,20 @@ static void sec_jack_set_type(struct sec_jack_info *hi, int jack_type)
 	 * the type but then we get another interrupt and do it again
 	 */
 	if (jack_type == hi->cur_jack_type) {
+#if defined(CONFIG_MACH_KLTE_JPN)
+		if ((jack_type != SEC_HEADSET_4POLE) || (jack_type != SEC_EXTERNAL_ANTENNA))
+#else
 		if (jack_type != SEC_HEADSET_4POLE)
+#endif
 			set_sec_micbias_state(hi, false);
 		return;
 	}
 
+#if defined(CONFIG_MACH_KLTE_JPN)
+	if ((jack_type == SEC_HEADSET_4POLE) || (jack_type == SEC_EXTERNAL_ANTENNA)) {
+#else
 	if (jack_type == SEC_HEADSET_4POLE) {
+#endif
 		/* for a 4 pole headset, enable detection of send/end key */
 		if (hi->send_key_dev == NULL)
 			/* enable to get events again */
@@ -346,6 +360,29 @@ static void sec_jack_set_type(struct sec_jack_info *hi, int jack_type)
 	hi->cur_jack_type = jack_type;
 	pr_info("%s : jack_type = %d\n", __func__, jack_type);
 
+#if defined(CONFIG_MACH_KLTE_JPN)
+	if (jack_type == SEC_EXTERNAL_ANTENNA) {
+		if(++detect_count > MAX_DETECT_LIMIT) {
+			detect_count = 0;
+			return;
+		}
+		else {
+			int time_left_ms = 100;
+		
+			while (time_left_ms > 0) {
+				usleep_range(10000, 10000);
+				time_left_ms -= 10;
+			}
+
+			hi->cur_jack_type = SEC_JACK_NO_DEVICE;
+			determine_jack_type(hi);
+			
+			return;
+		}
+	}
+	else
+		detect_count = 0;
+#endif
 	switch_set_state(&switch_jack_detection, jack_type);
 }
 
@@ -368,7 +405,7 @@ static void determine_jack_type(struct sec_jack_info *hi)
 	/* set mic bias to enable adc */
 	set_sec_micbias_state(hi, true);
 
-#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	mpp_control(1);
 #endif
 
@@ -390,7 +427,7 @@ static void determine_jack_type(struct sec_jack_info *hi)
 				if (++count[i] > zones[i].check_count) {
 					sec_jack_set_type(hi,
 						zones[i].jack_type);
-#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 					mpp_control(0);
 #endif
 					return;
@@ -402,7 +439,7 @@ static void determine_jack_type(struct sec_jack_info *hi)
 		}
 	}
 
-#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	mpp_control(0);
 #endif
 
@@ -510,15 +547,32 @@ void sec_jack_buttons_work(struct work_struct *work)
 		return;
 	}
 
-#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	mpp_control(1);
 #endif
 
 	/* when button is pressed */
 	adc = sec_jack_get_adc_value(hi);
 
-#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	mpp_control(0);
+#endif
+
+#if defined(CONFIG_MACH_KLTE_JPN)
+	if (hi->cur_jack_type == SEC_EXTERNAL_ANTENNA) {
+		
+		int time_left_ms = 1000;
+		
+		while (time_left_ms > 0) {
+			usleep_range(10000, 10000);
+			time_left_ms -= 10;
+		}
+
+		hi->cur_jack_type = SEC_JACK_NO_DEVICE;
+		determine_jack_type(hi);
+
+		return;
+	}
 #endif
 
 	for (i = 0; i < num_buttons_zones; i++)
@@ -582,7 +636,11 @@ static struct sec_jack_platform_data *sec_jack_populate_dt_pdata(struct device *
 		pdata->jack_zones[i].adc_high = args.args[0];
 		pdata->jack_zones[i].delay_us = args.args[1];
 		pdata->jack_zones[i].check_count = args.args[2];
+#if defined(CONFIG_MACH_KLTE_JPN)
+		pdata->jack_zones[i].jack_type = args.args[3];
+#else
 		pdata->jack_zones[i].jack_type = args.args[3]==0?SEC_HEADSET_3POLE:SEC_HEADSET_4POLE;
+#endif
 		pr_info("%s : %d, %d, %d, %d, %d \n",
 				__func__, args.args_count, args.args[0],
 				args.args[1], args.args[2],args.args[3]);		
@@ -611,7 +669,7 @@ static struct sec_jack_platform_data *sec_jack_populate_dt_pdata(struct device *
 	}
 	pr_info("%s - mpp-channel-scaling - %d %d %d\n", __func__, pdata->mpp_ch_scale[0], pdata->mpp_ch_scale[1], pdata->mpp_ch_scale[2]);
 
-#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	pm8941_mpp4 = of_get_named_gpio(dev->of_node, "pm8941-mpp4", 0);
 #endif
 
@@ -786,7 +844,7 @@ static int sec_jack_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, hi);
 	dev_set_drvdata(earjack, hi);
 
-#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT)	
+#if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_MACH_LT03) || defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	mpp_control(0);
 #endif
 

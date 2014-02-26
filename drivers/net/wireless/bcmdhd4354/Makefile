@@ -99,6 +99,9 @@ DHDCFLAGS += -DCUSTOM_DPC_PRIO_SETTING=98
 # Priority mismatch fix with kernel stack
 DHDCFLAGS += -DPKTPRIO_OVERRIDE
 
+# Prevent rx thread monopolize
+DHDCFLAGS += -DWAIT_DEQUEUE
+
 # Config PM Control
 DHDCFLAGS += -DCONFIG_CONTROL_PM
 
@@ -111,6 +114,10 @@ DHDCFLAGS += -DUSE_INITIAL_SHORT_DWELL_TIME
 # SKB TAILPAD to avoid out of boundary memory access
 DHDCFLAGS += -DDHDENABLE_TAILPAD
 
+##############################
+# Android Platform Definition
+##############################
+
 ##########
 # KitKat
 ##########
@@ -122,6 +129,8 @@ DHDCFLAGS += -DWL_CFG80211_STA_EVENT
 DHDCFLAGS += -DWL_IFACE_COMB_NUM_CHANNELS
 # To support p2p private command on kernel 3.8 or above
 DHDCFLAGS += -DWL_NEWCFG_PRIVCMD_SUPPORT
+
+
 
 ##########################
 # driver type
@@ -157,6 +166,10 @@ ifeq ($(CONFIG_ARCH_MSM),y)
   DHDCFLAGS += -DENABLE_ADAPTIVE_SCHED -DCUSTOM_CPUFREQ_THRESH=1000000
 endif
   DHDCFLAGS += -DCUSTOM_MAX_TXGLOM_SIZE=40
+  DHDCFLAGS += -DMAX_HDR_READ=128
+  DHDCFLAGS += -DDHD_FIRSTREAD=128
+  DHDCFLAGS += -DCUSTOM_AMPDU_MPDU=16
+  DHDCFLAGS += -DCUSTOM_TXINRX_THRES=64
 
 # New Features
   DHDCFLAGS += -DWL11U

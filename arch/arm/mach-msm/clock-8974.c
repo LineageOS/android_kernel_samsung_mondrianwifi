@@ -848,6 +848,18 @@ static DEFINE_CLK_VOTER(ocmemgx_core_clk, &ocmemgx_clk.c, LONG_MAX);
 static DEFINE_CLK_VOTER(pnoc_keepalive_a_clk, &pnoc_a_clk.c, LONG_MAX);
 static DEFINE_CLK_VOTER(pnoc_sps_clk, &pnoc_clk.c, 0);
 
+#ifdef CONFIG_MSM_BUSPM_DEV
+static DEFINE_CLK_VOTER(pnoc_buspm_clk, &pnoc_clk.c, LONG_MAX);
+static DEFINE_CLK_VOTER(snoc_buspm_clk, &snoc_clk.c, LONG_MAX);
+static DEFINE_CLK_VOTER(cnoc_buspm_clk, &cnoc_clk.c, LONG_MAX);
+static DEFINE_CLK_VOTER(pnoc_buspm_a_clk, &pnoc_a_clk.c, LONG_MAX);
+static DEFINE_CLK_VOTER(snoc_buspm_a_clk, &snoc_a_clk.c, LONG_MAX);
+static DEFINE_CLK_VOTER(cnoc_buspm_a_clk, &cnoc_a_clk.c, LONG_MAX);
+
+static DEFINE_CLK_VOTER(bimc_buspm_clk, &bimc_clk.c, LONG_MAX);
+static DEFINE_CLK_VOTER(bimc_buspm_a_clk, &bimc_a_clk.c, LONG_MAX);
+#endif
+
 static DEFINE_CLK_BRANCH_VOTER(cxo_otg_clk, &cxo_clk_src.c);
 static DEFINE_CLK_BRANCH_VOTER(cxo_pil_lpass_clk, &cxo_clk_src.c);
 static DEFINE_CLK_BRANCH_VOTER(cxo_pil_mss_clk, &cxo_clk_src.c);
@@ -883,6 +895,11 @@ static struct clk_freq_tbl ftbl_gcc_blsp1_2_qup1_6_spi_apps_clk[] = {
 	F(15000000,  gpll0,  10,   1,   4),
 	F(19200000,    cxo,   1,   0,   0),
 	F(25000000,  gpll0,  12,   1,   2),
+	F(32000000,  gpll0,    1, 4,    75),
+	F(37500000,  gpll0,  16,   0, 0),
+	F(40000000,  gpll0,  15,   0,    0),
+	F(46400000,  gpll0,  1,  29, 375),
+	F(48000000,  gpll0, 12.5, 0,  0),
 	F(50000000,  gpll0,  12,   0,   0),
 	F_END
 };
@@ -4950,9 +4967,14 @@ static struct clk_lookup msm_clocks_8974pro_only[] __initdata = {
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9925000.i2c"), /* BLSP#3 */
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup3_i2c_apps_clk.c, "f9925000.i2c"), /* BLSP#3 */
 
+#if defined(CONFIG_GSM_MODEM_SPRD6500)
+	CLK_LOOKUP("iface_clk", gcc_blsp2_ahb_clk.c, "f995d000.uart"),
+	CLK_LOOKUP("core_clk", gcc_blsp2_uart1_apps_clk.c, "f995d000.uart"),
+#else
 	/*  Health cover UART clocks */
 	CLK_LOOKUP("iface_clk", gcc_blsp2_ahb_clk.c, "f995d000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp2_uart1_apps_clk.c, "f995d000.serial"),
+#endif
 
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9923000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup1_i2c_apps_clk.c, "f9923000.i2c"),
@@ -5007,6 +5029,9 @@ static struct clk_lookup msm_clocks_8974pro_only[] __initdata = {
 	CLK_LOOKUP("nfc_clk", cxo_d1_pin.c, "1-0029"),
 #endif
 
+#if defined(CONFIG_MACH_K3GDUOS_CTC)
+	CLK_LOOKUP("fpga_src_clk", camss_mclk3_clk.c, NULL),
+#endif	
 };
 
 static struct clk_lookup msm_clocks_8974_only[] __initdata = {
@@ -5023,7 +5048,7 @@ static struct clk_lookup msm_clocks_8974_only[] __initdata = {
         CLK_LOOKUP("vib_src_clk", mmss_gp1_clk_src.c, NULL),
         CLK_LOOKUP("vib_gp1_clk", camss_gp1_clk.c, NULL),
         #endif
-#if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE)
+#if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE) || defined(CONFIG_GSM_MODEM_SPRD6500)
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9925000.spi"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup3_spi_apps_clk.c, "f9925000.spi"),
 #endif
@@ -5081,7 +5106,11 @@ static struct clk_lookup msm_clocks_8974_only[] __initdata = {
 	CLK_LOOKUP("cam_gp0_clk", camss_gp0_clk.c, NULL),
 	CLK_LOOKUP("cam_gp1_clk", camss_gp1_clk.c, NULL),
 #ifdef CONFIG_NFC_PN547_PMC8974_CLK_REQ
+#ifdef CONFIG_NFC_I2C_OVERWRITE
+	CLK_LOOKUP("nfc_clk", cxo_d1_pin.c, NULL),
+#else
 	CLK_LOOKUP("nfc_clk", cxo_d1_pin.c, "10-002b"),
+#endif
 #endif
 };
 
@@ -5105,7 +5134,7 @@ static struct clk_lookup msm_clocks_8974_common[] __initdata = {
 	CLK_LOOKUP("gpll0", gpll0_clk_src.c, ""),
 
 	CLK_LOOKUP("dma_bam_pclk", gcc_bam_dma_ahb_clk.c, "msm_sps"),
-	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f991d000.uart"),	
+	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f991d000.uart"),
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f991e000.serial"),
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f991f000.serial"),
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9924000.i2c"), /* BLSP#2 */
@@ -5121,7 +5150,7 @@ static struct clk_lookup msm_clocks_8974_common[] __initdata = {
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup4_spi_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup6_spi_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart1_apps_clk.c, ""),
-	CLK_LOOKUP("core_clk", gcc_blsp1_uart1_apps_clk.c, "f991d000.uart"),	
+	CLK_LOOKUP("core_clk", gcc_blsp1_uart1_apps_clk.c, "f991d000.uart"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart2_apps_clk.c, "f991e000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart3_apps_clk.c, "f991f000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart4_apps_clk.c, ""),
@@ -5189,7 +5218,12 @@ static struct clk_lookup msm_clocks_8974_common[] __initdata = {
 	CLK_LOOKUP("bus_clk",      gcc_ce1_axi_clk.c,     "scm"),
 	CLK_LOOKUP("core_clk_src", ce1_clk_src.c,         "scm"),
 
+#if defined(CONFIG_MACH_H3GDUOS)
+	CLK_LOOKUP("gp1_clk", gcc_gp1_clk.c, NULL),
+	CLK_LOOKUP("gp1_src_clk", gp1_clk_src.c, NULL),
+#else
 	CLK_LOOKUP("core_clk", gcc_gp1_clk.c, ""),
+#endif
 	CLK_LOOKUP("gp2_clk", gcc_gp2_clk.c, NULL),
 	CLK_LOOKUP("core_clk", gcc_gp3_clk.c, ""),
 
@@ -5549,6 +5583,18 @@ static struct clk_lookup msm_clocks_8974_common[] __initdata = {
 	CLK_LOOKUP("mem_clk", bimc_a_clk.c, ""),
 	CLK_LOOKUP("mem_clk", ocmemgx_a_clk.c, ""),
 
+#ifdef CONFIG_MSM_BUSPM_DEV
+	CLK_LOOKUP("snoc_clk", snoc_buspm_clk.c, "msm-buspm"),
+	CLK_LOOKUP("pnoc_clk", pnoc_buspm_clk.c, "msm-buspm"),
+	CLK_LOOKUP("cnoc_clk", cnoc_buspm_clk.c, "msm-buspm"),
+	CLK_LOOKUP("bimc_clk", bimc_buspm_clk.c, "msm-buspm"),
+
+	CLK_LOOKUP("snoc_a_clk", snoc_buspm_a_clk.c, "msm-buspm"),
+	CLK_LOOKUP("pnoc_a_clk", pnoc_buspm_a_clk.c, "msm-buspm"),
+	CLK_LOOKUP("cnoc_a_clk", cnoc_buspm_a_clk.c, "msm-buspm"),
+	CLK_LOOKUP("bimc_a_clk", bimc_buspm_a_clk.c, "msm-buspm"),
+#endif
+
 	CLK_LOOKUP("bus_clk",	cnoc_msmbus_clk.c,	"msm_config_noc"),
 	CLK_LOOKUP("bus_a_clk",	cnoc_msmbus_a_clk.c,	"msm_config_noc"),
 	CLK_LOOKUP("bus_clk",	snoc_msmbus_clk.c,	"msm_sys_noc"),
@@ -5655,7 +5701,7 @@ static struct clk_lookup msm_clocks_8974_common[] __initdata = {
 	CLK_LOOKUP("",		byte_clk_src_8974.c,               ""),
 #ifdef CONFIG_SND_SOC_ES325
 	CLK_LOOKUP("osr_clk", div_clk1.c, "es325_mclk_dev"),
-#endif	
+#endif
 };
 
 static struct clk_lookup msm_clocks_8974[ARRAY_SIZE(msm_clocks_8974_common)

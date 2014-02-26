@@ -401,7 +401,7 @@ static void get_config_ver(void *dev_data)
 	snprintf(buff, sizeof(buff), "%s_%s", TSP_CHIP_VENDOR, TSP_CHIP_NAME);
 
 	set_cmd_result(sec, buff, strnlen(buff, sizeof(buff)));
-	sec->cmd_state = 2;
+	sec->cmd_state = CMD_STATE_OK;
 	dev_info(&data->client->dev, "%s: %s(%d)\n", __func__,
 			buff, strnlen(buff, sizeof(buff)));
 }
@@ -540,7 +540,7 @@ void run_raw_read(void *dev_data)
 
 	snprintf(buf, sizeof(buf), "%d,%d", min_val, max_val);
 	tsp_info("%s(), %s\n", __func__, buf);
-
+	sec->cmd_state = CMD_STATE_OK;
 	set_cmd_result(sec, buf, strnlen(buf, sizeof(buf)));
 	dev_info(&data->client->dev, "%s: %s(%d)\n", __func__, buf,
 		 strnlen(buf, sizeof(buf)));
@@ -816,14 +816,16 @@ struct tsp_cmd tsp_cmds[] = {
 	{ TSP_CMD("fw_update",	fw_update),       },
 	{ TSP_CMD("get_fw_ver_bin",  get_fw_ver_bin),  },
 	{ TSP_CMD("get_fw_ver_ic",   get_fw_ver_ic),   },
-	{TSP_CMD("get_config_ver", get_config_ver),},
+	{ TSP_CMD("get_config_ver",  get_config_ver),  },
 	{ TSP_CMD("get_threshold",   get_threshold),   },
 	{ TSP_CMD("get_chip_vendor", get_chip_vendor), },
 	{ TSP_CMD("get_chip_name",   get_chip_name),   },
 	{ TSP_CMD("get_chip_id",     get_chip_id),     },
 	{ TSP_CMD("get_x_num",	     get_x_num),       },
 	{ TSP_CMD("get_y_num",	     get_y_num),       },
+	{ TSP_CMD("run_reference_read",  run_raw_read),},
 	{ TSP_CMD("run_raw_read",    run_raw_read),    },
+	{ TSP_CMD("get_reference",   get_raw_value),   },
 	{ TSP_CMD("get_raw_value",   get_raw_value),   },
 	{ TSP_CMD("not_support_cmd", not_support_cmd), },
 };

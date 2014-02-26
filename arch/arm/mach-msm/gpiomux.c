@@ -43,7 +43,13 @@ static unsigned msm_gpiomux_ngpio;
 /****************************************************************/
 /* Define value in accordance with
 	the specification of each BB vendor. */
-#define AP_GPIO_COUNT	146
+#if defined(CONFIG_MACH_MILLET3G_EUR) || defined(CONFIG_MACH_MATISSE3G_OPEN) || defined(CONFIG_MACH_MILLETWIFI_OPEN) || defined(CONFIG_MACH_MATISSEWIFI_OPEN)
+#define AP_GPIO_COUNT   117  //8226
+#elif defined(CONFIG_SEC_MILLETLTE_COMMON) || defined(CONFIG_SEC_MATISSELTE_COMMON)
+#define AP_GPIO_COUNT   121  //8926
+#else
+#define AP_GPIO_COUNT   146
+#endif
 /****************************************************************/
 
 enum {

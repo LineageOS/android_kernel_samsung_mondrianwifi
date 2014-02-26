@@ -37,11 +37,14 @@ extern unsigned int system_rev;
 int get_lcd_attached(void);
 
 #if defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL) || \
-	defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL)
-
+	defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL) || \
+	defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
 int get_samsung_lcd_attached(void);
 int get_lcd_panel_res(void);
 extern char board_rev;
+#elif defined (CONFIG_FB_MSM8x26_MDSS_CHECK_LCD_CONNECTION)
+
+int get_samsung_lcd_attached(void);
 #endif
 
 #if defined (CONFIG_FB_MSM_MDSS_DSI_DBG)
@@ -77,7 +80,11 @@ static int mdss_dsi_regulator_init(struct platform_device *pdev)
 			ctrl_pdata->power_data.num_vreg, 1);
 
 #ifdef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL
+#if defined (CONFIG_MACH_KACTIVELTE_ATT)
+		if (board_rev >= 0) { /* VDDR3 (I/O) VCC_1.8V_LCD VREG_LVS4*/
+#else
 		if (board_rev >= 2) { /* VDDR3 (I/O) VCC_1.8V_LCD VREG_LVS4*/
+#endif			
 			dsi_drv->iovdd_vreg = devm_regulator_get(&pdev->dev, "iovdd");
 			if (IS_ERR(dsi_drv->iovdd_vreg)) {
 				pr_err("%s: could not get iovddreg, rc=%ld\n",
@@ -123,9 +130,22 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL) \
 	|| defined(CONFIG_FB_MSM_MIPI_SAMSUNG_YOUM_CMD_FULL_HD_PT_PANEL) \
 	|| defined(CONFIG_MIPI_LCD_S6E3FA0_FORCE_VIDEO_MODE) \
-	|| defined(CONFIG_MACH_JS01LTEDCM) || defined(CONFIG_MACH_JS01LTESBM)
+	|| defined(CONFIG_MACH_JS01LTEDCM) || defined(CONFIG_MACH_JS01LTESBM) \
+	|| defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL) \
+	|| defined(CONFIG_FB_MSM_MIPI_S6E8AA0A_720P_PT_PANEL)
 		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
+			pr_info("%s : Set High LCD Enable GPIO \n", __func__);
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+		}
+#elif defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_720P_PT_PANEL)\
+		|| defined(CONFIG_FB_MSM_MDSS_MAGNA_OCTA_VIDEO_720P_PT_PANEL)
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
+			pr_info("%s : Set High LCD Enable GPIO \n", __func__);
+			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+		}
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio2)) {
+			pr_info("%s : Set High LCD Enable GPIO2 \n", __func__);
+			gpio_set_value((ctrl_pdata->disp_en_gpio2), 1);
 		}
 #endif
 
@@ -484,6 +504,10 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 		pr_err("%s: Panel power off failed\n", __func__);
 		return ret;
 	}
+#if defined(CONFIG_FB_MSM_MDSS_SDC_WXGA_PANEL)
+	if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
+		gpio_set_value_cansleep((ctrl_pdata->disp_en_gpio), 0);
+#endif
 
 	if (panel_info->dynamic_fps
 	    && (panel_info->dfps_update == DFPS_SUSPEND_RESUME_MODE)
@@ -505,7 +529,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	u32 ystride, bpp, data, dst_bpp;
 	u32 dummy_xres = 0, dummy_yres = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-	u32 hsync_period, vsync_period;
+	u32 hsync_period, vsync_period, tmp;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -545,15 +569,22 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 			pr_info("%s: success [disp_te_gpio] gpio_ltmm_config..\n",__func__);
 		}
 	}
-
-	ret = mdss_dsi_panel_power_on(pdata, 1);
-	if (ret) {
-		pr_err("%s:Failed to enable vregs. rc=%d\n", __func__, ret);
-		return ret;
+#if defined(CONFIG_FB_MSM_MDSS_SDC_WXGA_PANEL)
+	if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
+		gpio_set_value_cansleep((ctrl_pdata->disp_en_gpio), 1);
+	msleep(10);
+#endif
+	if(ctrl_pdata->ndx == DSI_CTRL_0) {
+		ret = mdss_dsi_panel_power_on(pdata, 1);
+		if (ret) {
+			pr_err("%s:Failed to enable vregs. rc=%d\n", __func__, ret);
+			return ret;
+		}
 	}
 
 	pdata->panel_info.panel_power_on = 1;
-
+#if !defined(CONFIG_FB_MSM8x26_MDSS_CHECK_LCD_CONNECTION) && \
+	!defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
 	if (get_lcd_attached() == 0) {
 		pr_err("%s : lcd is not attached..\n",__func__);
 
@@ -562,6 +593,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 
 		return -ENODEV;
 	}
+#endif
 
 	ret = mdss_dsi_enable_bus_clocks(ctrl_pdata);
 	if (ret) {
@@ -648,18 +680,16 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 
 	mdss_dsi_sw_reset(pdata);
 	mdss_dsi_host_init(mipi, pdata);
-	// LP11
-	{
-		u32 tmp;
-		tmp = MIPI_INP((ctrl_pdata->ctrl_base) + 0xac);
-		tmp &= ~(1<<28);
-		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, tmp);
-		wmb();
-		msleep(20);
-	}
-	// LP11
+	/* LP11 */
+	tmp = MIPI_INP((ctrl_pdata->ctrl_base) + 0xac);
+	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, 0x1F << 16);
+	wmb();
+	msleep(20);
+	/* LP11 */
 
-    ctrl_pdata->panel_reset(pdata, 1);
+	ctrl_pdata->panel_reset(pdata, 1);
+
+	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, tmp);
 
 	if (pdata->panel_info.mipi.init_delay)
 		usleep(pdata->panel_info.mipi.init_delay);
@@ -1054,7 +1084,9 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 #if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
 	case MDSS_EVENT_FIRST_FRAME_UPDATE:
 		pr_info("MDSS_FIRST_FRAME_UPDATE\n");
-#if !defined(CONFIG_FB_MSM_MDSS_SDC_WXGA_PANEL) && !defined(CONFIG_FB_MSM_MDSS_TC_DSI2LVDS_WXGA_PANEL)
+#if !defined(CONFIG_FB_MSM_MDSS_SDC_WXGA_PANEL) && !defined(CONFIG_FB_MSM_MDSS_TC_DSI2LVDS_WXGA_PANEL) && \
+	!defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_720P_PT_PANEL) && !defined(CONFIG_FB_MSM_MDSS_CPT_QHD_PANEL) && \
+	!defined(CONFIG_FB_MSM_MIPI_S6E8AA0A_720P_PT_PANEL)
 		ctrl_pdata->mdp_tg_on = 1;
 	/*Event is send only if cont_splash feature is enabled */
 		if (ctrl_pdata->dsi_off_state == DSI_HS_MODE) {
@@ -1194,11 +1226,13 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		pr_err("DSI driver only supports device tree probe\n");
 		return -ENOTSUPP;
 	}
-
+#if !defined(CONFIG_FB_MSM8x26_MDSS_CHECK_LCD_CONNECTION) && \
+	!defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
 	if (get_lcd_attached() == 0) {
 		pr_err("%s : lcd is not attached..\n",__func__);
 		return -ENODEV;
 	}
+#endif
 
 	ctrl_pdata = platform_get_drvdata(pdev);
 	if (!ctrl_pdata) {
@@ -1597,6 +1631,15 @@ int dsi_panel_device_register(struct device_node *pan_node,
 
 	pr_err("%s:%d, Disp_en_gpio (%d)",__func__, __LINE__,ctrl_pdata->disp_en_gpio );
 
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
+	if (get_lcd_attached() == 0) {
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
+			pr_info("%s : Set Low LCD Enable GPIO \n", __func__);
+			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
+		}
+	}
+#endif
+
 	if (!gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
 		pr_err("%s:%d, Disp_en gpio not specified\n",
 						__func__, __LINE__);
@@ -1611,6 +1654,28 @@ int dsi_panel_device_register(struct device_node *pan_node,
 			}
 		}
 	}
+
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_720P_PT_PANEL)\
+		|| defined(CONFIG_FB_MSM_MDSS_MAGNA_OCTA_VIDEO_720P_PT_PANEL)
+	ctrl_pdata->disp_en_gpio2 = of_get_named_gpio(pan_node,
+						 "qcom,enable-gpio2", 0);
+
+	pr_err("%s:%d, Disp_en_gpio2 (%d)",__func__, __LINE__,ctrl_pdata->disp_en_gpio2 );
+
+	if (!gpio_is_valid(ctrl_pdata->disp_en_gpio2)) {
+		pr_err("%s:%d, Disp_en gpio2 not specified\n",
+						__func__, __LINE__);
+	} else {
+		if (ctrl_pdata->panel_data.panel_info.pdest == DISPLAY_1) {
+			rc = gpio_request(ctrl_pdata->disp_en_gpio2, "disp_enable2");
+			if (rc) {
+					pr_err("request disp_en gpio2 failed, rc=%d\n",
+					   rc);
+				gpio_free(ctrl_pdata->disp_en_gpio2);
+			}
+		}
+	}
+#endif
 
 	if (pinfo->type == MIPI_CMD_PANEL) {
 		ctrl_pdata->disp_te_gpio = of_get_named_gpio(pan_node,
@@ -1674,6 +1739,11 @@ int dsi_panel_device_register(struct device_node *pan_node,
 				gpio_free(ctrl_pdata->rst_gpio);
 				if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 					gpio_free(ctrl_pdata->disp_en_gpio);
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_720P_PT_PANEL)\
+		|| defined(CONFIG_FB_MSM_MDSS_MAGNA_OCTA_VIDEO_720P_PT_PANEL)
+				if (gpio_is_valid(ctrl_pdata->disp_en_gpio2))
+					gpio_free(ctrl_pdata->disp_en_gpio2);
+#endif
 				return -ENODEV;
 			}
 		}
@@ -1695,6 +1765,11 @@ int dsi_panel_device_register(struct device_node *pan_node,
 				gpio_free(ctrl_pdata->mode_gpio);
 				if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 					gpio_free(ctrl_pdata->disp_en_gpio);
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_720P_PT_PANEL)\
+		|| defined(CONFIG_FB_MSM_MDSS_MAGNA_OCTA_VIDEO_720P_PT_PANEL)
+				if (gpio_is_valid(ctrl_pdata->disp_en_gpio2))
+					gpio_free(ctrl_pdata->disp_en_gpio2);
+#endif
 				if (gpio_is_valid(ctrl_pdata->rst_gpio))
 					gpio_free(ctrl_pdata->rst_gpio);
 				if (gpio_is_valid(ctrl_pdata->disp_te_gpio))
@@ -1723,8 +1798,10 @@ int dsi_panel_device_register(struct device_node *pan_node,
 	ctrl_pdata->panel_data.panel_reset_fn = ctrl_pdata->panel_reset;
 	ctrl_pdata->panel_data.panel_extra_power = ctrl_pdata->panel_extra_power;
 */
+#if !defined(CONFIG_FB_MSM_MDSS_TC_DSI2LVDS_WXGA_PANEL)
 	if (ctrl_pdata->bklt_ctrl == BL_PWM)
 		mdss_dsi_panel_pwm_cfg(ctrl_pdata);
+#endif
 
 	mdss_dsi_ctrl_init(ctrl_pdata);
 	/*
@@ -1763,6 +1840,11 @@ int dsi_panel_device_register(struct device_node *pan_node,
 			gpio_free(ctrl_pdata->rst_gpio);
 		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 			gpio_free(ctrl_pdata->disp_en_gpio);
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_720P_PT_PANEL)\
+		|| defined(CONFIG_FB_MSM_MDSS_MAGNA_OCTA_VIDEO_720P_PT_PANEL)
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio2))
+			gpio_free(ctrl_pdata->disp_en_gpio2);
+#endif
 		return rc;
 	}
 
@@ -1826,7 +1908,9 @@ module_exit(mdss_dsi_driver_cleanup);
 int get_lcd_attached(void)
 {
 #if defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL) || \
-	defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL)
+	defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL) || \
+	defined (CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL) || \
+	defined (CONFIG_FB_MSM8x26_MDSS_CHECK_LCD_CONNECTION)
 	return get_samsung_lcd_attached();
 #else
 	return 1;

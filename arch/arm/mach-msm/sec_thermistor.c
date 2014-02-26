@@ -213,7 +213,7 @@ static int sec_therm_get_adc_data_flash_led(struct sec_therm_info *info)
 
 	for (i = 0; i < ADC_SAMPLING_CNT; i++) {
 
-		rc = qpnp_vadc_read(LR_MUX9_PU2_AMUX_THM5, &results);
+		rc = qpnp_vadc_read(NULL, LR_MUX9_PU2_AMUX_THM5, &results);
 
 		if (rc) {
 			pr_err("error reading AMUX %d, rc = %d\n",

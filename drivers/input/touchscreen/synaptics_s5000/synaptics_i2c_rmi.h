@@ -106,7 +106,7 @@
 /* User firmware */
 #define FW_IMAGE_NAME_B0_3_4	"tsp_synaptics/synaptics_b0_3_4.fw"
 #define FW_IMAGE_NAME_B0_4_0	"tsp_synaptics/synaptics_b0_4_0.fw"
-#ifdef CONFIG_SEC_H_PROJECT
+#if defined(CONFIG_SEC_H_PROJECT)
 #define FW_IMAGE_NAME_B0_4_3	"tsp_synaptics/synaptics_b0_4_3_new.fw"
 #else
 #define FW_IMAGE_NAME_B0_4_3	"tsp_synaptics/synaptics_b0_4_3.fw"

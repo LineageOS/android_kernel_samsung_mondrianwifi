@@ -156,7 +156,7 @@ struct android_usb_function {
 					struct usb_composite_dev *,
 					const struct usb_ctrlrequest *);
 };
-#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 u8    usb30en;
 extern int sec_set_speedlimit(struct usb_gadget *gadget,
 			enum usb_device_speed speed);
@@ -229,7 +229,7 @@ struct android_dev {
 	char pm_qos[5];
 	struct pm_qos_request pm_qos_req_dma;
 	struct work_struct work;
-#ifdef CONFIG_SEC_H_PROJECT
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	struct delayed_work usb_connection_work;
 	int speaker_check_count;
 #endif
@@ -355,7 +355,7 @@ static void android_work(struct work_struct *data)
 	char *configured[2]   = { "USB_STATE=CONFIGURED", NULL };
 	char *suspended[2]   = { "USB_STATE=SUSPENDED", NULL };
 	char *resumed[2]   = { "USB_STATE=RESUMED", NULL };
-#ifdef CONFIG_SEC_H_PROJECT
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	char *cableconnect[2] = { "USB_CONNECTION=CONNECTED", NULL };
 #endif
 	char **uevent_envp = NULL;
@@ -414,7 +414,7 @@ static void android_work(struct work_struct *data)
 		if (next_state != USB_SUSPENDED && next_state != USB_RESUMED) {
 			kobject_uevent_env(&dev->dev->kobj, KOBJ_CHANGE,
 					   uevent_envp);
-#ifdef CONFIG_SEC_H_PROJECT
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 		if (uevent_envp == connected)
 			kobject_uevent_env(&dev->dev->kobj, KOBJ_CHANGE, cableconnect);
 #endif
@@ -427,7 +427,7 @@ static void android_work(struct work_struct *data)
 	}
 }
 
-#ifdef CONFIG_SEC_H_PROJECT
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 extern int speaker_status;
 
 void usb_gadget_connect_work(struct work_struct *work)
@@ -489,7 +489,7 @@ static int android_enable(struct android_dev *dev)
 				return err;
 			}
 		}
-#ifdef CONFIG_SEC_H_PROJECT
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 		schedule_usb_gadget_connect_work(dev);
 #else
 		usb_gadget_connect(cdev->gadget);
@@ -2962,7 +2962,7 @@ bcdUSB_show(struct device *pdev, struct device_attribute *attr, char *buf)
 	}
 }
 
-#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT)|| defined(CONFIG_SEC_FRESCO_PROJECT)
 static ssize_t
 usb30en_show(struct device *pdev, struct device_attribute *attr, char *buf)
 {
@@ -2989,7 +2989,7 @@ static ssize_t usb30en_store (struct device *pdev,
 					(usb30en ? USB_SPEED_SUPER : USB_SPEED_HIGH));
 			printk(KERN_DEBUG "usb: %s B4 disconectng gadget\n", __func__);
 			msleep(200);
-#ifdef CONFIG_SEC_H_PROJECT
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 			if (!usb30en)
 				schedule_usb_gadget_connect_work(dev);
 			else
@@ -3050,7 +3050,7 @@ static ssize_t macos_show(struct device *pdev,
 }
 #endif
 static DEVICE_ATTR(bcdUSB, S_IRUGO | S_IWUSR, bcdUSB_show, NULL);
-#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 static DEVICE_ATTR(usb30en,S_IRUGO | S_IWUSR, usb30en_show, usb30en_store);
 static DEVICE_ATTR(ss_host_available,S_IRUGO | S_IWUSR, ss_host_available_show, NULL);
 static DEVICE_ATTR(macos,S_IRUGO | S_IWUSR, macos_show, NULL);
@@ -3079,7 +3079,7 @@ static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_pm_qos,
 	&dev_attr_state,
 	&dev_attr_bcdUSB,
-#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT)|| defined(CONFIG_SEC_FRESCO_PROJECT)
 	&dev_attr_usb30en,
 	&dev_attr_ss_host_available,
 	&dev_attr_macos,
@@ -3517,7 +3517,7 @@ static int __devinit android_probe(struct platform_device *pdev)
 	android_dev->configs_num = 0;
 	INIT_LIST_HEAD(&android_dev->configs);
 	INIT_WORK(&android_dev->work, android_work);
-#ifdef CONFIG_SEC_H_PROJECT
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	INIT_DELAYED_WORK(&android_dev->usb_connection_work, usb_gadget_connect_work);
 #endif
 	mutex_init(&android_dev->mutex);

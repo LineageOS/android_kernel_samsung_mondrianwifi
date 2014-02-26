@@ -48,6 +48,10 @@ void ssp_enable(struct ssp_data *data, bool enable)
 static irqreturn_t sensordata_irq_thread_fn(int iIrq, void *dev_id)
 {
 	struct ssp_data *data = dev_id;
+	if(gpio_get_value(data->mcu_int1)) {
+		pr_info("[SSP] MCU int HIGH");
+		return IRQ_HANDLED;
+	}
 
 	select_irq_msg(data);
 	data->uIrqCnt++;
@@ -133,6 +137,8 @@ int initialize_mcu(struct ssp_data *data)
 {
 	int iRet = 0;
 
+	clean_pending_list(data);
+
 	iRet = get_chipid(data);
 	pr_info("[SSP] MCU device ID = %d, reading ID = %d\n", DEVICE_ID, iRet);
 	if (iRet != DEVICE_ID) {
@@ -168,7 +174,8 @@ int initialize_mcu(struct ssp_data *data)
 	data->uCurFirmRev = get_firmware_rev(data);
 	pr_info("[SSP] MCU Firm Rev : New = %8u\n",
 		data->uCurFirmRev);
-	iRet = SUCCESS;
+
+	iRet = ssp_send_cmd(data, MSG2SSP_AP_MCU_DUMP_CHECK, 0);
 out:
 	return iRet;
 }
@@ -576,8 +583,6 @@ static void ssp_shutdown(struct spi_device *spi_dev)
 	ssp_sensorhub_remove(data);
 #endif
 
-	del_timer_sync(&data->debug_timer);
-	cancel_work_sync(&data->work_debug);
 	destroy_workqueue(data->debug_wq);
 	wake_lock_destroy(&data->ssp_wake_lock);
 #ifdef CONFIG_SENSORS_SSP_SHTC1

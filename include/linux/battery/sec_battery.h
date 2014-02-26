@@ -92,6 +92,8 @@ struct sec_battery_info {
 	bool polling_in_sleep;
 	bool polling_short;
 
+	bool fuelgauge_in_sleep;
+
 	struct delayed_work polling_work;
 	struct alarm polling_alarm;
 	ktime_t last_poll_time;
@@ -136,7 +138,7 @@ struct sec_battery_info {
 	int cable_type;
 	int extended_cable_type;
 	struct wake_lock cable_wake_lock;
-	struct work_struct cable_work;
+	struct delayed_work cable_work;
 	struct wake_lock vbus_wake_lock;
 	unsigned int full_check_cnt;
 	unsigned int recharge_check_cnt;

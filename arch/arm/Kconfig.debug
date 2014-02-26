@@ -428,6 +428,12 @@ config SEC_DEBUG_NOCACHE_LOG_IN_LEVEL_LOW
 	help
 	  Enable nocache logging in debug level LOW.
 
+config SEC_MONITOR_BATTERY_REMOVAL
+	bool "Enable monitering whether normal power sequence or not"
+	default n
+	help
+	  Enable monitering Power off & battery removal.
+
 comment "PowerManagement Feature"
 menuconfig SEC_PM
 	bool "Samsung TN PowerManagement Feature"

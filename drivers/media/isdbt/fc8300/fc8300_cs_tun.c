@@ -33,7 +33,7 @@
 #include "fc8300_cs_tun.h"
 #include "fc8300_tun_table.h"
 
-#define DRIVER_VERSION         0x15 /* Driver S1_V1p5*/
+#define DRIVER_VERSION         0x19 /* Driver S1_V1p9 */
 #define RFADC_COUNT            3
 #define CAL_REPEAT             1
 
@@ -45,13 +45,14 @@
 #define XTAL_FREQ_37200        5
 #define XTAL_FREQ_37400        6
 
+#define FC8300_FILTER_CHECK    1
+
 #define FC8300_XTAL_FREQ        BBM_XTAL_FREQ
 #define FC8300_BAND_WIDTH       BBM_BAND_WIDTH
 
 static enum BROADCAST_TYPE broadcast_type = ISDBT_13SEG;
 static u8 xtal_freq = 4;
-
-static u8 fc_cal_value;
+static u8 tf_value[4] = {0, 0, 0, 0};
 
 static u32 tf_offset[2][12] = {
 	{470000, 485000, 497000, 515000, 533000, 581000, 605000, 635000,
@@ -140,10 +141,10 @@ static u8 tf_cal(HANDLE handle, DEVICEID devid)
 static u32 vco_cal(HANDLE handle, DEVICEID devid, u8 offset)
 {
 	u8 vco_table[4][4] = {
-		{0x33, 0x33, 0xbb, 0xbb},
-		{0x33, 0x3b, 0xbb, 0xbb},
-		{0xee, 0xff, 0x00, 0x11},
-		{0xef, 0xf0, 0x01, 0x12}
+		{0xbb, 0xbb, 0xbb, 0xbb},
+		{0x33, 0xbb, 0xbb, 0xbb},
+		{0x10, 0x31, 0x53, 0x75},
+		{0xef, 0x01, 0x23, 0x45}
 	};
 
 	u8 ib[4] = {0, 0, 0, 0};
@@ -211,7 +212,7 @@ static s32 fc8300_tuner_set_pll(HANDLE handle, DEVICEID devid, u32 freq,
 {
 	u8 data_0x51, data_0x57, lo_select;
 	u32 f_diff, f_diff_shifted, n_val, k_val, f_vco;
-	u32 f_vco_max = 6200000;
+	u32 f_vco_max = 6000000;
 	u8 lo_divide_ratio[8] = {8, 12, 16, 24, 32, 48, 64, 96};
 	u8 pre_shift_bits = 4;
 	u8 lock_detect = 0;
@@ -239,7 +240,7 @@ static s32 fc8300_tuner_set_pll(HANDLE handle, DEVICEID devid, u32 freq,
 
 	data_0x51 += (lo_select * 2) + 1;
 
-	for (j = 0; j < 2; j++) {
+	for (j = 0; j < 4; j++) {
 		fc8300_write(handle, devid, 0x5f, 0x40);
 
 		fc8300_write(handle, devid, 0x51, data_0x51);
@@ -250,15 +251,9 @@ static s32 fc8300_tuner_set_pll(HANDLE handle, DEVICEID devid, u32 freq,
 		fc8300_write(handle, devid, 0x50, 0xe3);
 		fc8300_write(handle, devid, 0x50, 0xff);
 
-		for (i = 1; i < 10; i++) {
-			fc8300_read(handle, devid, 0x64, &lock_detect);
+		msWait(2);
 
-			if ((lock_detect & lock_condition) == lock_condition) {
 				fc8300_write(handle, devid, 0x5f, 0x00);
-				break;
-			}
-			msWait(1);
-		}
 
 		for (i = 1; i < 5; i++) {
 			msWait(2);
@@ -311,6 +306,8 @@ static void fc8300_1seg_init(HANDLE handle, DEVICEID devid, u16 filter_cal)
 	fc8300_write(handle, devid, 0x3c, 0xaa);
 	fc8300_write(handle, devid, 0x3d, 0xaa);
 
+	fc8300_write(handle, devid, 0x4d, 0x01);
+
 	fc8300_write(handle, devid, 0x50, 0xff);
 	fc8300_write(handle, devid, 0x54, 0x80);
 
@@ -321,7 +318,7 @@ static void fc8300_1seg_init(HANDLE handle, DEVICEID devid, u16 filter_cal)
 	fc8300_write(handle, devid, 0x84, 0x14);
 	fc8300_write(handle, devid, 0x85, 0x0f);
 	fc8300_write(handle, devid, 0x86, 0x3f);
-	fc8300_write(handle, devid, 0x87, 0x2f);
+	fc8300_write(handle, devid, 0x87, 0x18);
 	fc8300_write(handle, devid, 0x88, 0x0e);
 	fc8300_write(handle, devid, 0x89, 0x0b);
 	fc8300_write(handle, devid, 0x8a, 0x15);
@@ -334,7 +331,7 @@ static void fc8300_1seg_init(HANDLE handle, DEVICEID devid, u16 filter_cal)
 	fc8300_write(handle, devid, 0xb2, 0x00);
 	fc8300_write(handle, devid, 0xb3, 0x04);
 	fc8300_write(handle, devid, 0xb4, 0x00);
-	fc8300_write(handle, devid, 0xb5, 0x04);
+	fc8300_write(handle, devid, 0xb5, 0x02);
 	fc8300_write(handle, devid, 0xb6, 0x00);
 	fc8300_write(handle, devid, 0xb7, 0x07);
 	fc8300_write(handle, devid, 0xb8, 0x00);
@@ -364,7 +361,7 @@ static void fc8300_1seg_init(HANDLE handle, DEVICEID devid, u16 filter_cal)
 	fc8300_write(handle, devid, 0xdd, 0x97);
 
 	fc8300_write(handle, devid, 0xe9, 0x79);
-	fc8300_write(handle, devid, 0xed, 0xcc);
+	fc8300_write(handle, devid, 0xed, 0x4c);
 	fc8300_write(handle, devid, 0xef, 0xb7);
 
 	fc8300_write(handle, devid, 0x2a, 0xb2);
@@ -378,7 +375,6 @@ static void fc8300_1seg_init(HANDLE handle, DEVICEID devid, u16 filter_cal)
 
 	fc8300_write(handle, devid, 0x2e, 0x64);
 	fc8300_write(handle, devid, 0x2f, 0x91);
-	fc8300_write(handle, devid, 0x4d, 0x00);
 }
 
 static void fc8300_tmm_1seg_init(HANDLE handle, DEVICEID devid, u16 filter_cal)
@@ -428,7 +424,7 @@ static void fc8300_tmm_1seg_init(HANDLE handle, DEVICEID devid, u16 filter_cal)
 	fc8300_write(handle, devid, 0x84, 0x14);
 	fc8300_write(handle, devid, 0x85, 0x0f);
 	fc8300_write(handle, devid, 0x86, 0x3f);
-	fc8300_write(handle, devid, 0x87, 0x2f);
+	fc8300_write(handle, devid, 0x87, 0x18);
 	fc8300_write(handle, devid, 0x88, 0x0e);
 	fc8300_write(handle, devid, 0x89, 0x0b);
 	fc8300_write(handle, devid, 0x8a, 0x15);
@@ -472,7 +468,7 @@ static void fc8300_tmm_1seg_init(HANDLE handle, DEVICEID devid, u16 filter_cal)
 	fc8300_write(handle, devid, 0xdd, 0x97);
 
 	fc8300_write(handle, devid, 0xe9, 0x79);
-	fc8300_write(handle, devid, 0xed, 0xcc);
+	fc8300_write(handle, devid, 0xed, 0x4c);
 	fc8300_write(handle, devid, 0xef, 0xb7);
 }
 
@@ -525,7 +521,7 @@ static void fc8300_tsb_1seg_init(HANDLE handle, DEVICEID devid, u16 filter_cal)
 	fc8300_write(handle, devid, 0x84, 0x14);
 	fc8300_write(handle, devid, 0x85, 0x0f);
 	fc8300_write(handle, devid, 0x86, 0x3f);
-	fc8300_write(handle, devid, 0x87, 0x2f);
+	fc8300_write(handle, devid, 0x87, 0x18);
 	fc8300_write(handle, devid, 0x88, 0x0e);
 	fc8300_write(handle, devid, 0x89, 0x0b);
 	fc8300_write(handle, devid, 0x8a, 0x15);
@@ -569,7 +565,7 @@ static void fc8300_tsb_1seg_init(HANDLE handle, DEVICEID devid, u16 filter_cal)
 	fc8300_write(handle, devid, 0x8f, 0xb6);
 
 	fc8300_write(handle, devid, 0xe9, 0x79);
-	fc8300_write(handle, devid, 0xed, 0xcc);
+	fc8300_write(handle, devid, 0xed, 0x4c);
 	fc8300_write(handle, devid, 0xef, 0xb7);
 }
 
@@ -618,7 +614,7 @@ static void fc8300_tsb_3seg_init(HANDLE handle, DEVICEID devid, u8 filter_cal)
 	fc8300_write(handle, devid, 0x84, 0x14);
 	fc8300_write(handle, devid, 0x85, 0x0f);
 	fc8300_write(handle, devid, 0x86, 0x3f);
-	fc8300_write(handle, devid, 0x87, 0x2f);
+	fc8300_write(handle, devid, 0x87, 0x18);
 	fc8300_write(handle, devid, 0x88, 0x0e);
 	fc8300_write(handle, devid, 0x89, 0x0b);
 	fc8300_write(handle, devid, 0x8a, 0x15);
@@ -661,7 +657,7 @@ static void fc8300_tsb_3seg_init(HANDLE handle, DEVICEID devid, u8 filter_cal)
 	fc8300_write(handle, devid, 0xdd, 0x97);
 
 	fc8300_write(handle, devid, 0xe9, 0x79);
-	fc8300_write(handle, devid, 0xed, 0xcc);
+	fc8300_write(handle, devid, 0xed, 0x4c);
 	fc8300_write(handle, devid, 0xef, 0xb7);
 }
 
@@ -694,6 +690,8 @@ static void fc8300_13seg_init(HANDLE handle, DEVICEID devid, u8 filter_cal)
 	fc8300_write(handle, devid, 0x3d, 0xff);
 	fc8300_write(handle, devid, 0x3e, 0xab);
 
+	fc8300_write(handle, devid, 0x4d, 0x01);
+
 	fc8300_write(handle, devid, 0x50, 0xff);
 	fc8300_write(handle, devid, 0x54, 0x80);
 
@@ -702,9 +700,9 @@ static void fc8300_13seg_init(HANDLE handle, DEVICEID devid, u8 filter_cal)
 
 	fc8300_write(handle, devid, 0x82, 0x88);
 	fc8300_write(handle, devid, 0x84, 0x18);
-	fc8300_write(handle, devid, 0x85, 0x0a);
+	fc8300_write(handle, devid, 0x85, 0x0c);
 	fc8300_write(handle, devid, 0x86, 0x3f);
-	fc8300_write(handle, devid, 0x87, 0x2f);
+	fc8300_write(handle, devid, 0x87, 0x18);
 	fc8300_write(handle, devid, 0x88, 0x0e);
 	fc8300_write(handle, devid, 0x89, 0x0b);
 	fc8300_write(handle, devid, 0x8a, 0x15);
@@ -717,7 +715,7 @@ static void fc8300_13seg_init(HANDLE handle, DEVICEID devid, u8 filter_cal)
 	fc8300_write(handle, devid, 0xb2, 0x00);
 	fc8300_write(handle, devid, 0xb3, 0x01);
 	fc8300_write(handle, devid, 0xb4, 0x00);
-	fc8300_write(handle, devid, 0xb5, 0x04);
+	fc8300_write(handle, devid, 0xb5, 0x02);
 	fc8300_write(handle, devid, 0xb6, 0x00);
 	fc8300_write(handle, devid, 0xb7, 0x07);
 	fc8300_write(handle, devid, 0xb8, 0x00);
@@ -747,7 +745,7 @@ static void fc8300_13seg_init(HANDLE handle, DEVICEID devid, u8 filter_cal)
 	fc8300_write(handle, devid, 0xdd, 0x97);
 
 	fc8300_write(handle, devid, 0xe9, 0x79);
-	fc8300_write(handle, devid, 0xed, 0xcc);
+	fc8300_write(handle, devid, 0xed, 0x4c);
 	fc8300_write(handle, devid, 0xef, 0xb7);
 
 	fc8300_write(handle, devid, 0x2a, 0xb2);
@@ -761,7 +759,6 @@ static void fc8300_13seg_init(HANDLE handle, DEVICEID devid, u8 filter_cal)
 
 	fc8300_write(handle, devid, 0x2e, 0x46);
 	fc8300_write(handle, devid, 0x2f, 0x91);
-	fc8300_write(handle, devid, 0x4d, 0x00);
 }
 
 static void fc8300_tmm_13seg_init(HANDLE handle, DEVICEID devid, u8 filter_cal)
@@ -807,7 +804,7 @@ static void fc8300_tmm_13seg_init(HANDLE handle, DEVICEID devid, u8 filter_cal)
 	fc8300_write(handle, devid, 0x84, 0x14);
 	fc8300_write(handle, devid, 0x85, 0x0f);
 	fc8300_write(handle, devid, 0x86, 0x3f);
-	fc8300_write(handle, devid, 0x87, 0x2f);
+	fc8300_write(handle, devid, 0x87, 0x18);
 	fc8300_write(handle, devid, 0x88, 0x0e);
 	fc8300_write(handle, devid, 0x89, 0x0b);
 	fc8300_write(handle, devid, 0x8a, 0x15);
@@ -851,102 +848,9 @@ static void fc8300_tmm_13seg_init(HANDLE handle, DEVICEID devid, u8 filter_cal)
 	fc8300_write(handle, devid, 0xdd, 0x97);
 
 	fc8300_write(handle, devid, 0xe9, 0x79);
-	fc8300_write(handle, devid, 0xed, 0xcc);
+	fc8300_write(handle, devid, 0xed, 0x4c);
 	fc8300_write(handle, devid, 0xef, 0xb7);
 }
-
-#if 0
-static void fc8300_catv_init(HANDLE handle, DEVICEID devid, u8 filter_cal)
-{
-	fc8300_write(handle, devid, 0x00, 0x00);
-	fc8300_write(handle, devid, 0x02, 0x07);
-	fc8300_write(handle, devid, 0x03, 0x04);
-	fc8300_write(handle, devid, 0x04, 0x10);
-	fc8300_write(handle, devid, 0x08, 0x21);
-
-	fc8300_write(handle, devid, 0x13, 0x07);
-	fc8300_write(handle, devid, 0x18, 0x07);
-	fc8300_write(handle, devid, 0x1d, 0x10);
-	fc8300_write(handle, devid, 0x1f, 0x7f);
-	fc8300_write(handle, devid, 0x21, 0x30);
-
-	fc8300_write(handle, devid, 0x3f, 0x01);
-	fc8300_write(handle, devid, 0x41, filter_cal);
-	fc8300_write(handle, devid, 0x3f, 0x00);
-
-	fc8300_write(handle, devid, 0x33, 0x88);
-	fc8300_write(handle, devid, 0x34, 0x86);
-	fc8300_write(handle, devid, 0x37, 0x65);
-	fc8300_write(handle, devid, 0x38, 0x55);
-	fc8300_write(handle, devid, 0x39, 0x02);
-	fc8300_write(handle, devid, 0x3c, 0xff);
-	fc8300_write(handle, devid, 0x3d, 0xff);
-	fc8300_write(handle, devid, 0x3e, 0xab);
-
-	fc8300_write(handle, devid, 0x50, 0xff);
-	fc8300_write(handle, devid, 0x51, 0x21);
-	fc8300_write(handle, devid, 0x54, 0x82);
-
-	fc8300_write(handle, devid, 0x70, 0x5f);
-	fc8300_write(handle, devid, 0x78, 0x31);
-
-	fc8300_write(handle, devid, 0x82, 0x88);
-	fc8300_write(handle, devid, 0x84, 0x15);
-	fc8300_write(handle, devid, 0x85, 0x0f);
-	fc8300_write(handle, devid, 0x86, 0x15);
-	fc8300_write(handle, devid, 0x87, 0x0f);
-	fc8300_write(handle, devid, 0x88, 0x15);
-	fc8300_write(handle, devid, 0x89, 0x0f);
-	fc8300_write(handle, devid, 0x8a, 0x0e);
-	fc8300_write(handle, devid, 0x8b, 0x0b);
-	fc8300_write(handle, devid, 0x8f, 0xce);
-
-	fc8300_write(handle, devid, 0x90, 0xc8);
-	fc8300_write(handle, devid, 0x91, 0xF8);
-	fc8300_write(handle, devid, 0x99, 0x00);
-	fc8300_write(handle, devid, 0x9a, 0x22);
-	fc8300_write(handle, devid, 0x9b, 0x20);
-	fc8300_write(handle, devid, 0x9c, 0x28);
-	fc8300_write(handle, devid, 0x9d, 0x40);
-	fc8300_write(handle, devid, 0x9e, 0x6A);
-	fc8300_write(handle, devid, 0x9f, 0x80);
-
-	fc8300_write(handle, devid, 0xd3, 0x00);
-	fc8300_write(handle, devid, 0xd4, 0x01);
-	fc8300_write(handle, devid, 0xd5, 0x05);
-	fc8300_write(handle, devid, 0xd6, 0x0d);
-	fc8300_write(handle, devid, 0xd7, 0x0e);
-	fc8300_write(handle, devid, 0xd8, 0x0f);
-	fc8300_write(handle, devid, 0xd9, 0x2f);
-	fc8300_write(handle, devid, 0xda, 0x4f);
-	fc8300_write(handle, devid, 0xdb, 0x6f);
-	fc8300_write(handle, devid, 0xdc, 0x77);
-	fc8300_write(handle, devid, 0xdd, 0x97);
-
-	fc8300_write(handle, devid, 0xa0, 0xaa);
-	fc8300_write(handle, devid, 0xa1, 0xa0);
-	fc8300_write(handle, devid, 0xa2, 0xea);
-	fc8300_write(handle, devid, 0xa3, 0xe0);
-	fc8300_write(handle, devid, 0xaf, 0x06);
-	fc8300_write(handle, devid, 0xb0, 0xaa);
-	fc8300_write(handle, devid, 0xb1, 0xa8);
-	fc8300_write(handle, devid, 0xa4, 0x0a);
-	fc8300_write(handle, devid, 0xa5, 0x00);
-	fc8300_write(handle, devid, 0xa6, 0x0a);
-	fc8300_write(handle, devid, 0xa7, 0x00);
-	fc8300_write(handle, devid, 0xa8, 0x0a);
-	fc8300_write(handle, devid, 0xa9, 0x00);
-	fc8300_write(handle, devid, 0xaa, 0x0a);
-	fc8300_write(handle, devid, 0xab, 0x00);
-	fc8300_write(handle, devid, 0xac, 0x15);
-	fc8300_write(handle, devid, 0xad, 0x00);
-	fc8300_write(handle, devid, 0xae, 0x15);
-
-	fc8300_write(handle, devid, 0xe9, 0x79);
-	fc8300_write(handle, devid, 0xed, 0xcc);
-	fc8300_write(handle, devid, 0xef, 0xb7);
-}
-#endif
 
 s32 fc8300_cs_tuner_init(HANDLE handle, DEVICEID devid,
 		enum BROADCAST_TYPE broadcast)
@@ -956,23 +860,22 @@ s32 fc8300_cs_tuner_init(HANDLE handle, DEVICEID devid,
 	u8 pd_cal2 = 0;
 	u8 filter_cal_18 = 0;
 	u8 filter_cal_60 = 0;
+	/*u8 filter_check = 0;*/ /*unused*/
 
 	u16 filter_cal_06 = 0;
 	u16 filter_cal_09 = 0;
 
 	u32 cal_temp = 0;
 
+	s8 pd_cal = 0;
 	s32 i = 0;
 
-	fc_cal_value = 0;
+	tf_value[0] = 0;
+	tf_value[1] = 0;
+	tf_value[2] = 0;
+	tf_value[3] = 0;
 
-#ifdef BBM_EXT_TUN
-	FC8300_XTAL_FREQ = broadcast / 100;
-	FC8300_BAND_WIDTH = (broadcast % 100) / 10;
-	broadcast_type = broadcast % 10;
-#else
 	broadcast_type = broadcast;
-#endif
 
 	/*
 	 * ISDBT_1SEG = 0  ==> 0.9
@@ -1010,19 +913,6 @@ s32 fc8300_cs_tuner_init(HANDLE handle, DEVICEID devid,
 
 	cal_temp = 0;
 
-#ifdef BBM_EXT_TUN
-	if (FC8300_BAND_WIDTH == 6)
-		cal_temp = FC8300_XTAL_FREQ * 720 / 30000;
-	else if (FC8300_BAND_WIDTH == 7)
-		cal_temp = FC8300_XTAL_FREQ * 720 / 35000;
-	else /* FC8300_BAND_WIDTH == 8 */
-		cal_temp = FC8300_XTAL_FREQ * 720 / 40000;
-
-	if ((cal_temp % 10) >= 5)
-		filter_cal_60 = (cal_temp / 10) + 1;
-	else
-		filter_cal_60 = cal_temp / 10;
-#else
 #if (BBM_BAND_WIDTH == 6)
 	cal_temp = FC8300_XTAL_FREQ * 720 / 30000;
 #elif (BBM_BAND_WIDTH == 7)
@@ -1035,7 +925,6 @@ s32 fc8300_cs_tuner_init(HANDLE handle, DEVICEID devid,
 		filter_cal_60 = (cal_temp / 10) + 1;
 	else
 		filter_cal_60 = cal_temp / 10;
-#endif /* #ifdef BBM_EXT_TUN */
 
 	switch (broadcast_type) {
 	case ISDBT_1SEG:
@@ -1159,9 +1048,9 @@ s32 fc8300_cs_tuner_init(HANDLE handle, DEVICEID devid,
 	fc8300_read(handle, devid, 0x98, &pd_cal1);
 	fc8300_read(handle, devid, 0xf8, &pd_cal2);
 
-	pd_cal1 = pd_cal1 - pd_cal2;
+	pd_cal = pd_cal1 - pd_cal2;
 
-	fc8300_write(handle, devid, 0x82, (0x88 - pd_cal1));
+	fc8300_write(handle, devid, 0x82, (0x88 - pd_cal));
 
 	if ((broadcast_type == ISDBT_13SEG) || (broadcast_type == ISDBT_1SEG)) {
 		fc8300_cs_set_freq(handle, devid, 545143);
@@ -1180,7 +1069,7 @@ s32 fc8300_cs_tuner_init(HANDLE handle, DEVICEID devid,
 		fc8300_write(handle, devid, 0x24, 0x11);
 		fc8300_write(handle, devid, 0x23, 0x17);
 
-		fc_cal_value = (tf_cal(handle, devid) - 7);
+		tf_value[0] = (tf_cal(handle, devid) - 7);
 
 		fc8300_write(handle, devid, 0x1e, 0x00);
 		fc8300_write(handle, devid, 0x1f, 0x72);
@@ -1308,36 +1197,6 @@ static void fc8300_set_freq_tmm_13seg(HANDLE handle, DEVICEID devid, u32 freq)
 	fc8300_write(handle, devid, 0x56, ch_mode_5[xtal_freq][i][15]);
 }
 
-#if 0
-static void fc8300_set_freq_catv_13seg(HANDLE handle, DEVICEID devid, u32 freq)
-{
-	u8 i;
-
-	for (i = 0; i < 112; i++) {
-		if (((ch_mode_6[xtal_freq][i][0] + 3000) > freq) &&
-			((ch_mode_6[xtal_freq][i][0] - 3000) <= freq))
-			break;
-	}
-
-	fc8300_write(handle, devid, 0xe9, ch_mode_6[xtal_freq][i][1]);
-	fc8300_write(handle, devid, 0x1d, ch_mode_6[xtal_freq][i][2]);
-	fc8300_write(handle, devid, 0x84, ch_mode_6[xtal_freq][i][3]);
-	fc8300_write(handle, devid, 0x85, ch_mode_6[xtal_freq][i][4]);
-	fc8300_write(handle, devid, 0x86, ch_mode_6[xtal_freq][i][5]);
-	fc8300_write(handle, devid, 0x87, ch_mode_6[xtal_freq][i][6]);
-	fc8300_write(handle, devid, 0x22, ch_mode_6[xtal_freq][i][7]);
-	fc8300_write(handle, devid, 0x29, ch_mode_6[xtal_freq][i][8]);
-	fc8300_write(handle, devid, 0x18, ch_mode_6[xtal_freq][i][9]);
-	fc8300_write(handle, devid, 0x33, ch_mode_6[xtal_freq][i][10]);
-	fc8300_write(handle, devid, 0x34, ch_mode_6[xtal_freq][i][11]);
-	fc8300_write(handle, devid, 0x52, ch_mode_6[xtal_freq][i][12]);
-	fc8300_write(handle, devid, 0x53, ch_mode_6[xtal_freq][i][13]);
-	fc8300_write(handle, devid, 0x54, ch_mode_6[xtal_freq][i][14]);
-	fc8300_write(handle, devid, 0x55, ch_mode_6[xtal_freq][i][15]);
-	fc8300_write(handle, devid, 0x56, ch_mode_6[xtal_freq][i][16]);
-}
-#endif
-
 s32 fc8300_cs_set_freq(HANDLE handle, DEVICEID devid, u32 freq)
 {
 	u8 i;
@@ -1386,7 +1245,7 @@ s32 fc8300_cs_set_freq(HANDLE handle, DEVICEID devid, u32 freq)
 		break;
 	}
 
-	if (fc_cal_value != 0) {
+	if (tf_value[0] != 0) {
 		if (tf_offset[0][0] > freq) {
 			fc8300_write(handle, devid, 0x1c, 0x1c);
 		} else if (tf_offset[0][11] < freq) {
@@ -1398,14 +1257,15 @@ s32 fc8300_cs_set_freq(HANDLE handle, DEVICEID devid, u32 freq)
 						break;
 			}
 
-			tf_cal_set = fc_cal_value + tf_offset[1][i];
+			tf_cal_set = tf_value[0] + tf_offset[1][i];
 
 			if (tf_cal_set < 0x10)
 				tf_cal_set = 0x10;
 			else if (tf_cal_set > 0x1f)
 				tf_cal_set = 0x1f;
 
-			fc8300_write(handle, devid, 0x1c, tf_cal_set);
+			fc8300_write(handle, devid, 0x1c,
+						tf_cal_set);
 		}
 	}
 

@@ -2467,7 +2467,7 @@ s32 fc8300_es2_get_rssi(HANDLE handle, DEVICEID devid, s32 *rssi)
 
 	rssi_value = reg_value - 256;
 
-	rssi = &rssi_value;
+	*rssi = rssi_value;
 
 	return BBM_OK;
 }

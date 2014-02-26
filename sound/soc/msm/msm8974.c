@@ -132,11 +132,8 @@ static struct wcd9xxx_mbhc_config mbhc_cfg = {
 	.micbias_enable_flags = 1 << MBHC_MICBIAS_ENABLE_THRESHOLD_HEADSET,
 	.insert_detect = true,
 	.swap_gnd_mic = NULL,
-	.cs_enable_flags = (1 << MBHC_CS_ENABLE_POLLING |
-			    1 << MBHC_CS_ENABLE_INSERTION |
-			    1 << MBHC_CS_ENABLE_REMOVAL |
-			    1 << MBHC_CS_ENABLE_DET_ANC),
-	.do_recalibration = true,
+	.cs_enable_flags = 0,
+	.do_recalibration = false,
 	.use_vddio_meas = true,
 	.enable_anc_mic_detect = false,
 	.hw_jack_type = SIX_POLE_JACK,
@@ -171,21 +168,12 @@ static char *msm_prim_auxpcm_gpio_name[][2] = {
 	{"PRIM_AUXPCM_DOUT",      "qcom,prim-auxpcm-gpio-dout"},
 };
 
-#ifdef CONFIG_PCM_ROUTE_VOICE_STUB
-static char *msm_sec_auxpcm_gpio_name[][2] = {
-	{"SEC_AUXPCM_CLK",       "qcom,sec-auxpcm-gpio-clk_duos"},
-	{"SEC_AUXPCM_SYNC",      "qcom,sec-auxpcm-gpio-sync_duos"},
-	{"SEC_AUXPCM_DIN",       "qcom,sec-auxpcm-gpio-din_duos"},
-	{"SEC_AUXPCM_DOUT",      "qcom,sec-auxpcm-gpio-dout_duos"},
-};
-#else
 static char *msm_sec_auxpcm_gpio_name[][2] = {
 	{"SEC_AUXPCM_CLK",       "qcom,sec-auxpcm-gpio-clk"},
 	{"SEC_AUXPCM_SYNC",      "qcom,sec-auxpcm-gpio-sync"},
 	{"SEC_AUXPCM_DIN",       "qcom,sec-auxpcm-gpio-din"},
 	{"SEC_AUXPCM_DOUT",      "qcom,sec-auxpcm-gpio-dout"},
 };
-#endif /* CONFIG_PCM_ROUTE_VOICE_STUB */
 
 struct msm8974_liquid_dock_dev {
 	int dock_plug_gpio;
@@ -233,7 +221,7 @@ static int mainmic_bias_gpio = 0;
 static int micbias_en_msm_gpio = 0;
 static int spkamp_en_gpio = 0;
 static int main_mic_delay = 0;
-#if defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 int speaker_status = 0;
 EXPORT_SYMBOL(speaker_status);
 #endif
@@ -1160,7 +1148,7 @@ static int main_mic_delay_put(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
-#if defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 static int speaker_status_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
@@ -1596,7 +1584,7 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			hdmi_rx_sample_rate_get, hdmi_rx_sample_rate_put),
 	SOC_SINGLE_EXT("Main Mic Delay",SND_SOC_NOPM, 0, 100, 0,
 			main_mic_delay_get, main_mic_delay_put),
-#if defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	SOC_SINGLE_EXT("SPK Status",SND_SOC_NOPM, 0, 1, 0,
 			speaker_status_get, speaker_status_put),
 #endif
@@ -1949,11 +1937,17 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 
 		/* For tabla_tx1 case */
 #if defined(CONFIG_SND_SOC_ES705)		
+	#if defined(CONFIG_MACH_KLTE_EUR) || defined(CONFIG_MACH_KLTE_CMCC)\
+	|| defined(CONFIG_MACH_K3GDUOS_CTC) || defined(CONFIG_MACH_KLTE_CTC)
+		if (codec_dai->id == 1)
+			user_set_tx_ch = msm_slim_0_tx_ch;
+	#else
 		if (codec_dai->id == 1) {
 			user_set_tx_ch = es705_get_ap_esxxx_channels(codec_dai->id);
 			if (user_set_tx_ch == 0)
 				user_set_tx_ch = msm_slim_0_tx_ch;
 		}
+	#endif
 #elif defined(CONFIG_SND_SOC_ES325)
 		if ((codec_dai->id == 1) ||(codec_dai->id == 11)) {
 			user_set_tx_ch = msm_slim_0_tx_ch;
@@ -2551,7 +2545,7 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.ignore_suspend = 1,
 	},
 #ifdef CONFIG_PCM_ROUTE_VOICE_STUB
-	{ // 25
+	{
 		.name = "Voice Stub", 
 		.stream_name = "Voice Stub", 
 		.cpu_dai_name = "VOICE_STUB", 
@@ -3279,9 +3273,14 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 			goto err1;
 		}
 	}
-
+#ifdef CONFIG_PCM_ROUTE_VOICE_STUB
+      sec_muxsel = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+						"lpaif_quat_mode_muxsel");
+#else
 	sec_muxsel = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 						"lpaif_sec_mode_muxsel");
+#endif /* CONFIG_PCM_ROUTE_VOICE_STUB */
+
 	if (!sec_muxsel) {
 		dev_err(&pdev->dev, "MUX addr invalid for secondary AUXPCM\n");
 		ret = -ENODEV;

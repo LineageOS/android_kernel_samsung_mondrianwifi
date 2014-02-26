@@ -19,7 +19,7 @@
 #include <linux/wait.h>
 
 #ifdef CONFIG_SND_SOC_MAX98504 // Vinay
-/* include these headers, after the location of Ecˢ硧#include <linux/wait.h>Ecˢ硧u in this file */
+/* include these headers, after the location of Ec#include <linux/wait.h>Ecu in this file */
 #include <linux/memory_alloc.h>
 #include <linux/debugfs.h>
 #include <linux/time.h>
@@ -34,6 +34,12 @@
 
 #include "audio_acdb.h"
 
+#if defined(CONFIG_SEC_MILLETWIFI_COMMON)
+#ifdef pr_debug
+#undef pr_debug
+#define pr_debug pr_err
+#endif
+#endif
 
 #define TIMEOUT_MS 1000
 
@@ -615,6 +621,9 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 			default:
 				pr_err("%s: Unknown Cmd: 0x%x\n", __func__,
 								payload[0]);
+#if defined(CONFIG_SEC_MILLETWIFI_COMMON)
+				panic("Q6 ADM Error...\n");
+#endif
 				break;
 			}
 			return 0;

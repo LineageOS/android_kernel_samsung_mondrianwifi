@@ -37,6 +37,8 @@
 #include <linux/input.h>
 #include <linux/of_gpio.h>
 
+extern int poweroff_charging;
+extern void fsa9485_set_mhl_cable(bool attached);
 
 int uart_connecting;
 EXPORT_SYMBOL(uart_connecting);
@@ -263,15 +265,6 @@ static void fsa9485_reg_init(struct fsa9485_usbsw *usbsw)
 	ret = i2c_smbus_write_byte_data(client, FSA9485_REG_TIMING1, 0x0);
 	if (ret < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
-
-	usbsw->mansw = i2c_smbus_read_byte_data(client, FSA9485_REG_MANSW1);
-	if (usbsw->mansw < 0)
-		dev_err(&client->dev, "%s: err %d\n", __func__, usbsw->mansw);
-
-	if (usbsw->mansw)
-		ctrl &= ~CON_MANUAL_SW;	/* Manual Switching Mode */
-	else
-		ctrl &= ~(CON_INT_MASK);
 
 	ret = i2c_smbus_write_byte_data(client, FSA9485_REG_CTRL, ctrl);
 	if (ret < 0)
@@ -1185,7 +1178,8 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 			if (pdata->in_charger_cb)
 				pdata->in_charger_cb(FSA9485_DETACHED);
 		}
-
+		/*	set auto mode	*/
+		i2c_smbus_write_byte_data(client,FSA9485_REG_CTRL, 0x1E);
 	}
 	usbsw->dev1 = dev1;
 	usbsw->dev2 = dev2;
@@ -1328,6 +1322,7 @@ static void fsa9485_mhl_detect(struct work_struct *work)
 	struct fsa9485_platform_data *pdata = usbsw->pdata;
 
 	if (local_usbsw->mhl_ready == 0) {
+		fsa9485_set_mhl_cable(isMhlAttached);
 		dev_info(&usbsw->client->dev, "%s: ignore mhl-detection in booting time\n", __func__);
 		return;
 	}
@@ -1517,7 +1512,10 @@ static int __devinit fsa9485_probe(struct i2c_client *client,
 
 	/* initial cable detection */
 	INIT_DELAYED_WORK(&usbsw->init_work, fsa9485_init_detect);
-	schedule_delayed_work(&usbsw->init_work, msecs_to_jiffies(1000));
+	if(poweroff_charging)
+		schedule_delayed_work(&usbsw->init_work, msecs_to_jiffies(1000));
+	else
+		schedule_delayed_work(&usbsw->init_work, msecs_to_jiffies(3000));
 	INIT_DELAYED_WORK(&usbsw->audio_work, fsa9485_delayed_audio);
 	schedule_delayed_work(&usbsw->audio_work, msecs_to_jiffies(20000));
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)

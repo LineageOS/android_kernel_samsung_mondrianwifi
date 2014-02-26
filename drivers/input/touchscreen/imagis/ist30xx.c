@@ -47,7 +47,7 @@
 
 #define USE_OPEN_CLOSE
 #if IST30XX_USE_KEY
-int ist30xx_key_code[] = { 0, KEY_MENU, KEY_BACK };
+int ist30xx_key_code[] = { 0, KEY_RECENT, KEY_BACK };
 #endif
 
 DEFINE_MUTEX(ist30xx_mutex);

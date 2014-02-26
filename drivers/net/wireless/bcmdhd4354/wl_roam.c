@@ -1,7 +1,7 @@
 /*
  * Linux roam cache
  *
- * Copyright (C) 1999-2013, Broadcom Corporation
+ * Copyright (C) 1999-2014, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_roam.c 425343 2013-09-23 23:04:47Z $
+ * $Id: wl_roam.c 449533 2014-01-17 07:30:25Z $
  */
 
 #include <typedefs.h>
@@ -76,6 +76,12 @@ void init_roam(int ioctl_ver)
 	band5G = WL_CHANSPEC_BAND_5G;
 	band_bw = WL_CHANSPEC_BW_20 | WL_CHANSPEC_CTL_SB_NONE;
 #endif /* D11AC_IOTYPES */
+
+	n_roam_cache = 0;
+	roam_band = WLC_BAND_AUTO;
+#if defined(CUSTOMER_HW4) && defined(WES_SUPPORT)
+	roamscan_mode = ROAMSCAN_MODE_NORMAL;
+#endif
 }
 
 #if defined(CUSTOMER_HW4) && defined(WES_SUPPORT)

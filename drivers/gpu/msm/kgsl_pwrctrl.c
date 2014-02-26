@@ -135,6 +135,9 @@ void kgsl_pwrctrl_buslevel_update(struct kgsl_device *device,
 	/* the bus should be ON to update the active frequency */
 	if (on && !(test_bit(KGSL_PWRFLAGS_AXI_ON, &pwr->power_flags)))
 		return;
+	/* the bus should be ON to update the active frequency */
+	if (on && !(test_bit(KGSL_PWRFLAGS_AXI_ON, &pwr->power_flags)))
+		return;
 	/*
 	 * If the bus should remain on calculate our request and submit it,
 	 * otherwise request bus level 0, off.

@@ -320,6 +320,12 @@ static inline void sec_debug_fuelgauge_log(unsigned int voltage,
 #define ANDROID_DEBUG_LEVEL_MID		0x494d
 #define ANDROID_DEBUG_LEVEL_HIGH	0x4948
 
+#ifdef CONFIG_SEC_MONITOR_BATTERY_REMOVAL
+extern bool kernel_sec_set_normal_pwroff(int value);
+extern int kernel_sec_get_normal_pwroff(void);
+#endif
+
+
 extern bool kernel_sec_set_debug_level(int level);
 extern int kernel_sec_get_debug_level(void);
 extern int ssr_panic_handler_for_sec_dbg(void);

@@ -237,8 +237,8 @@ again:
 
 exit_i2c_read_fail:
 exit_i2c_read_err:
-	pr_err("[SENSOR]: %s - failed. ret = %d, ST1 = %u, ST2 = %u\n",
-			__func__, ret, temp[0], temp[8]);
+	pr_err("[SENSOR]: %s - ST1 = %u, ST2 = %u\n",
+		__func__, temp[0], temp[8]);
 exit:
 	mutex_unlock(&data->lock);
 	return ret;
@@ -470,10 +470,18 @@ static ssize_t ak09911c_get_asa(struct device *dev,
 static ssize_t ak09911c_get_selftest(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	int ret = 0, dac_ret, adc_ret;
-	int sf_ret, sf[3] = {0,};
+	int status, dac_ret = -1, adc_ret = -1;
+	int sf_ret, sf[3] = {0,}, retries;
 	struct ak09911c_v mag;
 	struct ak09911c_p *data = dev_get_drvdata(dev);
+
+	/* STATUS */
+	if ((data->asa[0] == 0) | (data->asa[0] == 0xff)
+		| (data->asa[1] == 0) | (data->asa[1] == 0xff)
+		| (data->asa[2] == 0) | (data->asa[2] == 0xff))
+		status = -1;
+	else
+		status = 0;
 
 	if (atomic_read(&data->enable) == 1) {
 		ak09911c_ecs_set_mode(data, AK09911C_MODE_POWERDOWN);
@@ -482,7 +490,21 @@ static ssize_t ak09911c_get_selftest(struct device *dev,
 
 	sf_ret = ak09911c_selftest(data, &dac_ret, sf);
 
-	adc_ret = ak09911c_read_mag_xyz(data, &mag);
+	for (retries = 0; retries < 5; retries++) {
+		if (ak09911c_read_mag_xyz(data, &mag) == 0) {
+			if ((mag.x < 1600) && (mag.x > -1600)
+				&& (mag.y < 1600) && (mag.y > -1600)
+				&& (mag.z < 1600) && (mag.z > -1600))
+				adc_ret = 0;
+			else
+				pr_err("[SENSOR]: %s adc specout %d, %d, %d\n",
+					__func__, mag.x, mag.y, mag.z);
+			break;
+		}
+
+		msleep(20);
+		pr_err("[SENSOR]: %s - adc retries %d", __func__, retries);
+	}
 
 	if (atomic_read(&data->enable) == 1) {
 		ak09911c_ecs_set_mode(data, AK09911C_MODE_SNG_MEASURE);
@@ -490,10 +512,8 @@ static ssize_t ak09911c_get_selftest(struct device *dev,
 			nsecs_to_jiffies(atomic_read(&data->delay)));
 	}
 
-	ret = sf_ret + dac_ret + adc_ret;
-
 	return snprintf(buf, PAGE_SIZE, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
-			ret, sf_ret, sf[0], sf[1], sf[2], dac_ret,
+			status, sf_ret, sf[0], sf[1], sf[2], dac_ret,
 			adc_ret, mag.x, mag.y, mag.z);
 }
 

@@ -283,7 +283,7 @@ enum {
 
 /************** Feature **************/
 #define TSP_PATCH				1
-#define TSP_BOOSTER				0
+#define TSP_BOOSTER				1
 #define MXT_TKEY_BOOSTER			0
 #define TSP_SEC_FACTORY			1
 #define TSP_INFORM_CHARGER		1
@@ -359,6 +359,7 @@ enum CMD_STATUS {
 	CMD_STATUS_OK,
 	CMD_STATUS_FAIL,
 	CMD_STATUS_NOT_APPLICABLE,
+	CMD_STATUS_NG,
 };
 
 enum {

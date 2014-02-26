@@ -376,7 +376,7 @@ static ssize_t max77803_flash(struct device *dev,
 		if (state > led_cdev->max_brightness)
 			state = led_cdev->max_brightness;
 		led_cdev->brightness = state;
-		DEBUG_MAX77803("[LED] %s : led_cdev->brightness %d\n",
+		pr_warn("[LED] %s : led_cdev->brightness %d\n",
 		       __func__, led_cdev->brightness);
 		if (!(led_cdev->flags & LED_SUSPENDED))
 			led_cdev->brightness_set(led_cdev, state);

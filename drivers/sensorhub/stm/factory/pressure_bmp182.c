@@ -14,7 +14,11 @@
  */
 #include "../ssp.h"
 
+#if defined (CONFIG_SEC_KACTIVE_PROJECT)
+#define LPS25H_REV	0
+#else
 #define LPS25H_REV	3
+#endif
 
 #define	VENDOR		"BOSCH"
 #define	CHIP_ID		"BMP180"

@@ -11,6 +11,7 @@
 #define DG_PROJECT_NAME _T("Brane")
 #define DG_PROJECT_BUILD_NUM 1
 #define DG_PRODUCT_K
+#define DG_SOC_QCOMM
 #define DG_CPU_ISA_ARMV7
 #define DG_CPU_LITTLE_ENDIAN
 #define DG_CPU_SIMD_NONE

@@ -60,18 +60,18 @@ enum {
 };
 
 struct tsu6721_platform_data {
-	void (*callback)(enum cable_type_t cable_type, int attached);
-	void (*oxp_callback)(int state);
-	void (*mhl_sel) (bool onoff);
+	void	(*callback)(enum cable_type_t cable_type, int attached);
+	void	(*oxp_callback)(int state);
+	void	(*mhl_sel) (bool onoff);
 	int	(*dock_init) (void);
-	int gpio_int;
-	u32 irq_gpio_flags;
-	int gpio_sda;
-	u32 sda_gpio_flags;
-	int gpio_scl;
-	u32 scl_gpio_flags;
-	int gpio_uart_on;
-	u32 uarton_gpio_flags;
+	int	gpio_int;
+	u32	irq_gpio_flags;
+	int	gpio_sda;
+	u32	sda_gpio_flags;
+	int	gpio_scl;
+	u32	scl_gpio_flags;
+	int	gpio_uart_on;
+	u32	uarton_gpio_flags;
 };
 
 extern int poweroff_charging;

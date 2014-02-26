@@ -2606,9 +2606,10 @@ static void hdmi_tx_power_off_work(struct work_struct *work)
 	if (hdmi_tx_enable_power(hdmi_ctrl, HDMI_TX_DDC_PM, false))
 		DEV_WARN("%s: Failed to disable ddc power\n", __func__);
 
-	if (!hdmi_tx_is_dvi_mode(hdmi_ctrl))
+	if (!hdmi_tx_is_dvi_mode(hdmi_ctrl)){
+		hdmi_tx_wait_for_audio_engine(hdmi_ctrl);
 		hdmi_tx_audio_off(hdmi_ctrl);
-
+	}
 	hdmi_tx_powerdown_phy(hdmi_ctrl);
 
 #ifdef MHL_CEC_SUPPORT

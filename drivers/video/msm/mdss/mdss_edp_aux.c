@@ -1388,6 +1388,73 @@ int aux_tx(int addr, char *data, int len)
 
 	return edp_aux_write_buf(ep, addr, data, len, 0);
 }
+
+#if defined(CONFIG_MACH_VIENNAATT)
+void tcon_interanl_clock(void)
+{
+	/* ATT needs 577Mbps internal clock */
+	char data[3];
+
+	data[0] = 0x03; data[1] = 0xBB; data[2] = 0x27;
+	aux_tx(0x491, data, 3);
+
+	data[0] = 0x05; data[1] = 0x2A; data[2] = 0x34;
+	aux_tx(0x491, data, 3);
+
+	data[0] = 0x05; data[1] = 0x2B; data[2] = 0x6D;
+	aux_tx(0x491, data, 3);
+
+	data[0] = 0x05; data[1] = 0x32; data[2] = 0x34;
+	aux_tx(0x491, data, 3);
+
+	data[0] = 0x05; data[1] = 0x33; data[2] = 0x6D;
+	aux_tx(0x491, data, 3);
+}
+#else
+void tcon_interanl_clock(void)
+{
+	pr_debug("%s not change tcon internal clock", __func__);
+}
+#endif
+
+void read_firmware_version(char *string)
+{
+	struct mdss_edp_drv_pdata *ep = get_global_ep();
+	char *bp;
+	struct edp_buf *rp;
+	unsigned char data[4];
+	int read_size = 8;
+
+	if (!ep) {
+		pr_info("%s error", __func__);
+		return ;
+	}
+
+	rp = &ep->rxp;
+	bp = rp->data;
+
+	/* Indirect mode read eeprom*/
+	data[0] = 0x51;
+	data[1] = 0x0F; //MSB ADDR
+	data[2] = 0xEC; //LSB ADDR
+	data[3] = 0xC1;
+	edp_aux_write_buf(ep, 0x45C, data, 4, 0);
+	usleep(1000);
+	edp_aux_read_buf(ep, 0x454, read_size, 0);
+	memcpy(string, bp, read_size);
+
+	data[0] = 0x51;
+	data[1] = 0x0F; //MSB ADDR
+	data[2] = 0xF4; //LSB ADDR
+	data[3] = 0xC1;
+	edp_aux_write_buf(ep, 0x45C, data, 4, 0);
+
+	usleep(1000);
+	edp_aux_read_buf(ep, 0x454, read_size, 0);
+	memcpy(string + read_size, bp, read_size);
+
+	string[16] = '\0';
+}
 #endif
 
 void mdss_edp_aux_init(struct mdss_edp_drv_pdata *ep)

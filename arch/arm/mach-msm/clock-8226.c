@@ -3302,10 +3302,8 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9927000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup5_i2c_apps_clk.c, "f9927000.i2c"),
 	
-#ifdef CONFIG_SND_SOC_MAX98504
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9928000.i2c"), /* BLSP#6 */
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup6_i2c_apps_clk.c, "f9928000.i2c"), /* BLSP#6 */
-#endif
 
 	/* I2C Clocks nfc */
 	CLK_LOOKUP("iface_clk",          gcc_blsp1_ahb_clk.c, "f9925000.i2c"),
@@ -3317,7 +3315,7 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f995e000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart2_apps_clk.c, "f995e000.serial"),
 
-#if defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT) || defined (CONFIG_SEC_BERLUTI_PROJECT)
+#if defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT) || defined (CONFIG_SEC_BERLUTI_PROJECT) || defined(CONFIG_SEC_AFYON_PROJECT)
 	CLK_LOOKUP("iface_clk",          gcc_blsp1_ahb_clk.c, "f9923000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup1_i2c_apps_clk.c, "f9923000.i2c"),
 #else
@@ -3442,7 +3440,7 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "21.qcom,camera"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "22.qcom,camera"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "0.qcom,camera"),
-#if	defined(CONFIG_MACH_MATISSE3G_OPEN)	
+#if	defined(CONFIG_SEC_MATISSE_PROJECT)
 	CLK_LOOKUP("cam_src_clk", mclk1_clk_src.c, "2.qcom,camera"),
 #else
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "2.qcom,camera"),
@@ -3457,7 +3455,7 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "21.qcom,camera"),
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "22.qcom,camera"),
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "0.qcom,camera"),
-#if	defined(CONFIG_MACH_MATISSE3G_OPEN)
+#if	defined(CONFIG_SEC_MATISSE_PROJECT)
 	CLK_LOOKUP("cam_clk", camss_mclk1_clk.c, "2.qcom,camera"),
 #else
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "2.qcom,camera"),

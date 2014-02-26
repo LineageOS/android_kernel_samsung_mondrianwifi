@@ -26,6 +26,10 @@ struct irda_ice40_platform_data {
 	int cresetb;
 	int rst_n;
 	int irda_irq;
+#ifdef CONFIG_MACH_KLTE_VZW
+	int tunable_support;
+	int tunable_crstb;
+#endif
 };
 
 #define IR_DRIVER_NAME		"ice4_dev"
@@ -47,6 +51,7 @@ struct irda_ice40_platform_data {
 #define FW_VER_ADDR		0x02
 #define FIRMWARE_MAX_RETRY	2
 #define GPIO_FPGA_MAIN_CLK	58
+#define GPIO_FPGA_MAIN_CLK_CTC_REV02	18
 
 #define IRDA_I2C_ADDR		0x50
 #define IRDA_I2C_RX_ADDR	0x6C

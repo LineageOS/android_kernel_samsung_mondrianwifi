@@ -1,7 +1,7 @@
 /*
  * Customer HW 4 dependant file
  *
- * Copyright (C) 1999-2013, Broadcom Corporation
+ * Copyright (C) 1999-2014, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -28,11 +28,11 @@
 #define _dhd_sec_feature_h_
 
 /* PROJECTS */
-#if defined(CONFIG_SEC_K_PROJECT)
-#undef OOB_INTR_ONLY
-#undef HW_OOB
-#define SDIO_ISR_THREAD
-#endif /* CONFIG_SEC_K_PROJECT */
+
+#if defined(CONFIG_MACH_SAMSUNG_ESPRESSO) || defined(CONFIG_MACH_SAMSUNG_ESPRESSO_10)
+#define READ_MACADDR
+#define HW_OOB
+#endif /* CONFIG_MACH_SAMSUNG_ESPRESSO && CONFIG_MACH_SAMSUNG_ESPRESSO_10 */
 
 #if defined(CONFIG_MACH_VIENNA) || defined(CONFIG_MACH_V2)
 #define SUPPORT_MULTIPLE_CHIPS
@@ -41,12 +41,18 @@
 #define READ_MACADDR
 #endif /* CONFIG_MACH_VIENNA || CONFIG_MACH_V2 */
 
-#if defined(CONFIG_MACH_LT03EUR) || defined(CONFIG_MACH_LT03SKT) ||\
-    defined(CONFIG_MACH_LT03KTT) || defined(CONFIG_MACH_LT03LGT)
+#if defined(CONFIG_MACH_GC1) || defined(CONFIG_MACH_U1_NA_SPR) || \
+	defined(CONFIG_MACH_VIENNAEUR) || defined(CONFIG_MACH_LT03EUR) || \
+	defined(CONFIG_MACH_LT03SKT) || defined(CONFIG_MACH_LT03KTT) || \
+	defined(CONFIG_MACH_LT03LGT) || defined(CONFIG_V1A) || defined(CONFIG_N1A) || \
+	defined(CONFIG_N2A) || defined(CONFIG_V2A) || defined(CONFIG_MACH_VIENNAEUR)
 #undef USE_CID_CHECK
 #define READ_MACADDR
-#endif	/* CONFIG_MACH_LT03EUR || CONFIG_MACH_LT03SKT || CONFIG_MACH_LT03KTT ||
-	 * CONFIG_MACH_LT03LGT
+#endif	/* CONFIG_MACH_GC1 || CONFIG_MACH_U1_NA_SPR || CONFIG_MACH_VIENNAEUR ||
+	 * CONFIG_MACH_LT03EUR || CONFIG_MACH_LT03SKT || CONFIG_MACH_LT03KTT ||
+	 * CONFIG_MACH_LT03LGT || CONFIG_V1A ||
+	 * CONFIG_N1A || CONFIG_N2A || CONFIG_V2A ||
+	 * CONFIG_MACH_VIENNAEUR
 	 */
 
 /* REGION CODE */

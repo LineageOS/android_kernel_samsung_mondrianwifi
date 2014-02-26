@@ -11,6 +11,7 @@
  */
 
 #define pr_fmt(fmt)	"BMS: %s: " fmt, __func__
+#define DEBUG
 
 #include <linux/module.h>
 #include <linux/types.h>
@@ -300,6 +301,7 @@ static enum power_supply_property msm_bms_power_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
+	POWER_SUPPLY_PROP_CURRENT_AVG,
 	POWER_SUPPLY_PROP_RESISTANCE,
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
 	POWER_SUPPLY_PROP_CHARGE_COUNTER_SHADOW,
@@ -1667,6 +1669,26 @@ static int reset_bms_for_test(struct qpnp_bms_chip *chip)
 	return rc;
 }
 
+/* Samsung wants to enable bms_reset via a api */
+void bms_quickstart(void)
+{
+	struct power_supply *bms_psy = power_supply_get_by_name("bms");
+	struct qpnp_bms_chip *chip = container_of(bms_psy,
+				struct qpnp_bms_chip, bms_psy);
+	int rc = 0;
+
+	pr_err("bms quickstart is called\n");
+	rc = reset_bms_for_test(chip);
+	if (rc)
+		pr_err("%s : failed to reset BMS soc\n", __func__);
+	/*
+	 * Set the flag to indicate bms_reset, this will set the
+	 * uuc to  3% and skip adjusting the soc
+	 */
+	bms_reset = 1;
+}
+EXPORT_SYMBOL_GPL(bms_quickstart);
+
 static int bms_reset_set(const char *val, const struct kernel_param *kp)
 {
 	int rc;
@@ -2363,6 +2385,35 @@ static int calculate_raw_soc(struct qpnp_bms_chip *chip,
 	return soc;
 }
 
+static int calculate_soc_from_voltage(struct qpnp_bms_chip *chip)
+{
+	int voltage_range_uv, voltage_remaining_uv, voltage_based_soc;
+	int rc, vbat_uv;
+
+	rc = get_battery_voltage(chip, &vbat_uv);
+	if (rc < 0) {
+		pr_err("adc vbat failed err = %d\n", rc);
+		return rc;
+	}
+	voltage_range_uv = chip->max_voltage_uv - chip->v_cutoff_uv;
+	voltage_remaining_uv = vbat_uv - chip->v_cutoff_uv;
+	voltage_based_soc = voltage_remaining_uv * 100 / voltage_range_uv;
+
+	voltage_based_soc = clamp(voltage_based_soc, 0, 100);
+
+	if (chip->prev_voltage_based_soc != voltage_based_soc
+				&& chip->bms_psy_registered) {
+		power_supply_changed(&chip->bms_psy);
+		pr_debug("power supply changed\n");
+	}
+	chip->prev_voltage_based_soc = voltage_based_soc;
+
+	pr_debug("vbat used = %duv\n", vbat_uv);
+	pr_debug("Calculated voltage based soc = %d\n", voltage_based_soc);
+	return voltage_based_soc;
+}
+
+
 #define SLEEP_RECALC_INTERVAL	3
 static int calculate_state_of_charge(struct qpnp_bms_chip *chip,
 					struct raw_soc_params *raw,
@@ -2374,11 +2425,15 @@ static int calculate_state_of_charge(struct qpnp_bms_chip *chip,
 
 	calculate_soc_params(chip, raw, &params, batt_temp);
 	if (!is_battery_present(chip)) {
+		#if defined(CONFIG_BATTERY_SAMSUNG)
+		pr_debug("battery gone, reporting SOC based on voltage\n");
+		new_calculated_soc = calculate_soc_from_voltage(chip);
+		#else
 		pr_debug("battery gone, reporting 100\n");
 		new_calculated_soc = 100;
+		#endif
 		goto done_calculating;
 	}
-
 	if (params.fcc_uah - params.uuc_uah <= 0) {
 		pr_debug("FCC = %duAh, UUC = %duAh forcing soc = 0\n",
 						params.fcc_uah,
@@ -2481,33 +2536,7 @@ done_calculating:
 	return chip->calculated_soc;
 }
 
-static int calculate_soc_from_voltage(struct qpnp_bms_chip *chip)
-{
-	int voltage_range_uv, voltage_remaining_uv, voltage_based_soc;
-	int rc, vbat_uv;
 
-	rc = get_battery_voltage(chip, &vbat_uv);
-	if (rc < 0) {
-		pr_err("adc vbat failed err = %d\n", rc);
-		return rc;
-	}
-	voltage_range_uv = chip->max_voltage_uv - chip->v_cutoff_uv;
-	voltage_remaining_uv = vbat_uv - chip->v_cutoff_uv;
-	voltage_based_soc = voltage_remaining_uv * 100 / voltage_range_uv;
-
-	voltage_based_soc = clamp(voltage_based_soc, 0, 100);
-
-	if (chip->prev_voltage_based_soc != voltage_based_soc
-				&& chip->bms_psy_registered) {
-		power_supply_changed(&chip->bms_psy);
-		pr_debug("power supply changed\n");
-	}
-	chip->prev_voltage_based_soc = voltage_based_soc;
-
-	pr_debug("vbat used = %duv\n", vbat_uv);
-	pr_debug("Calculated voltage based soc = %d\n", voltage_based_soc);
-	return voltage_based_soc;
-}
 
 static int recalculate_raw_soc(struct qpnp_bms_chip *chip)
 {
@@ -3375,9 +3404,18 @@ static int qpnp_bms_power_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_STATUS:
 		val->intval = chip->battery_status;
 		break;
+#if defined(CONFIG_BATTERY_SAMSUNG)
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		val->intval = (get_prop_bms_current_now(chip) * -1);
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_AVG:
+		val->intval = (get_prop_bms_current_now(chip) * -1);
+		break;
+#else
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		val->intval = get_prop_bms_current_now(chip);
 		break;
+#endif
 	case POWER_SUPPLY_PROP_RESISTANCE:
 		val->intval = get_prop_bms_batt_resistance(chip);
 		break;
@@ -3617,11 +3655,15 @@ static int set_battery_data(struct qpnp_bms_chip *chip)
 	} else if (chip->batt_type == BATT_PALLADIUM) {
 		batt_data = &palladium_1500_data;
 	} else if (chip->batt_type == BATT_OEM) {
-#if (defined(CONFIG_MACH_MILLET3G_EUR) || defined(CONFIG_MACH_MATISSE3G_OPEN) \
-		|| defined(CONFIG_MACH_MILLETLTE_OPEN))
-		batt_data = &samsung_4450mAH_data;
+#if defined(CONFIG_SEC_AFYON_PROJECT)
+/* Temporary until we get 2100mAh battery data */
+	batt_data = &oem_batt_data;
+#elif defined(CONFIG_SEC_MILLET_PROJECT)
+	batt_data = &samsung_4450mAH_data;
+#elif defined(CONFIG_SEC_MATISSE_PROJECT)
+	batt_data = &samsung_6800mAH_data;
 #else
-		batt_data = &oem_batt_data;
+	batt_data = &oem_batt_data;
 #endif
 	} else if (chip->batt_type == BATT_QRD_4V35_2000MAH) {
 		batt_data = &QRD_4v35_2000mAh_data;
@@ -3692,6 +3734,7 @@ assign_data:
 	chip->default_rbatt_mohm = batt_data->default_rbatt_mohm;
 	chip->rbatt_capacitive_mohm = batt_data->rbatt_capacitive_mohm;
 	chip->flat_ocv_threshold_uv = batt_data->flat_ocv_threshold_uv;
+	pr_err("battery capacity: %d mA\n", chip->fcc_mah);
 
 	/* Override battery properties if specified in the battery profile */
 	if (batt_data->max_voltage_uv >= 0 && dt_data)

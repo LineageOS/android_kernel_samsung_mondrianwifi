@@ -177,6 +177,9 @@ static struct  panel_hrev panel_supp_cdp[]= {
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_WVGA_S6E88A0_PT_PANEL)
 	{"samsung amoled WVGA video mode dsi S6E88A0 panel", PANEL_WVGA_OCTA_S6E88A0},
 #endif
+	{"magna amoled 720p video mode dsi D53D6EA8061V panel", PANEL_720P_OCTA_D53D6EA8061V},
+	{"samsung amoled 720p video mode dsi S6E8AA0A01 panel", PANEL_720P_OCTA_S6E8AA0},
+	{"samsung amoled 720p video mode dsi EA8061 panel", PANEL_720P_OCTA_EA8061_VIDEO},
 	{NULL}
 };
 
@@ -399,11 +402,17 @@ void mdss_dsi_samsung_panel_reset(struct mdss_panel_data *pdata, int enable)
 			   __func__, __LINE__);
 	}
 
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_720P_PT_PANEL)
+	if (!gpio_is_valid(ctrl_pdata->disp_en_gpio2)) {
+		pr_debug("%s:%d, enable line2 not configured\n",
+			   __func__, __LINE__);
+	}
+#endif
+
 	if (!gpio_is_valid(ctrl_pdata->rst_gpio)) {
 		pr_debug("%s:%d, reset line not configured\n",
 			   __func__, __LINE__);
 	}
-
 
 	pr_debug("%s: enable = %d\n", __func__, enable);
 
@@ -421,6 +430,12 @@ void mdss_dsi_samsung_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
 			wmb();
 		}
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_720P_PT_PANEL)
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio2)) {
+			gpio_set_value((ctrl_pdata->disp_en_gpio2), 1);
+			wmb();
+		}
+#endif
 		if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
 			pr_debug("%s: Panel Not properly turned OFF\n",
 				__func__);
@@ -429,6 +444,11 @@ void mdss_dsi_samsung_panel_reset(struct mdss_panel_data *pdata, int enable)
 		}
 	} else {
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_720P_PT_PANEL)
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio2)) {
+			gpio_set_value((ctrl_pdata->disp_en_gpio2), 0);
+		}
+#endif
 		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 		}
@@ -513,6 +533,12 @@ static ssize_t mipi_samsung_disp_lcdtype_show(struct device *dev,
 					break;
 		case PANEL_1080P_YOUM_S6E3FA1_CMD:
 			snprintf(temp, 20, "SDC_AMB568AU01");
+					break;
+		case PANEL_720P_OCTA_D53D6EA8061V:
+			snprintf(temp, 20, "SDC_D53D6EA8061V");
+					break;
+		case PANEL_720P_OCTA_S6E8AA0:
+			snprintf(temp, 20, "SDC_AMS480GY01");
 					break;
 		default :
 			snprintf(temp, strnlen(msd.panel_name, 100),
@@ -863,7 +889,7 @@ static int update_bright_packet(int cmd_count, struct dsi_cmd *cmd_set)
 {
 	int i = 0;
 
-	if (cmd_count > MAX_BR_PACKET_SIZE)
+	if (cmd_count > (MAX_BR_PACKET_SIZE - 1)) /*cmd_count is index, if cmd_count >12 then panic*/
 		panic("over max brightness_packet size(%d).. !!", MAX_BR_PACKET_SIZE);
 
 	for (i = 0; i < cmd_set->num_of_cmds; i++) {
@@ -1029,6 +1055,26 @@ static int make_brightcontrol_set(int bl_level)
 	struct dsi_cmd elvss_compen_control = {0, 0, 0, 0, 0};
 #endif
 	int cmd_count = 0, cd_idx = 0, cd_level =0;
+
+#if defined(CONFIG_FB_MSM_MDSS_MAGNA_OCTA_VIDEO_720P_PT_PANEL) // kyNam_131228_
+	int i,j;
+
+	for( i = 1; i<=30; i++ )
+	{
+		/* calculator : 5<x<255 -> 92<gamma<130 */
+		j = (130-92)*bl_level/(255-5) +92;
+		if( i==1 || i==3 || i==5 ) j = ((j*2)>>8);
+		if( i==2 || i==4 || i==6 ) j*=2;
+
+		gamma_cmds_list.cmd_desc[1].payload[i] = (j & 0xFF);
+	}
+
+	gamma_control.cmd_desc = &(gamma_cmds_list.cmd_desc[0]);
+	gamma_control.num_of_cmds = gamma_cmds_list.num_of_cmds;
+	cmd_count = update_bright_packet(cmd_count, &gamma_control);
+
+	return cmd_count;
+#endif 
 	cd_idx = get_cmd_idx(bl_level);
 	cd_level = get_candela_value(bl_level);
 
@@ -1581,11 +1627,10 @@ static DEVICE_ATTR(force_500cd, S_IRUGO | S_IWUSR | S_IWGRP,
 static int __init current_boot_mode(char *mode)
 {
 	/*
-	*	1 is recovery booting
+	*	1,2 is recovery booting
 	*	0 is normal booting
 	*/
-
-	if (strncmp(mode, "1", 1) == 0)
+        if ((strncmp(mode, "1", 1) == 0)||(strncmp(mode, "2", 1) == 0))
 		msd.dstat.recovery_boot_mode = 1;
 	else
 		msd.dstat.recovery_boot_mode = 0;
@@ -2125,6 +2170,9 @@ static int mdss_dsi_panel_dimming_init(struct mdss_panel_data *pdata)
 	char vol_ref_buffer;
 #endif
 
+#if defined(CONFIG_FB_MSM_MDSS_MAGNA_OCTA_VIDEO_720P_PT_PANEL) // kyNam_131228_
+	return 0;
+#endif
 	if (get_lcd_attached() == 0)
 	{
 		printk("%s: get_lcd_attached(0)!\n",__func__);
@@ -2143,6 +2191,8 @@ static int mdss_dsi_panel_dimming_init(struct mdss_panel_data *pdata)
 				break;
 #else
 			case PANEL_1080P_OCTA_S6E8FA0:
+			case PANEL_720P_OCTA_D53D6EA8061V:
+			case PANEL_720P_OCTA_S6E8AA0:
 				msd.sdimconf = smart_S6E8FA0_get_conf();
 				break;
 			case PANEL_1080P_OCTA_S6E3FA0:
@@ -2316,7 +2366,8 @@ void force_dsi_video_mode(struct mdss_panel_common_pdata *panel_data){
 struct mdss_panel_data *mdss_dsi_switching = NULL;
 #endif
 #if defined(CONFIG_MDNIE_LITE_TUNING) \
-	&& !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_WVGA_S6E88A0_PT_PANEL)
+	&& !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_WVGA_S6E88A0_PT_PANEL) \
+	&& !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
 static bool dsi_first_init = true;
 #endif
 
@@ -2361,7 +2412,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	if (!msd.manufacture_id) {
 		msd.manufacture_id = mipi_samsung_manufacture_id(pdata);
-
 		if (set_panel_rev(msd.manufacture_id) < 0)
 			pr_err("%s : can't find panel id.. \n", __func__);
 	}
@@ -2397,7 +2447,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 #endif
 
 #if defined(CONFIG_MDNIE_LITE_TUNING)
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_WVGA_S6E88A0_PT_PANEL)
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_WVGA_S6E88A0_PT_PANEL) \
+	|| defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL)
 	is_negative_on();
 #else
 	if (!dsi_first_init)
@@ -3240,8 +3291,15 @@ static int is_panel_supported(const char *panel_name)
 	if (panel_name == NULL)
 		return -EINVAL;
 
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_720P_PT_PANEL)\
+		|| defined(CONFIG_FB_MSM_MIPI_S6E8AA0A_720P_PT_PANEL)\
+		|| defined(CONFIG_FB_MSM_MDSS_MSM8X26)
+	if(!of_machine_is_compatible("qcom,msm8226-mtp"))
+		return -EINVAL;
+#else
 	if(!of_machine_is_compatible("qcom,msm8974-cdp"))
 		return -EINVAL;
+#endif
 
 	while(panel_supp_cdp[i].name != NULL)	{
 		if(!strcmp(panel_name,panel_supp_cdp[i].name))
@@ -3580,6 +3638,12 @@ int mdss_dsi_panel_init(struct device_node *node, struct mdss_dsi_ctrl_pdata *ct
 	cont_splash_enabled = of_property_read_bool(node,
 			"qcom,cont-splash-enabled");
 #endif
+
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_720P_PT_PANEL) || defined(CONFIG_FB_MSM_MIPI_S6E8AA0A_720P_PT_PANEL)
+	cont_splash_enabled = of_property_read_bool(node,
+			"qcom,cont-splash-enabled");
+#endif
+
 	if (!cont_splash_enabled) {
 		pr_info("%s:%d Continuous splash flag not found.\n",
 				__func__, __LINE__);

@@ -59,7 +59,7 @@ struct vibrator_platform_data_motor {
 		unsigned int motor_en;
 		unsigned int vib_clk;
 		struct i2c_client *client;
-#if defined(CONFIG_MACH_MATISSE3G_OPEN)
+#if defined(CONFIG_MACH_MATISSE3G_OPEN) || defined CONFIG_SEC_MATISSELTE_COMMON
 		void (*power_onoff)(int onoff);
 #endif
 	};

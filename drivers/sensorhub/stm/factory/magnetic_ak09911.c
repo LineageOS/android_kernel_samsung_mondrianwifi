@@ -21,8 +21,8 @@
 #define VENDOR_AK		"AKM"
 #define CHIP_ID_AK		"AK09911C"
 
-#define GM_DATA_SPEC_MIN	-6500
-#define GM_DATA_SPEC_MAX	6500
+#define GM_DATA_SPEC_MIN	-1600
+#define GM_DATA_SPEC_MAX	1600
 
 #define GM_SELFTEST_X_SPEC_MIN	-30
 #define GM_SELFTEST_X_SPEC_MAX	30
@@ -420,7 +420,7 @@ static ssize_t raw_data_logging_store(struct device *dev,
 
 	if (dEnable) {
 		ssp_dbg("[SSP]: %s - add %u, New = %dns\n",
-			 __func__, 1 << GEOMAGNETIC_SENSOR, SENSOR_NS_DELAY_FASTEST);
+			 __func__, 1 << GEOMAGNETIC_SENSOR, dMsDelay);
 
 		iRet = send_instruction(data, GET_LOGGING, GEOMAGNETIC_SENSOR, uBuf, 4);
 		if (iRet == SUCCESS) {

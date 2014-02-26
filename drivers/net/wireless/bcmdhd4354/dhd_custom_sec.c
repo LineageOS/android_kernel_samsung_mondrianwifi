@@ -1,7 +1,7 @@
 /*
  * Customer HW 4 dependant file
  *
- * Copyright (C) 1999-2013, Broadcom Corporation
+ * Copyright (C) 1999-2014, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -149,7 +149,6 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"PS", "XZ", 11},	/* Universal if Country code is PALESTINIAN TERRITORY, OCCUPIED */
 	{"TL", "XZ", 11},	/* Universal if Country code is TIMOR-LESTE (EAST TIMOR) */
 	{"MH", "XZ", 11},	/* Universal if Country code is MARSHALL ISLANDS */
-	{"SG", "SG", 4},
 	{"US", "US", 46},
 	{"UA", "UA", 8},
 	{"CO", "CO", 4},
@@ -181,7 +180,7 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"TL", "XZ", 11},	/* Universal if Country code is TIMOR-LESTE (EAST TIMOR) */
 	{"MH", "XZ", 11},	/* Universal if Country code is MARSHALL ISLANDS */
 	{"AL", "AL", 2},
-	{"DZ", "DZ", 1},
+	{"DZ", "GB", 6},
 	{"AS", "AS", 12},
 	{"AI", "AI", 1},
 	{"AG", "AG", 2},
@@ -270,9 +269,8 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"PR", "PR", 20},
 	{"RE", "RE", 2},
 	{"RO", "RO", 4},
-	{"SN", "SN", 2},
+	{"SN", "MA", 2},
 	{"RS", "RS", 2},
-	{"SG", "SG", 4},
 	{"SK", "SK", 4},
 	{"SI", "SI", 4},
 	{"ES", "ES", 4},
@@ -299,6 +297,8 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"UA", "UA", 8},
 	{"GT", "GT", 1},
 	{"FR", "FR", 5},
+	{"AF", "AD", 0},
+	{"KE", "SA", 0},
 	{"MN", "MN", 1},
 	{"NI", "NI", 2},
 #endif /* default ccode/regrev */

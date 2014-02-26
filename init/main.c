@@ -451,9 +451,10 @@ static int __init do_early_param(char *param, char *val)
 			boot_mode_lpm = 1;
 		}
 	}
-	/* Check Recovery Mode */
+	/* Check Recovery Mode , 1: recovery mode, 2: factory reset mode(recovery)
+	                         otherwise normal mode*/
 	if ((strncmp(param, "androidboot.boot_recovery", 26) == 0)) {
-			if (strncmp(val, "1", 1) == 0) {
+	        if ((strncmp(val, "1", 1) == 0)||(strncmp(val, "2", 1) == 0)) {
 				pr_info("Recovery Boot Mode \n");
 				boot_mode_recovery = 1;
 			}

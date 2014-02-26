@@ -412,6 +412,7 @@ struct input_keymap_entry {
 #define KEY_F23			193
 #define KEY_F24			194
 
+#define KEY_VOICE_WAKEUP_LPSD	198	/* Samsung Voice Wakeup LPSD - Baby cry */
 #define KEY_VOICE_WAKEUP	199	/* Samsung Voice Wakeup */
 #define KEY_PLAYCD		200
 #define KEY_PAUSECD		201

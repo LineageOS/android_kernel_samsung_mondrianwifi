@@ -61,6 +61,7 @@
 #include "es705-cdev.h"
 #include "es705-uart.h"
 #include "es705-uart-common.h"
+#include "es705-veq-params.h"
 
 #define ES705_CMD_ACCESS_WR_MAX 2
 #define ES705_CMD_ACCESS_RD_MAX 2
@@ -941,31 +942,43 @@ static ssize_t es705_tuning_set(struct device *dev,
 
 static DEVICE_ATTR(tuning, 0644, NULL, es705_tuning_set);
 /* /sys/devices/platform/msm_slim_ctrl.1/es705-codec-gen0/tuning */
-
+#define PATH_SIZE 100
 static ssize_t es705_keyword_grammar_path_set(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
 {
-	char path[100];
+	char path[PATH_SIZE], path2[PATH_SIZE] = {'\0'};
+	char *index = 0;
 	int rc = 0;
 
+	if (strlen(buf) > PATH_SIZE) {
+		dev_err(es705_priv.dev, "%s(): invalid buf length\n", __func__);
+		return count;
+	}
+
 	sscanf(buf, "%s", path);
-	pr_info("%s : [ES705] keyword_grammar_path = %s\n", __func__, path);
+	pr_info("%s : [ES705] grammar path = %s\n", __func__, path);
+
+	/* replace absolute path with relative path */
+	index = strrchr(path, '/');
+	if (index)
+		strncpy(path2, index + 1, strlen(index + 1));
+	else {
+		pr_info("%s : [ES705] cannot find /\n", __func__);
+		strncpy(path2, path, strlen(path));
+	}
+	pr_info("%s : [ES705] keyword_grammar_final_path = %s\n", __func__, path2);
+
 	/* get the grammar file */
 	rc = request_firmware((const struct firmware **)&es705_priv.vs_grammar,
-			      path, es705_priv.dev);
+			      path2, es705_priv.dev);
 	if (rc) {
 		dev_err(es705_priv.dev, "%s(): request_firmware(%s) failed %d\n",
-			__func__, path, rc);
-		sprintf(path, "higalaxy_en_us_gram6.bin");
-		dev_info(es705_priv.dev, "%s(): request default grammar\n", __func__);
-		rc = request_firmware((const struct firmware **)&es705_priv.vs_grammar,
-			      path, es705_priv.dev);
-		if (rc)
-			dev_err(es705_priv.dev, "%s(): request_firmware(%s) failed %d\n",
-				__func__, path, rc);
-
+			__func__, path2, rc);
+		return count;
 	}
+
+	es705_priv.vs_grammar_set_flag = 1;
 
 	return count;
 }
@@ -977,25 +990,38 @@ static ssize_t es705_keyword_net_path_set(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
 {
-	char path[100];
+	char path[PATH_SIZE], path2[PATH_SIZE] = {'\0'};
+	char *index = 0;
 	int rc = 0;
 
-	sscanf(buf, "%s", path);
-	pr_info("%s : [ES705] keyword_net_path = %s\n", __func__, path);
+	if (strlen(buf) > PATH_SIZE) {
+		dev_err(es705_priv.dev, "%s(): invalid buf length\n", __func__);
+		return count;
+	}
 
+	sscanf(buf, "%s", path);
+	pr_info("%s : [ES705] net path = %s\n", __func__, path);
+
+	/* replace absolute path with relative path */
+	index = strrchr(path, '/');
+	if (index)
+		strncpy(path2, index + 1, strlen(index + 1));
+	else {
+		pr_info("%s : [ES705] cannot find /\n", __func__);
+		strncpy(path2, path, strlen(path));
+	}
+	pr_info("%s : [ES705] keyword_net_final_path = %s\n", __func__, path2);
+
+	/* get the net file */
 	rc = request_firmware((const struct firmware **)&es705_priv.vs_net,
-			      path, es705_priv.dev);
+			      path2, es705_priv.dev);
 	if (rc) {
 		dev_err(es705_priv.dev, "%s(): request_firmware(%s) failed %d\n",
-			__func__, path, rc);
-		sprintf(path, "higalaxy_en_us_am.bin");
-		dev_info(es705_priv.dev, "%s(): request default net\n", __func__);
-		rc = request_firmware((const struct firmware **)&es705_priv.vs_net,
-			      path, es705_priv.dev);
-		if (rc)
-			dev_err(es705_priv.dev, "%s(): request_firmware(%s) failed %d\n",
-				__func__, path, rc);
+			__func__, path2, rc);
+		return count;
 	}
+
+	es705_priv.vs_net_set_flag = 1;
 
 	return count;
 }
@@ -1050,6 +1076,8 @@ extern unsigned int system_rev;
 
 #if defined(CONFIG_MACH_KLTE_JPN)
 #define UART_DOWNLOAD_WAKEUP_HWREV 7
+#elif defined(CONFIG_MACH_KACTIVELTE_EUR) || defined(CONFIG_MACH_KACTIVELTE_ATT)
+#define UART_DOWNLOAD_WAKEUP_HWREV 0
 #else
 #define UART_DOWNLOAD_WAKEUP_HWREV 6 /* HW rev0.7 */
 #endif
@@ -1330,13 +1358,14 @@ static void es705_sleep_request(struct es705_priv *es705)
 	mutex_unlock(&es705->pm_mutex);
 }
 
-#define SYNC_DELAY 30
+#define SYNC_DELAY 35
 static int es705_wakeup(struct es705_priv *es705)
 {
 	int rc = 0;
 	u32 sync_cmd = (ES705_SYNC_CMD << 16) | ES705_SYNC_POLLING;
 	u32 sync_rspn = sync_cmd;
 	int match = 1;
+	int retry = 10;	
 	dev_info(es705->dev, "%s\n",__func__);
 	/* 1 - clocks on
 	 * 2 - wakeup 1 -> 0
@@ -1369,7 +1398,11 @@ static int es705_wakeup(struct es705_priv *es705)
 		es705->pdata->esxxx_clk_cb(1);
 		usleep_range(3000, 3100);
 	}
-	
+
+	if (es705->change_uart_config) {
+		es705_uart_pin_preset(es705);
+	}
+
 #if defined(SAMSUNG_ES705_FEATURE)
 	if (es705_priv.use_uart_for_wakeup_gpio) {
 		dev_info(es705->dev, "%s(): begin uart wakeup\n",
@@ -1386,12 +1419,26 @@ static int es705_wakeup(struct es705_priv *es705)
 		es705_gpio_wakeup(es705);
 	}
 #endif
+
+	if (es705->change_uart_config) {
+		es705_uart_pin_postset(es705);
+	}
+
 	dev_dbg(es705->dev, "%s(): wait %dms wakeup, then ping SYNC to es705\n",
 		__func__, SYNC_DELAY);
 	msleep(SYNC_DELAY);
 
-	rc = es705_write_then_read(es705, &sync_cmd, sizeof(sync_cmd),
-					 &sync_rspn, match);
+	/* retry wake up */
+	do {
+		rc = es705_write_then_read(es705, &sync_cmd, sizeof(sync_cmd),
+						 &sync_rspn, match);
+		if (rc) {
+			dev_info(es705->dev, "%s(): wait %dms wakeup, then ping SYNC to es705, retry(%d)\n", __func__, SYNC_DELAY, retry);
+			msleep(SYNC_DELAY);
+		}
+		else
+			break;
+	} while (retry--);
 	if (rc) {
 		dev_err(es705->dev, "%s(): es705 wakeup FAIL\n", __func__);
 		if (es705->pdata->esxxx_clk_cb) {
@@ -2048,6 +2095,30 @@ return 0;
 }
 
 #if defined(SAMSUNG_ES705_FEATURE)
+static int es705_get_default_keyword(void)
+{
+	char path[30];
+	int rc;
+
+	sprintf(path, "higalaxy_en_us_gram6.bin");
+	dev_info(es705_priv.dev, "%s(): request default grammar\n", __func__);
+	rc = request_firmware((const struct firmware **)&es705_priv.vs_grammar,
+		      path, es705_priv.dev);
+	if (rc)
+		dev_err(es705_priv.dev, "%s(): request_firmware(%s) failed %d\n",
+			__func__, path, rc);
+
+	sprintf(path, "higalaxy_en_us_am.bin");
+	dev_info(es705_priv.dev, "%s(): request default net\n", __func__);
+	rc = request_firmware((const struct firmware **)&es705_priv.vs_net,
+		      path, es705_priv.dev);
+	if (rc)
+		dev_err(es705_priv.dev, "%s(): request_firmware(%s) failed %d\n",
+			__func__, path, rc);
+
+	return rc;
+
+}
 static int es705_get_voice_wakeup_enable_value(struct snd_kcontrol *kcontrol,
 				       struct snd_ctl_elem_value *ucontrol)
 {
@@ -2064,6 +2135,10 @@ static int es705_put_voice_wakeup_enable_value(struct snd_kcontrol *kcontrol,
 	int rc = 0;
 	u32 sync_cmd = (ES705_SYNC_CMD << 16) | ES705_SYNC_POLLING;
 	u32 sync_rspn = sync_cmd;
+	u32 cmd_lpsd[] = {0x9017e03c, 0x90180600, 
+			0x9017e03d, 0x90181200,
+			0x9017e000, 0x90180002,
+			0xffffffff};
 	int match = 1;
 
 	es705_priv.voice_wakeup_enable = ucontrol->value.integer.value[0];
@@ -2071,7 +2146,9 @@ static int es705_put_voice_wakeup_enable_value(struct snd_kcontrol *kcontrol,
 		__func__, es705_priv.voice_wakeup_enable);
 
 	if (es705_priv.power_control) {
-		if(es705_priv.voice_wakeup_enable) {
+		if(es705_priv.voice_wakeup_enable == 1) { /* Voice wakeup */
+			if (!es705_priv.vs_grammar_set_flag || !es705_priv.vs_net_set_flag)
+				es705_get_default_keyword();
 			es705_priv.power_control(ES705_SET_POWER_STATE_VS_OVERLAY, ES705_POWER_STATE);
 			es705_switch_route_config(27);
 			rc = es705_write_then_read(&es705_priv, &sync_cmd, sizeof(sync_cmd),
@@ -2083,6 +2160,17 @@ static int es705_put_voice_wakeup_enable_value(struct snd_kcontrol *kcontrol,
 			rc = es705_write_sensory_vs_keyword();
 			if (rc) {
 				dev_err(es705_priv.dev, "%s(): es705 keyword download FAIL\n", __func__);
+				return rc;
+			}
+		}
+		else if(es705_priv.voice_wakeup_enable == 2) { /* Voice wakeup LPSD - for Baby cry */
+			es705_priv.power_control(ES705_SET_POWER_STATE_VS_OVERLAY, ES705_POWER_STATE);
+			es705_switch_route_config(27);
+			es705_write_block(&es705_priv, cmd_lpsd);
+			rc = es705_write_then_read(&es705_priv, &sync_cmd, sizeof(sync_cmd),
+					 &sync_rspn, match);
+			if (rc) {
+				dev_err(es705_priv.dev, "%s(): es705 Sync FAIL\n", __func__);
 				return rc;
 			}
 		}
@@ -2235,6 +2323,144 @@ int es705_remote_route_enable(struct snd_soc_dai *dai)
 }
 EXPORT_SYMBOL_GPL(es705_remote_route_enable);
 
+int es705_put_veq_block(int volume)
+{
+	struct es705_priv *es705 = &es705_priv;
+
+	u32 cmd;
+	u32 resp;
+	int ret;
+	u16 veq_coeff_size;
+	u32 fin_resp;
+	u8 count = 0;
+
+	if (es705->es705_power_state != ES705_SET_POWER_STATE_NORMAL) {
+		dev_info(es705->dev, "%s(): Not Normal power state\n", __func__);
+		return 0;
+	}
+
+	if ((volume > (sizeof(veq_max_gains_nb) / sizeof(veq_max_gains_nb[0])) - 1) ||
+		(volume < 0)) {
+		dev_info(es705->dev, "%s(): Invalid volume (%d)\n", __func__, volume);
+		return 0;
+	}
+
+	mutex_lock(&es705->api_mutex);
+
+	/* VEQ Max Gain */
+	cmd = 0xB017003d;
+	cmd = cpu_to_le32(cmd);
+	ret = es705->dev_write(es705, (char *)&cmd, 4);
+	dev_dbg(es705->dev, "%s(): write veq max gain cmd 0x%08x\n",
+		    __func__, cmd);
+	if (ret < 0) {
+		dev_err(es705->dev, "%s(): write veq max gain cmd 0x%08x failed\n",
+		    __func__, cmd);
+		goto EXIT;
+	}
+
+	/* 0x00 ~ 0x0f(15dB) */
+	if (network_type == WIDE_BAND)
+		cmd = veq_max_gains_wb[volume];
+	else
+		cmd = veq_max_gains_nb[volume];
+
+	if (cmd > 0x9018000f)
+		cmd = 0x9018000f;
+
+	cmd = cpu_to_le32(cmd);
+	ret = es705->dev_write(es705, (char *)&cmd, 4);
+	dev_dbg(es705->dev, "%s(): write veq max gain 0x%08x to volume (%d)\n",
+		    __func__, cmd, volume);	
+	if (ret < 0) {
+		dev_err(es705->dev, "%s(): write veq max gain 0x%08x failed\n",
+		    __func__, cmd);
+		goto EXIT;
+	}
+
+	/* VEQ Noise Estimate Adj */
+	cmd = 0xB0170025;
+	cmd = cpu_to_le32(cmd);
+	ret = es705->dev_write(es705, (char *)&cmd, 4);
+	dev_dbg(es705->dev, "%s(): write veq estimate adj 0x%08x\n",
+		    __func__, cmd);	
+	if (ret < 0) {
+		dev_err(es705->dev, "%s(): write veq estimate adj 0x%08x failed\n",
+		    __func__, cmd);
+		goto EXIT;
+	}
+
+	/* 0x00 ~ 0x1e(30dB) */
+	if (network_type == WIDE_BAND)
+		cmd = veq_noise_estimate_adjs_wb[volume];
+	else
+		cmd = veq_noise_estimate_adjs_nb[volume];
+	if (cmd > 0x9018001e) cmd = 0x9018001e;
+	cmd = cpu_to_le32(cmd);
+	ret = es705->dev_write(es705, (char *)&cmd, 4);
+	dev_dbg(es705->dev, "%s(): write veq estimate adj 0x%08x to volume (%d)\n",
+		    __func__, cmd, volume);
+	if (ret < 0) {
+		dev_err(es705->dev, "%s(): write veq estimate adj 0x%08x failed\n",
+		    __func__, cmd);
+		goto EXIT;
+	}
+
+	/* VEQ Coefficients Filter */
+	if (network_type == WIDE_BAND)
+		veq_coeff_size = 0x4A;
+	else
+		veq_coeff_size = 0x3E;
+	cmd = 0x802f0000 | (veq_coeff_size & 0xffff);
+	cmd = cpu_to_le32(cmd);
+	ret = es705->dev_write(es705, (char *)&cmd, 4);
+	dev_dbg(es705->dev, "%s(): write veq coeff size 0x%08x\n",
+		    __func__, cmd);
+	if (ret < 0) {
+		dev_err(es705->dev, "%s(): write veq coeff size 0x%08x failed\n",
+		    __func__, cmd);
+		goto EXIT;
+	}
+
+	usleep_range(10000, 10000);
+
+	do {
+		ret = es705->dev_read(es705, (char *)&resp,
+				ES705_READ_VE_WIDTH);
+		dev_dbg(es705->dev, "%s: wdb_cmd : ret = %d response = 0x%08x\n",
+				__func__, ret, resp);
+		count++;
+	} while (resp != cmd && count < 5);
+
+	dev_dbg(es705->dev, "%s: wdb_cmd : ready", __func__);
+
+	if (network_type == WIDE_BAND)
+		ret = es705->dev_write(es705, (char *)&veq_coefficients_wb[volume][0],
+					(veq_coeff_size+(veq_coeff_size%4)));
+	else
+		ret = es705->dev_write(es705, (char *)&veq_coefficients_nb[volume][0],
+					(veq_coeff_size+(veq_coeff_size%4)));
+
+	count = 0;
+	do {
+		fin_resp = 0xFFFFFFFF;
+		ret = es705->dev_read(es705, (char *)&fin_resp,
+				ES705_READ_VE_WIDTH);
+		dev_dbg(es705->dev, "%s: wdb : ret = %d response = 0x%08x\n",
+			__func__, ret, fin_resp);
+		count++;
+	} while (fin_resp != 0x0000 && count < 5);
+
+	dev_info(es705->dev, "%s(): success\n", __func__);
+EXIT:
+	mutex_unlock(&es705->api_mutex);
+	if (ret != 0)
+		dev_err(es705->dev, "%s(): failed ret=%d\n",
+			__func__, ret);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(es705_put_veq_block);
+
 static int es705_put_internal_route_config(struct snd_kcontrol *kcontrol,
 					   struct snd_ctl_elem_value *ucontrol)
 {
@@ -2375,6 +2601,7 @@ static int es705_ap_put_tx1_ch_cnt(struct snd_kcontrol *kcontrol,
 				   struct snd_ctl_elem_value *ucontrol)
 {
 	es705_priv.ap_tx1_ch_cnt = ucontrol->value.enumerated.item[0] + 1;
+	pr_info("%s : cnt = %d\n", __func__, es705_priv.ap_tx1_ch_cnt);
 	return 0;
 }
 
@@ -2389,7 +2616,7 @@ static int es705_ap_get_tx1_ch_cnt(struct snd_kcontrol *kcontrol,
 }
 
 static const char * const es705_ap_tx1_ch_cnt_texts[] = {
-	"One", "Two"
+	"One", "Two", "Three"
 };
 static const struct soc_enum es705_ap_tx1_ch_cnt_enum =
 	SOC_ENUM_SINGLE(SND_SOC_NOPM, 0,
@@ -2928,7 +3155,7 @@ static struct snd_kcontrol_new es705_digital_ext_snd_controls[] = {
 		       0, 1, 0,
 		       es705_get_vs_stream_enable, es705_put_vs_stream_enable),
 #if defined(SAMSUNG_ES705_FEATURE)
-	SOC_SINGLE_EXT("ES705 Voice Wakeup Enable", SND_SOC_NOPM, 0, 1, 0,
+	SOC_SINGLE_EXT("ES705 Voice Wakeup Enable", SND_SOC_NOPM, 0, 2, 0,
 		       es705_get_voice_wakeup_enable_value,
 		       es705_put_voice_wakeup_enable_value),
 	SOC_SINGLE_EXT("ES705 Voice LPM Enable", SND_SOC_NOPM, 0, 1, 0,
@@ -3337,7 +3564,12 @@ int es705_core_probe(struct device *dev)
 {
 	struct esxxx_platform_data *pdata = dev->platform_data;
 	int rc = 0;
+
+#if defined(CONFIG_MACH_KLTE_KOR)
+	const char *fw_filename = "audience-es705-kor-fw.bin";
+#else
 	const char *fw_filename = "audience-es705-fw.bin";
+#endif
 	const char *vs_filename = "audience-es705-vs.bin";
 
 	if (pdata == NULL) {
@@ -3399,12 +3631,6 @@ int es705_core_probe(struct device *dev)
 	if (rc)
 		goto gpio_init_error;
 
-	if (pdata->esxxx_clk_cb)
-		pdata->esxxx_clk_cb(1);
-
-	msleep(10);
-	es705_gpio_reset(&es705_priv);
-
 	rc = request_firmware((const struct firmware **)&es705_priv.standard,
 			      fw_filename, es705_priv.dev);
 	if (rc) {
@@ -3420,6 +3646,12 @@ int es705_core_probe(struct device *dev)
 			__func__, vs_filename, rc);
 		goto request_vs_firmware_error;
 	}
+
+	if (pdata->esxxx_clk_cb)
+		pdata->esxxx_clk_cb(1);
+
+	usleep_range(5000, 5000);
+	es705_gpio_reset(&es705_priv);
 
 	INIT_DELAYED_WORK(&es705_priv.sleep_work, es705_delayed_sleep);
 

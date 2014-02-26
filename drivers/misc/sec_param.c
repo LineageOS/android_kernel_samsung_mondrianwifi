@@ -142,7 +142,12 @@ bool sec_get_param(enum sec_param_index index, void *value)
 	case param_index_boot_alarm_value_h:
 		memcpy(value, &(param_data->boot_alarm_value_h), sizeof(unsigned int));
 		break;
-#endif	
+#endif
+#ifdef CONFIG_SEC_MONITOR_BATTERY_REMOVAL
+	case param_index_normal_poweroff:
+		memcpy(&(param_data->normal_poweroff), value, sizeof(unsigned int));
+		break;
+#endif
 	default:
 		return false;
 	}
@@ -203,7 +208,12 @@ bool sec_set_param(enum sec_param_index index, void *value)
 	case param_index_boot_alarm_value_h:
 		memcpy(&(param_data->boot_alarm_value_h), value, sizeof(unsigned int));
 		break;
-#endif	
+#endif
+#ifdef CONFIG_SEC_MONITOR_BATTERY_REMOVAL
+	case param_index_normal_poweroff:
+		memcpy(&(param_data->normal_poweroff), value, sizeof(unsigned int));
+		break;
+#endif
 	default:
 		return false;
 	}
@@ -233,7 +243,7 @@ static ssize_t movinand_checksum_done_show
 		pr_err("checksum is not in valuable range.\n");
 		ret = 1;
 	}
-	return snprintf(buf, sizeof(buf), "%u\n", ret);
+	return sprintf(buf, "%u\n", ret);
 }
 static DEVICE_ATTR(movinand_checksum_done,
 				0664, movinand_checksum_done_show, NULL);
@@ -248,7 +258,7 @@ static ssize_t movinand_checksum_pass_show
 		pr_err("checksum is not in valuable range.\n");
 		ret = 1;
 	}
-	return snprintf(buf, sizeof(buf), "%u\n", ret);
+	return sprintf(buf, "%u\n", ret);
 }
 static DEVICE_ATTR(movinand_checksum_pass,
 				0664, movinand_checksum_pass_show, NULL);

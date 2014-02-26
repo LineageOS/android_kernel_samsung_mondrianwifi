@@ -911,6 +911,15 @@ config USB_ANDROID_SAMSUNG_SIDESYNC
 	  If you enable this option,
 	  SideSync will be able to be used.
 
+config USB_NCM_SUPPORT_MTU_CHANGE
+	boolean "Samsung NCM MTU Change function"
+	depends on USB_G_ANDROID
+	help
+	   Provides NCM MTU Change support
+	   for samsung gadget driver.
+	   If you enable this option,
+	   NCM MTU Change will be able to be used.
+
 config USB_CDC_COMPOSITE
 	tristate "CDC Composite Device (Ethernet and ACM)"
 	depends on NET

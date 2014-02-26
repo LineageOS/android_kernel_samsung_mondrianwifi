@@ -832,6 +832,80 @@ static int fg_check_battery_present(struct i2c_client *client)
 	return ret;
 }
 
+static int fg_adjust_temp (struct i2c_client *client, enum power_supply_property psp, int value)
+{
+	int temp = 0;
+	int temp_adc;
+	int low = 0;
+	int high = 0;
+	int mid = 0;
+	static int count = 0;
+	struct sec_fuelgauge_info *fuelgauge = i2c_get_clientdata(client);
+	const sec_bat_adc_table_data_t *temp_adc_table;
+	unsigned int temp_adc_table_size;
+
+	temp_adc = value;
+
+	switch (psp) {
+	case POWER_SUPPLY_PROP_TEMP:
+		if (fuelgauge->pdata->temp_adc_table) {
+			temp_adc_table = fuelgauge->pdata->temp_adc_table;
+			temp_adc_table_size = fuelgauge->pdata->temp_adc_table_size;
+		} else {
+			return temp_adc;
+		}
+		break;
+	case POWER_SUPPLY_PROP_TEMP_AMBIENT:
+		if (fuelgauge->pdata->temp_amb_adc_table) {
+			temp_adc_table = fuelgauge->pdata->temp_amb_adc_table;
+			temp_adc_table_size =
+				fuelgauge->pdata->temp_amb_adc_table_size;
+		} else {
+			return temp_adc;
+		}
+		break;
+	default:
+		return temp_adc;
+	}
+
+	if (temp_adc_table[0].adc <= temp_adc) {
+		temp = temp_adc_table[0].data;
+		goto finish;
+	} else if (temp_adc_table[temp_adc_table_size-1].adc >= temp_adc) {
+		temp = temp_adc_table[temp_adc_table_size-1].data;
+		goto finish;
+	}
+
+	high = temp_adc_table_size - 1;
+
+	while (low <= high) {
+		mid = (low + high) / 2;
+		if (temp_adc_table[mid].adc > temp_adc)
+			low = mid + 1;
+		else if (temp_adc_table[mid].adc < temp_adc)
+			high = mid - 1;
+		else {
+			temp = temp_adc_table[mid].data;
+			goto finish;
+		}
+	}
+
+	temp = temp_adc_table[high].data;
+	temp +=
+		((temp_adc_table[low].data -
+		temp_adc_table[high].data) *
+		(temp_adc - temp_adc_table[high].adc)) /
+		(temp_adc_table[low].adc - temp_adc_table[high].adc);
+
+finish:
+	if (!(count++ % PRINT_COUNT)) {
+		dev_dbg(&client->dev,
+			"%s: Temp_org(%d) -> Temp_adj(%d)\n",
+			__func__, temp_adc, temp);
+		count = 1;
+	}
+	return temp;
+}
 
 static int fg_read_temp(struct i2c_client *client)
 {
@@ -882,16 +956,6 @@ static int fg_read_temp(struct i2c_client *client)
 		}
 	} else
 		temper = 20000;
-
-#if defined(BOARD_VIENNA_EUR_OPEN) || defined(BOARD_V2_EUR_OPEN)
-	/* temperature compensation: HW tunning value*/
-	if (temper >= 52100 && temper <= 53500)
-		temper += 2000;
-	else if (temper >= 53600 && temper <= 56000)
-		temper += 3000;
-	else if (temper >= 56100)
-		temper += 4000;
-#endif
 
 	if (!(fuelgauge->info.pr_cnt % PRINT_COUNT))
 		dev_info(&client->dev, "%s: TEMPERATURE(%d), data(0x%04x)\n",
@@ -2371,6 +2435,7 @@ bool sec_hal_fg_get_property(struct i2c_client *client,
 		/* Target Temperature */
 	case POWER_SUPPLY_PROP_TEMP_AMBIENT:
 		val->intval = get_fuelgauge_value(client, FG_TEMPERATURE);
+		val->intval = fg_adjust_temp(client, psp, val->intval);
 		break;
 	default:
 		return false;

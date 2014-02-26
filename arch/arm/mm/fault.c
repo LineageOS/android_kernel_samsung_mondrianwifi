@@ -357,10 +357,13 @@ int tima_is_pg_protected(unsigned long va)
 {
 	unsigned long  par;
 	unsigned long flags;
-
+#ifdef CONFIG_MACH_MONDRIAN
+	if (tima_switch_count < 0xdfff) 
+		return 0;
+#else
 	if (tima_switch_count < 0x12000) 
 		return 0;
-
+#endif
 	/* Translate the page use writable priv.
 	Failing means a read-only page 
 	(tranlation was confirmed by previous step)*/
@@ -393,7 +396,7 @@ __do_kernel_fault(struct mm_struct *mm, unsigned long addr, unsigned int fsr,
 	if (fixup_exception(regs))
 		return;
 #ifdef	CONFIG_TIMA_RKP
-	printk(KERN_ERR"TIMA:====> %lx\n", addr);
+	printk(KERN_ERR"TIMA:====> %lx, [%lx]\n", addr, tima_switch_count);
 	if (addr >= 0xc0000000 && (fsr & FSR_WRITE)) {
 		printk(KERN_ERR"TIMA:==> Handling fault for %lx\n", addr);
 		tima_send_cmd(addr, 0x3f821221);

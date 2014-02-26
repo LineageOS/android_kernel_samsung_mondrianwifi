@@ -169,8 +169,8 @@
 #define RGB_LED_ATC_CTL(base)		(base + 0x47)
 
 #define RGB_MAX_LEVEL			LED_FULL
-#define RGB_MAX_LEVEL_N2_MENU		130
-#define RGB_MAX_LEVEL_N2_BACK		150
+#define RGB_MAX_LEVEL_N2_MENU		120
+#define RGB_MAX_LEVEL_N2_BACK		125
 #define RGB_MAX_LEVEL_N1		110
 #define RGB_MAX_LEVEL_V1		75
 #define RGB_LED_ENABLE_RED		0x80

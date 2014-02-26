@@ -176,8 +176,9 @@ int handle_big_data(struct ssp_data *data, char *pchRcvDataFrame, int *pDataIdx)
 }
 
 void refresh_task(struct work_struct *work) {
-	struct ssp_data *data = container_of((struct delayed_work *)work,
-	struct ssp_data, work_firmware);
+	struct ssp_big *big = container_of((struct delayed_work *)work,
+			struct ssp_big, work_delayed);
+	struct ssp_data *data = big->data;
 
 	pr_err("[SSP]: %s\n", __func__);
 
@@ -190,11 +191,16 @@ void refresh_task(struct work_struct *work) {
 			ssp_send_cmd(data, data->uLastResumeState, 0);
 		data->uTimeOutCnt = 0;
 	}
+
+	kfree(big);
 }
 
 int queue_refresh_task(struct ssp_data *data, int delay) {
-	INIT_DELAYED_WORK(&data->work_firmware, refresh_task);
-	queue_delayed_work(data->debug_wq, &data->work_firmware,
+	struct ssp_big *big = kzalloc(sizeof(*big), GFP_KERNEL);
+	big->data = data;
+
+	INIT_DELAYED_WORK(&big->work_delayed, refresh_task);
+	queue_delayed_work(data->debug_wq, &big->work_delayed,
 			msecs_to_jiffies(delay));
 	return SUCCESS;
 }

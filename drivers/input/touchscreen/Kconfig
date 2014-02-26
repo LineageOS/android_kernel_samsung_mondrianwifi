@@ -21,6 +21,19 @@ config TOUCHSCREEN_MMS252
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called melfas-ts.
+
+config TOUCHSCREEN_MMS144
+	tristate "Melfas MMS144 Touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have Melfas MMS144 series I2C touchscreen,
+	   connected to your system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called mms_ts.
+
 config TOUCHSCREEN_88PM860X
 	tristate "Marvell 88PM860x touchscreen"
 	depends on MFD_88PM860X
@@ -536,6 +549,14 @@ config TOUCHSCREEN_ATMEL_MXT1188S
 	  To compile this driver as a module, choose M here: the
 	  module will be called mxt1188s
 
+config TOUCHSCREEN_CYTTSP4
+	tristate "CYPRESS TMA445 Touchscreen Interface"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you want support for cypress TMA445 touchscreen controllers.
+	  To compile this driver as a module, choose M here: the
+	  module will be called mxt1188s
 config TOUCHSCREEN_TOUCHRIGHT
 	tristate "Touchright serial touchscreen"
 	select SERIO
@@ -1076,10 +1097,23 @@ config TOUCHSCREEN_GT9XX
 
           If unsure, say N.
 
+config TOUCHSCREEN_FTS
+	tristate "STMicroelectronics i2c multitouch touchscreen with FingerTipS"
+	depends on I2C
+	help
+	  Say Y here to enable STMicroelectronics touchscreen support.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called STM_ts.
+
 source "drivers/input/touchscreen/wacom/Kconfig"
 source "drivers/input/touchscreen/gt9xx/Kconfig"
 source "drivers/input/touchscreen/synaptics/Kconfig"
 source "drivers/input/touchscreen/imagis/Kconfig"
 source "drivers/input/touchscreen/synaptics_s5000/Kconfig"
+source "drivers/input/touchscreen/cyttsp5/Kconfig"
+source "drivers/input/touchscreen/wacom_hl/Kconfig"
 
 endif

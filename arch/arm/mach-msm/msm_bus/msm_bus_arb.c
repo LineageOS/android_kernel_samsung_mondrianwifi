@@ -12,6 +12,10 @@
 
 #define pr_fmt(fmt) "AXI: %s(): " fmt, __func__
 
+#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_MILLETLTE_COMMON)
+#define DEBUG_MSM_BUS_ARB_REQ
+#endif
+
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/module.h>
@@ -21,6 +25,9 @@
 #include <linux/clk.h>
 #include <mach/msm_bus.h>
 #include "msm_bus_core.h"
+#ifdef DEBUG_MSM_BUS_ARB_REQ
+#include <asm/arch_timer.h>
+#endif
 
 #define INDEX_MASK 0x0000FFFF
 #define PNODE_MASK 0xFFFF0000
@@ -600,6 +607,17 @@ err:
 }
 EXPORT_SYMBOL(msm_bus_scale_register_client);
 
+#ifdef DEBUG_MSM_BUS_ARB_REQ
+static struct log_Ab_Ib{
+	int src;
+	int dst;
+	uint64_t ab;
+	uint64_t ib;
+	uint64_t cnt;
+	char name[20];
+}log_req[1001];
+#endif
+
 /**
  * msm_bus_scale_client_update_request() - Update the request for bandwidth
  * from a particular client
@@ -615,6 +633,9 @@ int msm_bus_scale_client_update_request(uint32_t cl, unsigned index)
 	int pnode, src, curr, ctx;
 	uint64_t req_clk, req_bw, curr_clk, curr_bw;
 	struct msm_bus_client *client = (struct msm_bus_client *)cl;
+#ifdef DEBUG_MSM_BUS_ARB_REQ
+	static int log_cnt = 0;
+#endif
 	if (IS_ERR_OR_NULL(client)) {
 		MSM_BUS_ERR("msm_bus_scale_client update req error %d\n",
 				(uint32_t)client);
@@ -662,6 +683,28 @@ int msm_bus_scale_client_update_request(uint32_t cl, unsigned index)
 		pnode = client->src_pnode[i];
 		req_clk = client->pdata->usecase[index].vectors[i].ib;
 		req_bw = client->pdata->usecase[index].vectors[i].ab;
+
+#ifdef DEBUG_MSM_BUS_ARB_REQ
+		//Debug code to collect client info
+		{
+			struct msm_bus_fabric_device *fabdev_d = msm_bus_get_fabric_device(GET_FABID(src));
+			if (MSM_BUS_FAB_APPSS  == fabdev_d->id)
+			{
+				if (log_cnt >= 1000)
+					log_cnt = 0;
+				
+				log_req[log_cnt].ab = client->pdata->usecase[index].vectors[i].ab;
+				log_req[log_cnt].ib = client->pdata->usecase[index].vectors[i].ib;
+				log_req[log_cnt].src = client->pdata->usecase[index].vectors[i].src;
+				log_req[log_cnt].dst = client->pdata->usecase[index].vectors[i].dst;
+				log_req[log_cnt].cnt = arch_counter_get_cntpct(); 
+				strncpy(log_req[log_cnt].name, client->pdata->name, 19);
+				log_cnt++;
+				//printk("*** cl: %s ab: %llu ib: %llu\n", client->pdata->name, req_bw, req_clk);
+			}
+		}
+#endif
+
 		if (curr < 0) {
 			curr_clk = 0;
 			curr_bw = 0;

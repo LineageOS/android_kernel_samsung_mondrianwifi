@@ -37,7 +37,7 @@
 #include <linux/barcode_emul.h>
 #elif defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO)
 #include "../../arch/arm/mach-msm/board-8064.h"
-#if defined(CONFIG_MACH_KLTEKDI) || defined(CONFIG_MACH_KLTE_DCM) || defined(CONFIG_MACH_KLTE_SBM)
+#if defined(CONFIG_MACH_KLTE_KDI) || defined(CONFIG_MACH_KLTE_DCM) || defined(CONFIG_MACH_KLTE_SBM)
 #include <mach/klte_felica_gpio.h>
 #else
 #include <mach/hlte_felica_gpio.h>
@@ -200,7 +200,7 @@ static int felica_uart_open_wait_for_polling(void);
 #elif defined(CONFIG_ARCH_APQ8064)
 #define GPIO_PINID_FELICA_PON			FPGA_GPIO_FELICA_PON
 #elif defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO)
-#if !defined(CONFIG_MACH_KLTEKDI) && !defined(CONFIG_MACH_KLTE_DCM) && !defined(CONFIG_MACH_KLTE_SBM)
+#if !defined(CONFIG_MACH_KLTE_KDI) && !defined(CONFIG_MACH_KLTE_DCM) && !defined(CONFIG_MACH_KLTE_SBM)
 #define GPIO_PINID_FELICA_PON			GPIO_FELICA_PON
 #endif // CONFIG_MACH_KLTE
 #endif
@@ -329,7 +329,7 @@ static ssize_t felica_rws_write(struct file *file, const char __user *data, \
 #elif defined(CONFIG_ARCH_APQ8064)
 #define GPIO_PINID_FELICA_INT_REV03			GPIO_FELICA_INT
 #elif defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_ARCH_MSM8974PRO)
-#if defined(CONFIG_MACH_KLTEKDI) || defined(CONFIG_MACH_KLTE_DCM) || defined(CONFIG_MACH_KLTE_SBM)
+#if defined(CONFIG_MACH_KLTE_KDI) || defined(CONFIG_MACH_KLTE_DCM) || defined(CONFIG_MACH_KLTE_SBM)
 #define GPIO_PINID_FELICA_INT				GPIO_FELICA_INT
 #endif	// CONFIG_MACH_KLTE
 #endif	//CONFIG_ARCH_MSM8974
@@ -520,7 +520,7 @@ static ssize_t rfs_poll_read(struct file *file, char __user * buf, size_t len,
 
 /* constant definition */
 /* CXD2235POWER device	*/
-#if !defined(CONFIG_MACH_KLTEKDI) && !defined(CONFIG_MACH_KLTE_DCM) && !defined(CONFIG_MACH_KLTE_SBM)
+#if !defined(CONFIG_MACH_KLTE_KDI) && !defined(CONFIG_MACH_KLTE_DCM) && !defined(CONFIG_MACH_KLTE_SBM)
 #define GPIO_PINID_NFC_PON				GPIO_PINID_FELICA_PON
 #endif
 #define CXD2235_POWER_DEV_NAME			"snfc_pon"

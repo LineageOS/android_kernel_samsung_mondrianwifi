@@ -59,7 +59,7 @@ static int mmc_host_runtime_resume(struct device *dev)
 	struct mmc_host *host = cls_dev_to_mmc_host(dev);
 	int ret = 0;
 
-	if (!mmc_use_core_runtime_pm(host))
+	if (!mmc_use_core_pm(host))
 		return 0;
 
 	ret = mmc_resume_host(host);

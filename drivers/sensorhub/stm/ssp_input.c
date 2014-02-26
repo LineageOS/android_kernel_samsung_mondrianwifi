@@ -180,7 +180,7 @@ void report_mag_data(struct ssp_data *data, struct sensor_value *magdata)
 		input_report_rel(data->mag_input_dev, REL_RZ, arrTemp[5]);
 		input_report_rel(data->mag_input_dev, REL_HWHEEL, arrTemp[6]);
 		input_report_rel(data->mag_input_dev, REL_DIAL, arrTemp[7]);
-
+		mdelay(5);
 		input_sync(data->mag_input_dev);
 	} else {
 		pr_info("[SSP] %s, not initialised, val = %d", __func__, arrTemp[0]);

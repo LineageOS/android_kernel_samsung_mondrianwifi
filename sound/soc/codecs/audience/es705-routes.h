@@ -743,7 +743,7 @@ static const u32 route_2Mic_SPK_WB_NSOff[] = {
 
 static const u32 route_2Mic_HS_WB_NSOff[] = {
 	0x9031041b,	/* Route, #1051 */
-	0x9031024f,	/* Algo, #591 */
+	0x9031022b,	/* Algo, #555 */
 	0x903103be,	/* Algo, #958 */
 	0xffffffff	/* terminate */
 };

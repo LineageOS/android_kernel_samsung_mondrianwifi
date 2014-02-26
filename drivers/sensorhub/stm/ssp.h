@@ -60,7 +60,13 @@
 #define ERROR		-1
 
 #define FACTORY_DATA_MAX	100
-#undef SAVE_MAG_LOG	/* Magnetic sensor data logging flag */
+#undef SAVE_MAG_LOG/* Magnetic sensor data logging flag */
+
+#ifdef SAVE_MAG_LOG/*normal mode = 0, logging mode = 1*/
+#define MAG_LOG_MODE 1
+#else
+#define MAG_LOG_MODE 0
+#endif
 
 #if SSP_DBG
 #define SSP_FUNC_DBG 1
@@ -181,7 +187,7 @@ enum {
 #define MSG2SSP_AP_STATUS_POW_DISCONNECTED	0xD7
 #define MSG2SSP_AP_TEMPHUMIDITY_CAL_DONE	0xDA
 #define MSG2SSP_AP_MCU_SET_DUMPMODE		0xDB
-#define MSG2SSP_AP_MCU_DUMP_FINISH		0xDC
+#define MSG2SSP_AP_MCU_DUMP_CHECK		0xDC
 #define MSG2SSP_AP_MCU_BATCH_FLUSH		0xDD
 #define MSG2SSP_AP_MCU_BATCH_COUNT		0xDF
 
@@ -578,6 +584,7 @@ struct ssp_data {
 struct ssp_big {
 	struct ssp_data* data;
 	struct work_struct work;
+	struct delayed_work work_delayed;
 	u32 length;
 	u32 addr;
 };

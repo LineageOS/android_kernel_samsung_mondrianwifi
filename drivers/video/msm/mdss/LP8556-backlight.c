@@ -92,7 +92,9 @@ static int backlight_i2c_write(struct i2c_client *client,
 	}
 	return err;
 }
-
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
+int get_lcd_attached(void);
+#endif
 static void backlight_request_gpio(struct lp8556_backlight_platform_data *pdata)
 {
 	int ret;
@@ -105,12 +107,17 @@ static void backlight_request_gpio(struct lp8556_backlight_platform_data *pdata)
 		}
 		gpio_tlmm_config(GPIO_CFG(pdata->gpio_backlight_en, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	}
-#if defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT)
-	gpio_tlmm_config(GPIO_CFG(pdata->gpio_scl, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
-	gpio_tlmm_config(GPIO_CFG(pdata->gpio_sda, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
-#endif
 	/* gpio_tlmm_config(GPIO_CFG(pdata->gpio_scl, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1); */
 	/* gpio_tlmm_config(GPIO_CFG(pdata->gpio_sda, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1); */
+
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
+	if (get_lcd_attached() == 0) {
+		if (gpio_is_valid(pdata->gpio_backlight_en)) {
+			pr_info("%s : Set Low Backlight Enable GPIO \n", __func__);
+			gpio_set_value(pdata->gpio_backlight_en, 0);
+		}
+	}
+#endif
 
 }
 
@@ -138,12 +145,12 @@ static int lp8556_backlight_parse_dt(struct device *dev,
 #if defined(CONFIG_FB_MSM_MDSS_TC_DSI2LVDS_WXGA_PANEL)
 static u8 channel_setting[][2] ={
 	{0x01, 0x80},
-	{0xA7, 0xFA},
-	{0xA3, 0x5E},
 	{0xA5, 0x24},
+	{0xA0, 0x44},
+	{0xA1, 0x6C},
 };
 #elif defined(CONFIG_FB_MSM_MDSS_SDC_WXGA_PANEL)
-#if defined(CONFIG_MACH_MILLETWIFI_OPEN)
+#if defined(CONFIG_SEC_MILLETWIFI_COMMON)
 static u8 channel_setting[][2] ={
 	{0x02, 0x04},
 	{0x01, 0x07},

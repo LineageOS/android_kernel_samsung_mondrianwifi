@@ -157,10 +157,12 @@ struct sec_debug_log {
 #undef pr_warning
 
 #if defined(DLOG_USER_VARIANT)
+int dlog_sec_get_debug_level(void);
+int sec_debug_is_enabled(void);
 
 #if defined(CONFIG_SEC_DEBUG_SCHED_LOG)
 #define pr_debug(fmt,...) \
-		do{	 	if(kernel_sec_get_debug_level() == KERNEL_SEC_DEBUG_LEVEL_HIGH )  __DLOG__(__VA_ARGS__);\
+		do{	 	if(dlog_sec_get_debug_level())  __DLOG__(__VA_ARGS__);\
 			 dynamic_pr_debug(fmt, ##__VA_ARGS__);} while(0)
 #else
 #define pr_debug(fmt,...) \

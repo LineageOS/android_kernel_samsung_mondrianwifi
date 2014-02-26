@@ -98,7 +98,7 @@ static ssize_t ir_current_store(struct device *dev,
 	int iRet = 0;
 	u16 current_index = 0;
 	struct ssp_data *data = dev_get_drvdata(dev);
-	static u16 set_current[2][4] = { {12, 25, 50, 100},
+	static u16 set_current[2][4] = { {37, 75, 150, 300},
 					  {24, 16, 8, 0} };
 
 	iRet = kstrtou16(buf, 10, &uNewIrCurrent);

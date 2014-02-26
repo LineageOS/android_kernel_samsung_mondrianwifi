@@ -951,6 +951,14 @@ static int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd)
 				MDSS_MDP_PIPE_TYPE_VIG);
 			__mdss_mdp_handoff_cleanup_pipes(mfd,
 				MDSS_MDP_PIPE_TYPE_DMA);
+		} else {
+			/* Add all the handed off pipes to the cleanup list */
+			__mdss_mdp_handoff_cleanup_pipes(mfd,
+				MDSS_MDP_PIPE_TYPE_RGB);
+			__mdss_mdp_handoff_cleanup_pipes(mfd,
+				MDSS_MDP_PIPE_TYPE_VIG);
+			__mdss_mdp_handoff_cleanup_pipes(mfd,
+				MDSS_MDP_PIPE_TYPE_DMA);
 		}
 		rc = mdss_mdp_ctl_splash_finish(ctl, mdp5_data->handoff);
 		/*
@@ -1106,6 +1114,16 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 					pipe->num);
 			mdss_mdp_mixer_pipe_unstage(pipe);
 		}
+
+		pr_debug("mixer:%d pipe:%s z_order:%d flag : 0x%x src.x:%d y:%d w:%d h:%d "
+			"des_rect.x:%d y:%d w:%d h:%d\n", pipe->mixer->num,
+			pipe->ndx == BIT(0) ? "VG0" : pipe->ndx == BIT(1) ? "VG1" :
+			pipe->ndx == BIT(2) ? "VG2" : pipe->ndx == BIT(3) ? "RGB0" :
+			pipe->ndx == BIT(4) ? "RGB1" : pipe->ndx == BIT(5) ? "RGB2" :
+			pipe->ndx == BIT(6) ? "DMA0" : "DMA1" ,
+			pipe->mixer_stage - MDSS_MDP_STAGE_0, pipe->flags,
+			pipe->src.x, pipe->src.y, pipe->src.w, pipe->src.h, 
+			pipe->dst.x, pipe->dst.y, pipe->dst.w, pipe->dst.h);
 
 	}
 
@@ -2630,18 +2648,20 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 
 int mdss_panel_register_done(struct mdss_panel_data *pdata)
 {
+	static int first_register=true;
 	/*
 	 * Clocks are already on if continuous splash is enabled,
 	 * increasing ref_cnt to help balance clocks once done.
 	 */
-	if (pdata->panel_info.cont_splash_enabled) {
+	if (pdata->panel_info.cont_splash_enabled && first_register) {
+		pr_info("%s ++ \n", __func__);
 		mdss_mdp_footswitch_ctrl_splash(1);
 #ifdef CONFIG_FB_MSM_EDP_SAMSUNG
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 #else
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 #endif
-
+		first_register=false;
 	}
 	return 0;
 }
@@ -3118,12 +3138,13 @@ void mdss_mdp_underrun_dump_info(void)
 	pr_info(" ============ dump_start ===========\n");
 	if (pipes_used_dbg)
 		list_for_each_entry(pipe, pipes_used_dbg, used_list) {
-			pr_info(" [%4d, %4d, %4d, %4d] -> [%4d, %4d, %4d, %4d]"
-					"|flags = %8d|src_format = %2d|bpp = %2d|ndx = %3d|\n",
-			pipe->src.x, pipe->src.y, pipe->src.w, pipe->src.h,
-			pipe->dst.x, pipe->dst.y, pipe->dst.w, pipe->dst.h,
-			pipe->flags, pipe->src_fmt->format, pipe->src_fmt->bpp,
-			pipe->ndx);
+			if (pipe)
+				pr_info(" [%4d, %4d, %4d, %4d] -> [%4d, %4d, %4d, %4d]"
+						"|flags = %8d|src_format = %2d|bpp = %2d|ndx = %3d|\n",
+				pipe->src.x, pipe->src.y, pipe->src.w, pipe->src.h,
+				pipe->dst.x, pipe->dst.y, pipe->dst.w, pipe->dst.h,
+				pipe->flags, pipe->src_fmt->format, pipe->src_fmt->bpp,
+				pipe->ndx);
 			pr_info("pipe addr : %p\n", pipe);
 		}
 	mdss_mdp_underrun_clk_info();

@@ -81,6 +81,11 @@ extern int msm_show_resume_irq_mask;
 #include <linux/leds-max77804k.h>
 #endif
 
+#ifdef CONFIG_LEDS_MAX77828
+#include <linux/leds-max77828.h>
+#include <linux/leds.h>
+#endif
+
 #include <linux/i2c.h>
 #ifdef CONFIG_MFD_MAX77803
 #ifdef CONFIG_LEDS_MAX77803
@@ -176,6 +181,37 @@ struct max77804k_led_platform_data max77804k_led_pdata = {
 };
 #endif
 
+#ifdef CONFIG_LEDS_MAX77828
+struct max77828_led_platform_data max77828_led_pdata = {
+        .num_leds = 5,
+
+        .leds[0].name = "leds-sec1",
+	.leds[0].default_trigger = "flash",
+        .leds[0].id = MAX77828_FLASH,
+        .leds[0].brightness = MAX77828_FLASH_IOUT,
+
+        .leds[1].name = "torch-sec1",
+	.leds[1].default_trigger = "torch",
+        .leds[1].id = MAX77828_TORCH,
+        .leds[1].brightness = MAX77828_TORCH_IOUT,
+
+        .leds[2].name = "led_r",
+        .leds[2].id = MAX77828_RGB_R,
+        .leds[2].brightness = (int)LED_OFF,
+        .leds[2].max_brightness = MAX77828_LED_CURRENT,
+
+        .leds[3].name = "led_g",
+        .leds[3].id = MAX77828_RGB_G,
+        .leds[3].brightness = (int)LED_OFF,
+        .leds[3].max_brightness = MAX77828_LED_CURRENT,
+
+        .leds[4].name = "led_b",
+        .leds[4].id = MAX77828_RGB_B,
+        .leds[4].brightness = (int)LED_OFF,
+        .leds[4].max_brightness = MAX77828_LED_CURRENT,
+};
+#endif
+
 #ifdef CONFIG_REGULATOR_MAX77826
 #define MAX77826_I2C_BUS_ID	16
 
@@ -268,7 +304,7 @@ MAX77826_VREG_CONSUMERS(BUCK2) = {
 	REGULATOR_SUPPLY("max77826_buck2",	NULL),
 };
 
-MAX77826_VREG_INIT(LDO1, 1050000, 1050000, 0);
+MAX77826_VREG_INIT(LDO1, 1200000, 1200000, 0);
 MAX77826_VREG_INIT(LDO2, 1000000, 1000000, 0);
 MAX77826_VREG_INIT(LDO3, 1200000, 1200000, 0);
 MAX77826_VREG_INIT(LDO4, 1800000, 1800000, 0);
@@ -282,7 +318,7 @@ MAX77826_VREG_INIT(LDO11, 2700000, 2800000, 0);
 MAX77826_VREG_INIT(LDO12, 3300000, 3300000, 0);
 MAX77826_VREG_INIT(LDO13, 3300000, 3300000, 0);
 MAX77826_VREG_INIT(LDO14, 3300000, 3300000, 0);
-MAX77826_VREG_INIT(LDO15, 3300000, 3300000, 0);
+MAX77826_VREG_INIT(LDO15, 1800000, 3300000, 0);
 MAX77826_VREG_INIT(BUCK1, 1225000, 1225000, 0);
 MAX77826_VREG_INIT(BUCK2, 3400000, 3400000, 0);
 

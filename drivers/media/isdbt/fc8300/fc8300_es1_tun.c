@@ -26,7 +26,7 @@
 	1p2 -> 20130826
 	1p3 -> 20130830
 	1p4 -> 20130902
-	1p7 -> 20131108
+	1p7 -> 20130911
 *******************************************************************************/
 #include "fci_types.h"
 #include "fci_oal.h"
@@ -36,7 +36,7 @@
 #include "fc8300_es1_tun.h"
 //#include <process.h>
 
-#define DRIVER_VERSION		0x17 /* Driver M1_V1p2*/
+#define DRIVER_VERSION		0x17 /* Driver M1_V1p7*/
 
 #define FC8300_XTAL_FREQ        BBM_XTAL_FREQ
 #define FC8300_BAND_WIDTH       BBM_BAND_WIDTH
@@ -177,8 +177,8 @@ static u32 KbdFunc()
 						rssi_buff[0][3] +
 						rssi_buff[0][4]) / 3;
 
-				/*status 1 => Buff ON*/
-				/*status 0 => Buff OFF*/
+				/*status_13seg[0] 1 => Buff ON*/
+				/*status_13seg[0] 0 => Buff OFF*/
 
 				if (thread_freq_es1[0] >= 647143) {
 					if (status_13seg[0] == 0) {
@@ -1509,6 +1509,7 @@ s32 fc8300_es1_tuner_init(HANDLE handle, DEVICEID devid,
 
 	return BBM_OK;
 }
+
 u32 tunning_mode_0_es1[57][5] = {
 	{473143, 0x7d, 0x21, 0x33, 0x1b},
 	{479143, 0x7d, 0x77, 0x31, 0x1b},
@@ -1802,14 +1803,6 @@ s32 fc8300_es1_set_freq(HANDLE handle, DEVICEID devid, u32 freq)
 						tunning_mode_1_es1[i][1]);
 				fc8300_write(handle, devid, 0xe3,
 						tunning_mode_1_es1[i][2]);
-				/*fc8300_write(handle, devid, 0x19,
-						tunning_mode_1_es1[i][3]);
-				fc8300_write(handle, devid, 0x1f,
-						tunning_mode_1_es1[i][4]);
-				fc8300_write(handle, devid, 0x20,
-						tunning_mode_1_es1[i][5]);
-				fc8300_write(handle, devid, 0x1c,
-						tunning_mode_1_es1[i][6]);*/
 				over_freq = 1;
 				break;
 			}
@@ -1930,14 +1923,6 @@ s32 fc8300_es1_set_freq(HANDLE handle, DEVICEID devid, u32 freq)
 						tunning_mode_5_es1[i][1]);
 				fc8300_write(handle, devid, 0xe3,
 						tunning_mode_5_es1[i][2]);
-				/*fc8300_write(handle, devid, 0x19,
-						tunning_mode_5_es1[i][3]);
-				fc8300_write(handle, devid, 0x1f,
-						tunning_mode_5_es1[i][4]);
-				fc8300_write(handle, devid, 0x20,
-						tunning_mode_5_es1[i][5]);
-				fc8300_write(handle, devid, 0x1c,
-						tunning_mode_5_es1[i][6]);*/
 				over_freq = 1;
 				break;
 			}
@@ -2092,7 +2077,6 @@ s32 fc8300_es1_set_freq(HANDLE handle, DEVICEID devid, u32 freq)
 		thread_set_es1 = 0;
 	}
 
-
 	return BBM_OK;
 }
 
@@ -2105,7 +2089,7 @@ s32 fc8300_es1_get_rssi(HANDLE handle, DEVICEID devid, s32 *rssi)
 
 	rssi_value = reg_value - 256;
 
-	rssi = &rssi_value;
+	*rssi = rssi_value;
 
 	return BBM_OK;
 }

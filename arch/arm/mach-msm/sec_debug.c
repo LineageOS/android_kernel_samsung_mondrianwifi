@@ -46,6 +46,7 @@
 #include <linux/fcntl.h>
 #include <linux/fs.h>
 #endif
+#include <linux/debugfs.h>
 #include <asm/system_info.h>
 #include <linux/file.h>
 #include <linux/fdtable.h>
@@ -1219,6 +1220,58 @@ int kernel_sec_get_debug_level(void)
 }
 EXPORT_SYMBOL(kernel_sec_get_debug_level);
 
+#ifdef CONFIG_SEC_MONITOR_BATTERY_REMOVAL
+static unsigned normal_off = 0;
+static int __init power_normal_off(char *val)
+{
+	normal_off = strncmp(val, "1", 1) ? 0 : 1;
+	pr_info("%s, normal_off:%d\n", __func__, normal_off);
+        return 1;
+}
+__setup("normal_off=", power_normal_off);
+
+bool kernel_sec_set_normal_pwroff(int value)
+{
+	int normal_poweroff = value;
+	pr_info(" %s, value :%d\n", __func__, value);
+	sec_set_param(param_index_normal_poweroff, &normal_poweroff);
+
+	return 1;
+}
+EXPORT_SYMBOL(kernel_sec_set_normal_pwroff);
+
+static int sec_get_normal_off(void *data, u64 *val)
+{
+        *val = normal_off;
+        return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(normal_off_fops, sec_get_normal_off, NULL, "%lld\n");
+
+static int __init sec_logger_init(void)
+{
+#ifdef CONFIG_DEBUG_FS
+        struct dentry *dent;
+        struct dentry   *dbgfs_file;
+
+        dent = debugfs_create_dir("sec_logger", 0);
+        if (IS_ERR_OR_NULL(dent)) {
+                pr_err("Failed to create debugfs dir of sec_logger\n");
+                return PTR_ERR(dent);
+	}
+
+        dbgfs_file = debugfs_create_file("normal_off", 0644, dent,
+						 NULL, &normal_off_fops);
+        if (IS_ERR_OR_NULL(dbgfs_file)) {
+                pr_err("Failed to create debugfs file of normal_off file\n");
+	        debugfs_remove_recursive(dent);
+                return PTR_ERR(dbgfs_file);
+        }
+#endif
+        return 0;
+}
+late_initcall(sec_logger_init);
+#endif
+
 /* core reg dump function*/
 static void sec_debug_save_core_reg(struct sec_debug_core_t *core_reg)
 {
@@ -1509,9 +1562,16 @@ int sec_debug_dump_stack(void)
 }
 EXPORT_SYMBOL(sec_debug_dump_stack);
 
+#ifdef CONFIG_TOUCHSCREEN_MMS252// debug for tsp ghost touch
+extern void dump_tsp_log(void);
+#endif
+
 void sec_debug_check_crash_key(unsigned int code, int value)
 {
 	static enum { NONE, STEP1, STEP2, STEP3} state = NONE;
+#ifdef CONFIG_TOUCHSCREEN_MMS252
+        static enum { NO, T1, T2, T3} state_tsp = NO;
+#endif
 
 	printk(KERN_ERR "%s code %d value %d state %d enable %d\n", __func__, code, value, state, enable);
 
@@ -1521,6 +1581,41 @@ void sec_debug_check_crash_key(unsigned int code, int value)
 		else
 			sec_debug_set_upload_cause(UPLOAD_CAUSE_INIT);
 	}
+
+#ifdef CONFIG_TOUCHSCREEN_MMS252
+	if(code == KEY_VOLUMEUP && !value){
+		 state_tsp = NO;
+	} else {
+
+		switch (state_tsp) {
+		case NO:
+			if (code == KEY_VOLUMEUP && value)
+				state_tsp = T1;
+			else
+				state_tsp = NO;
+			break;
+		case T1:
+			if (code == KEY_HOMEPAGE && value)
+				state_tsp = T2;
+			else
+				state_tsp = NO;
+			break;
+		case T2:
+			if (code == KEY_HOMEPAGE && !value)
+				state_tsp = T3;
+			else
+				state_tsp = NO;
+			break;
+		case T3:
+			if (code == KEY_HOMEPAGE && value) {
+				pr_info("[TSP] dump_tsp_log : %d\n", __LINE__ );
+				dump_tsp_log();
+			}
+			break;
+		}
+	}
+
+#endif
 
 	if (!enable)
 		return;
@@ -2264,10 +2359,20 @@ void sec_debug_print_file_list(void)
 	}
 }
 
-void sec_debug_EMFILE_error_proc(void)
+void sec_debug_EMFILE_error_proc(unsigned long files_addr)
 {
-	printk(KERN_ERR "Too many open files(%d:%s)\n",
-		current->tgid, current->group_leader->comm);
+	if (files_addr!=(unsigned long)(current->files)) {
+		printk(KERN_ERR "Too many open files Error at %pS\n"
+						"%s(%d) thread of %s process tried fd allocation by proxy.\n"
+						"files_addr = 0x%lx, current->files=0x%p\n",
+					__builtin_return_address(0),
+					current->comm,current->tgid,current->group_leader->comm,
+					files_addr, current->files);
+		return;
+	}
+
+	printk(KERN_ERR "Too many open files(%d:%s) at %pS\n",
+		current->tgid, current->group_leader->comm,__builtin_return_address(0));
 
 	if (!enable)
 		return;

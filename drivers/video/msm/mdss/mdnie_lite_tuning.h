@@ -170,11 +170,17 @@ struct mdnie_lite_tun_type {
 #if defined(CONFIG_TDMB)
 	enum DMB dmb;
 #endif
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
+	int scr_white_red;
+	int scr_white_green;
+	int scr_white_blue;
+#endif
 };
 
 void mdnie_lite_tuning_init(struct mipi_samsung_driver_data *msd);
 void init_mdnie_class(void);
 void is_negative_on(void);
 void coordinate_tunning(int x, int y);
+void mDNIe_Set_Mode(void);
 
 #endif /*_MDNIE_LITE_TUNING_H_*/

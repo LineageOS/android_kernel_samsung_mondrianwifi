@@ -168,9 +168,13 @@ static bool sii8240_vbus_present(void)
 		ret = false;
 #else
 	struct sii8240_platform_data *pdata = g_pdata;
-	if (pdata->gpio_ta_int > 0)
+	if (pdata->gpio_ta_int > 0){
+#ifdef CONFIG_CHARGER_SMB358
+		msleep(300);
+#endif
 		ret = gpio_get_value_cansleep(pdata->gpio_ta_int) ?
 								false : true;
+	}
 #endif
 	pr_info("VBUS : %s in %s\n", ret ? "IN" : "OUT", __func__);
 	return ret;
@@ -182,6 +186,13 @@ extern int poweroff_charging;
 
 static int sii8240_muic_get_charging_type(void)
 {
+#ifdef CONFIG_EXTCON
+	struct sii8240_platform_data *pdata = g_pdata;
+	if(pdata->is_smartdock == true)
+		return -1;
+	else
+		return 1;
+#else /* CONFIG_EXTCON */
 #if defined(CONFIG_MFD_MAX77803)
 	int muic_cable_type = max77803_muic_get_charging_type();
 #elif defined(CONFIG_MFD_MAX77888)
@@ -207,6 +218,7 @@ static int sii8240_muic_get_charging_type(void)
 
 	return 1;
 #endif
+#endif /* CONFIG_EXTCON */
 }
 
 static void sii8240_charger_mhl_cb(bool otg_enable, int charger)
@@ -236,7 +248,7 @@ static void sii8240_charger_mhl_cb(bool otg_enable, int charger)
 		pdata->charging_type = POWER_SUPPLY_TYPE_MHL_1500;
 	} else if (charger == 0x03) {
 		pr_info("%s() USB charger\n", __func__);
-		pdata->charging_type = POWER_SUPPLY_TYPE_USB;
+		pdata->charging_type = POWER_SUPPLY_TYPE_MHL_USB;
 	} else
 		pdata->charging_type = POWER_SUPPLY_TYPE_BATTERY;
 

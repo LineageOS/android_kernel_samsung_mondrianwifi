@@ -347,10 +347,6 @@ static int android_oom_handler(struct notifier_block *nb,
 	selected_oom_score_adj = min_score_adj;
 #endif
 
-#ifdef CONFIG_ZRAM_FOR_ANDROID
-	atomic_set(&s_reclaim.lmk_running, 1);
-#endif
-
 	read_lock(&tasklist_lock);
 	for_each_process(tsk) {
 		struct task_struct *p;
@@ -462,10 +458,6 @@ static int android_oom_handler(struct notifier_block *nb,
 	}
 #endif
 	read_unlock(&tasklist_lock);
-
-#ifdef CONFIG_ZRAM_FOR_ANDROID
-	atomic_set(&s_reclaim.lmk_running, 0);
-#endif
 
 	lowmem_print(2, "oom: get memory %lu", *freed);
 	return rem;

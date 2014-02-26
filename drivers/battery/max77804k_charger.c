@@ -31,6 +31,8 @@
 
 #define SIOP_INPUT_LIMIT_CURRENT 1200
 #define SIOP_CHARGING_LIMIT_CURRENT 1000
+#define SIOP_WIRELESS_INPUT_LIMIT_CURRENT 640
+#define SIOP_WIRELESS_CHARGING_LIMIT_CURRENT 680
 #define SLOW_CHARGING_CURRENT_STANDARD 400
 
 struct max77804k_charger_data {
@@ -280,7 +282,7 @@ static void max77804k_check_slow_charging(struct max77804k_charger_data *charger
 		charger->aicl_on = false;
 }
 
-extern unsigned int system_rev;
+
 static void max77804k_change_charge_path(struct max77804k_charger_data *charger,
 		int path)
 {
@@ -293,10 +295,7 @@ static void max77804k_change_charge_path(struct max77804k_charger_data *charger,
 		cnfg12 = (1 << CHG_CNFG_12_CHGINSEL_SHIFT);
 		ctrl3 = (0 << CTRL3_JIGSET_SHIFT);
 	}
-//#if defined(CONFIG_MACH_HLTEVZW) || defined(CONFIG_MACH_HLTESPR) || defined(CONFIG_MACH_HLTEUSC)
-	if (system_rev == 0)
-		ctrl3 = (1 << CTRL3_JIGSET_SHIFT);
-//#endif
+
 	if (charger->pmic_ver == 0x04)
 		max77804k_update_reg(charger->max77804k->muic, MAX77804K_MUIC_REG_CTRL3,
 				ctrl3,	CTRL3_JIGSET_MASK);
@@ -964,11 +963,20 @@ static int sec_chg_set_property(struct power_supply *psy,
 				max77804k_check_cvprm(charger, 0x1D);
 #endif
 
-			if (charger->siop_level < 100 &&
-				set_charging_current_max > SIOP_INPUT_LIMIT_CURRENT) {
-				set_charging_current_max = SIOP_INPUT_LIMIT_CURRENT;
-				if (set_charging_current > SIOP_CHARGING_LIMIT_CURRENT)
-					set_charging_current = SIOP_CHARGING_LIMIT_CURRENT;
+			if (charger->siop_level < 100) {
+				if (val->intval == POWER_SUPPLY_TYPE_WIRELESS) {
+					if (set_charging_current_max > SIOP_WIRELESS_INPUT_LIMIT_CURRENT) {
+						set_charging_current_max = SIOP_WIRELESS_INPUT_LIMIT_CURRENT;
+						if (set_charging_current > SIOP_WIRELESS_CHARGING_LIMIT_CURRENT)
+							set_charging_current = SIOP_WIRELESS_CHARGING_LIMIT_CURRENT;
+					}
+				} else {
+					if (set_charging_current_max > SIOP_INPUT_LIMIT_CURRENT) {
+						set_charging_current_max = SIOP_INPUT_LIMIT_CURRENT;
+						if (set_charging_current > SIOP_CHARGING_LIMIT_CURRENT)
+							set_charging_current = SIOP_CHARGING_LIMIT_CURRENT;
+					}
+				}
 			}
 		}
 		max77804k_set_charger_state(charger, charger->is_charging);
@@ -1030,6 +1038,19 @@ static int sec_chg_set_property(struct power_supply *psy,
 				if (charger->siop_level < 100 &&
 						current_now > SIOP_CHARGING_LIMIT_CURRENT)
 					current_now = SIOP_CHARGING_LIMIT_CURRENT;
+				max77804k_set_input_current(charger,
+					set_charging_current_max);
+			} else if (charger->cable_type == POWER_SUPPLY_TYPE_WIRELESS) {
+				if (charger->siop_level < 100 ) {
+					set_charging_current_max = SIOP_WIRELESS_INPUT_LIMIT_CURRENT;
+				} else {
+					set_charging_current_max =
+						charger->charging_current_max;
+				}
+
+				if (charger->siop_level < 100 &&
+						current_now > SIOP_WIRELESS_CHARGING_LIMIT_CURRENT)
+					current_now = SIOP_WIRELESS_CHARGING_LIMIT_CURRENT;
 				max77804k_set_input_current(charger,
 					set_charging_current_max);
 			}
@@ -1632,8 +1653,10 @@ static __devinit int max77804k_charger_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	pdata->charger_data = kzalloc(sizeof(sec_battery_platform_data_t), GFP_KERNEL);
-	if (!pdata->charger_data)
-		return -ENOMEM;
+	if (!pdata->charger_data) {
+		ret = -ENOMEM;
+		goto err_free;
+	}
 
 	charger->max77804k = iodev;
 	charger->pdata = pdata->charger_data;

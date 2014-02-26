@@ -69,6 +69,11 @@
 #ifdef CONFIG_PROC_AVC
 #include <linux/proc_avc.h>
 #endif
+
+#if defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT)
+#include <mach/msm8x26-thermistor.h>
+#endif
+
 static struct memtype_reserve msm8226_reserve_table[] __initdata = {
 	[MEMTYPE_SMI] = {
 	},
@@ -168,6 +173,11 @@ void __init msm8226_add_drivers(void)
 	fan53555_regulator_init();
 	cpr_regulator_init();
 	tsens_tm_init_driver();
+#if defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT)
+#ifdef CONFIG_SEC_THERMISTOR
+	platform_device_register(&sec_device_thermistor);
+#endif
+#endif
 	msm_thermal_device_init();
 }
 struct class *sec_class;
@@ -188,17 +198,21 @@ static void samsung_sys_class_init(void)
 };
 
 #if defined(CONFIG_BATTERY_SAMSUNG)
-#if (defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT) ||defined(CONFIG_SEC_BERLUTI_PROJECT))
+#if (defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT) ||defined(CONFIG_SEC_BERLUTI_PROJECT) || \
+defined(CONFIG_SEC_VICTOR_PROJECT) || defined(CONFIG_SEC_FRESCONEOLTE_PROJECT) || defined(CONFIG_SEC_AFYON_PROJECT)) || \
+defined(CONFIG_SEC_S3VE_PROJECT)
 /* Dummy init function for models that use QUALCOMM PMIC PM8226 charger*/
 void __init samsung_init_battery(void)
 {
-	pr_err("%s: Battery init dummy, using PM8226 internal charger \n", __func__);
+	pr_err("%s: Battery init dummy, using QUALCOMM PM8226 internal BMS \n", __func__);
 };
 #else
 extern void __init samsung_init_battery(void);
 #endif
 #endif
-
+#ifdef CONFIG_MACH_AFYONLTE_TMO
+extern void __init board_tsp_init(void);
+#endif
 void __init msm8226_init(void)
 {
 	struct of_dev_auxdata *adata = msm8226_auxdata_lookup;
@@ -220,6 +234,9 @@ void __init msm8226_init(void)
 	msm8226_add_drivers();
 #if defined(CONFIG_BATTERY_SAMSUNG)
 	samsung_init_battery();
+#endif
+#ifdef CONFIG_MACH_AFYONLTE_TMO
+board_tsp_init();
 #endif
 }
 

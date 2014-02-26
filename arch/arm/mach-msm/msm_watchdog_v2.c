@@ -79,6 +79,7 @@ static unsigned int regsave_vaddr;
 static unsigned int regsave_paddr;
 static unsigned long long last_pet;
 static void __iomem * wdog_base_addr;
+extern void sec_debug_save_last_pet(unsigned long long last_pet);
 #endif
 
 /*
@@ -274,6 +275,7 @@ static void pet_watchdog(struct msm_watchdog_data *wdog_dd)
 	wdog_dd->last_pet = time_ns;
 #ifdef CONFIG_SEC_DEBUG
 	last_pet = time_ns;
+	sec_debug_save_last_pet(time_ns);
 #endif
 
 }
@@ -494,6 +496,7 @@ static void init_watchdog_work(struct work_struct *work)
 	wdog_dd->last_pet = sched_clock();
 #ifdef CONFIG_SEC_DEBUG
 	last_pet = wdog_dd->last_pet;
+	sec_debug_save_last_pet(wdog_dd->last_pet);
 #endif
 
 	error = device_create_file(wdog_dd->dev, &dev_attr_disable);

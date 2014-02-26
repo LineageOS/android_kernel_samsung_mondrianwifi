@@ -427,7 +427,9 @@ static enum hrtimer_restart bma255_timer_func(struct hrtimer *timer)
 	struct bma255_p *data = container_of(timer,
 					struct bma255_p, accel_timer);
 
-	queue_work(data->accel_wq, &data->work);
+	if (!work_pending(&data->work))
+		queue_work(data->accel_wq, &data->work);
+
 	hrtimer_forward_now(&data->accel_timer, data->poll_delay);
 
 	return HRTIMER_RESTART;
@@ -557,7 +559,9 @@ static ssize_t bma255_delay_store(struct device *dev,
 	pr_info("[SENSOR]: %s - poll_delay = %lld\n", __func__, delay);
 
 	if (atomic_read(&data->enable) == ON) {
+		bma255_set_mode(data, BMA255_MODE_SUSPEND);
 		bma255_set_enable(data, OFF);
+		bma255_set_mode(data, BMA255_MODE_NORMAL);
 		bma255_set_enable(data, ON);
 	}
 
@@ -980,18 +984,8 @@ static int bma255_setup_pin(struct bma255_p *data)
 		       "reactive_wake_lock");
 
 	data->irq1 = gpio_to_irq(data->acc_int1);
-	ret = request_threaded_irq(data->irq1, NULL, bma255_irq_thread,
-		IRQF_TRIGGER_RISING | IRQF_ONESHOT, "bma255_accel", data);
-	if (ret < 0) {
-		pr_err("[SENSOR]: %s - can't allocate irq.\n", __func__);
-		goto exit_reactive_irq;
-	}
-
-	disable_irq(data->irq1);
 	goto exit;
 
-exit_reactive_irq:
-	wake_lock_destroy(&data->reactive_wake_lock);
 exit_acc_int1:
 	gpio_free(data->acc_int1);
 exit:
@@ -1195,6 +1189,15 @@ static int bma255_probe(struct i2c_client *client,
 	INIT_WORK(&data->work, bma255_work_func);
 	INIT_DELAYED_WORK(&data->irq_work, bma255_irq_work_func);
 
+	ret = request_threaded_irq(data->irq1, NULL, bma255_irq_thread,
+		IRQF_TRIGGER_RISING | IRQF_ONESHOT, "bma255_accel", data);
+	if (ret < 0) {
+		pr_err("[SENSOR]: %s - can't allocate irq.\n", __func__);
+		goto exit_request_threaded_irq;
+	}
+
+	disable_irq(data->irq1);
+
 	atomic_set(&data->enable, OFF);
 	data->time_count = 0;
 	data->irq_state = 0;
@@ -1209,6 +1212,7 @@ static int bma255_probe(struct i2c_client *client,
 
 	return 0;
 
+exit_request_threaded_irq:
 exit_create_workqueue:
 	sensors_unregister(data->factory_device, sensor_attrs);
 	sensors_remove_symlink(&data->input->dev.kobj, data->input->name);

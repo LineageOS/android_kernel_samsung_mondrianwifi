@@ -265,9 +265,10 @@ struct dwc3_msm {
 static struct usb_ext_notification *usb_ext;
 
 #if defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_V2_PROJECT) \
-|| defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
-int vienna_usb_rdrv_pin;
-EXPORT_SYMBOL(vienna_usb_rdrv_pin);
+|| defined(CONFIG_SEC_K_PROJECT) \
+|| defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
+int sec_qcom_usb_rdrv;
+EXPORT_SYMBOL(sec_qcom_usb_rdrv);
 #endif
 
 /**
@@ -2291,6 +2292,7 @@ error:
 
 static irqreturn_t msm_dwc3_irq(int irq, void *data)
 {
+#ifndef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
 	struct dwc3_msm *mdwc = data;
 
 	if (atomic_read(&mdwc->in_lpm)) {
@@ -2301,7 +2303,7 @@ static irqreturn_t msm_dwc3_irq(int irq, void *data)
 	} else {
 		pr_info_ratelimited("%s: IRQ outside LPM\n", __func__);
 	}
-
+#endif
 	return IRQ_HANDLED;
 }
 
@@ -2897,17 +2899,21 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 	/* [Vienna only] For USB 3.0 redriver enable */
 	/* PM8914 MPP5 enable */
 #if defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_V2_PROJECT) \
-|| defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
+|| defined(CONFIG_SEC_K_PROJECT)
 
 	pr_info("Get USB 3.0 redriver GPIO address\n");
-	vienna_usb_rdrv_pin = of_get_named_gpio(node,	"qcom,gpio_usb_rdrv_en", 0);
-	if (vienna_usb_rdrv_pin < 0) {
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
-		of_property_read_u32(node,	"qcom,gpio_usb_rdrv_en", &vienna_usb_rdrv_pin);
-		if (vienna_usb_rdrv_pin < 0)
+	sec_qcom_usb_rdrv = of_get_named_gpio(node,	"qcom,gpio_usb_rdrv_en", 0);
+	if (sec_qcom_usb_rdrv < 0) {
+#if defined(CONFIG_SEC_K_PROJECT)
+		of_property_read_u32(node,	"qcom,gpio_usb_rdrv_en", &sec_qcom_usb_rdrv);
+		if (sec_qcom_usb_rdrv < 0)
 #endif
 			dev_err(&pdev->dev, "unable to get qcom,gpio_usb_rdrv_en\n");
 	}
+#endif
+
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
+	sec_qcom_usb_rdrv = 129;
 #endif
 
 	mdwc->ssusb_vddcx = devm_regulator_get(&pdev->dev, "ssusb_vdd_dig");
@@ -3179,11 +3185,11 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 		get_vbus_detect_gpio(mdwc, &pdev->dev);
 #endif
 
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
+#if defined(CONFIG_SEC_K_PROJECT)
 	/* set gpio to enable redriver for USB3.0 */
-	gpio_tlmm_config(GPIO_CFG(vienna_usb_rdrv_pin, 0, GPIO_CFG_OUTPUT,
+	gpio_tlmm_config(GPIO_CFG(sec_qcom_usb_rdrv, 0, GPIO_CFG_OUTPUT,
 					GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
-	gpio_set_value(vienna_usb_rdrv_pin,0);
+	gpio_set_value(sec_qcom_usb_rdrv,0);
 #endif
 
 		/* Skip charger detection for simulator targets */

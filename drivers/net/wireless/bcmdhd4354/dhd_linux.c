@@ -2,7 +2,7 @@
  * Broadcom Dongle Host Driver (DHD), Linux-specific network interface
  * Basically selected code segments from usb-cdc.c and usb-rndis.c
  *
- * Copyright (C) 1999-2013, Broadcom Corporation
+ * Copyright (C) 1999-2014, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_linux.c 444405 2013-12-19 12:28:07Z $
+ * $Id: dhd_linux.c 449506 2014-01-17 06:12:07Z $
  */
 
 #include <typedefs.h>
@@ -44,9 +44,7 @@
 #include <linux/fs.h>
 #include <linux/ip.h>
 #include <net/addrconf.h>
-#ifdef ENABLE_ADAPTIVE_SCHED
 #include <linux/cpufreq.h>
-#endif /* ENABLE_ADAPTIVE_SCHED */
 
 #include <asm/uaccess.h>
 #include <asm/unaligned.h>
@@ -86,6 +84,8 @@
 #ifdef DHDTCPACK_SUPPRESS
 #include <dhd_ip.h>
 #endif /* DHDTCPACK_SUPPRESS */
+
+
 #ifdef WLMEDIA_HTSF
 #include <linux/time.h>
 #include <htsf.h>
@@ -111,6 +111,7 @@ typedef struct histo_ {
 
 static histo_t vi_d1, vi_d2, vi_d3, vi_d4;
 #endif /* WLMEDIA_HTSF */
+
 
 #if defined(BLOCK_IPV6_PACKET) && defined(CUSTOMER_HW4)
 #define HEX_PREF_STR	"0x"
@@ -290,6 +291,7 @@ static inline int dhd_write_macaddr(struct ether_addr *mac) { return 0; }
 #endif
 #endif /* CUSTOMER_HW4 */
 
+
 typedef struct dhd_if_event {
 	struct list_head	list;
 	wl_event_data_if_t	event;
@@ -442,7 +444,12 @@ typedef struct dhd_info {
 #endif /* FIX_CPU_MIN_CLOCK */
 #endif /* CUSTOMER_HW4 */
 	void			*dhd_deferred_wq;
+#ifdef DEBUG_CPU_FREQ
+	struct notifier_block freq_trans;
+	int __percpu *new_freq;
+#endif
 	unsigned int unit;
+	struct notifier_block pm_notifier;
 } dhd_info_t;
 
 /* Flag to indicate if we should download firmware on driver load */
@@ -671,32 +678,40 @@ static int dhd_toe_set(dhd_info_t *dhd, int idx, uint32 toe_ol);
 static int dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata,
                              wl_event_msg_t *event_ptr, void **data_ptr);
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && (LINUX_VERSION_CODE <= \
-	KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM_SLEEP)
+#if defined(CONFIG_PM_SLEEP)
 static int dhd_pm_callback(struct notifier_block *nfb, unsigned long action, void *ignored)
 {
 	int ret = NOTIFY_DONE;
+	bool suspend = FALSE;
+	dhd_info_t *dhdinfo = (dhd_info_t*)container_of(nfb, struct dhd_info, pm_notifier);
 
+	BCM_REFERENCE(dhdinfo);
 	switch (action) {
-	case PM_HIBERNATION_PREPARE:
-	case PM_SUSPEND_PREPARE:
-		dhd_mmc_suspend = TRUE;
-		ret = NOTIFY_OK;
-		break;
-	case PM_POST_HIBERNATION:
-	case PM_POST_SUSPEND:
-		dhd_mmc_suspend = FALSE;
-		ret = NOTIFY_OK;
-		break;
+		case PM_HIBERNATION_PREPARE:
+		case PM_SUSPEND_PREPARE:
+			suspend = TRUE;
+			break;
+		case PM_POST_HIBERNATION:
+		case PM_POST_SUSPEND:
+			suspend = FALSE;
+			break;
 	}
+
+#ifdef PROP_TXSTATUS
+	if (suspend)
+		dhd_wlfc_suspend(&dhdinfo->pub);
+	else
+		dhd_wlfc_resume(&dhdinfo->pub);
+#endif
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && (LINUX_VERSION_CODE <= \
+	KERNEL_VERSION(2, 6, 39))
+	dhd_mmc_suspend = suspend;
 	smp_mb();
+#endif
 	return ret;
 }
 
-static struct notifier_block dhd_pm_notifier = {
-	.notifier_call = dhd_pm_callback,
-	.priority = 10
-};
 /* to make sure we won't register the same notifier twice, otherwise a loop is likely to be
  * created in kernel notifier link list (with 'next' pointing to itself)
  */
@@ -704,7 +719,7 @@ static bool dhd_pm_notifier_registered = FALSE;
 
 extern int register_pm_notifier(struct notifier_block *nb);
 extern int unregister_pm_notifier(struct notifier_block *nb);
-#endif /* (LINUX_VERSION >= 2.6.27 && LINUX_VERSION <= 2.6.39 && CONFIG_PM_SLEEP */
+#endif /* CONFIG_PM_SLEEP */
 
 /* Request scheduling of the bus rx frame */
 static void dhd_sched_rxf(dhd_pub_t *dhdp, void *skb);
@@ -732,6 +747,9 @@ static inline int dhd_rxf_enqueue(dhd_pub_t *dhdp, void* skb)
 		/* removed msleep here, should use wait_event_timeout if we
 		 * want to give rx frame thread a chance to run
 		 */
+#if defined(WAIT_DEQUEUE)
+		OSL_SLEEP(1);
+#endif
 		return BCME_ERROR;
 	}
 	DHD_TRACE(("dhd_rxf_enqueue: Store SKB %p. idx %d -> %d\n",
@@ -906,6 +924,12 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 		__FUNCTION__, value, dhd->in_suspend));
 
 	dhd_suspend_lock(dhd);
+
+#ifdef CUSTOM_SET_CPUCORE
+	DHD_TRACE(("%s set cpucore(suspend%d)\n", __FUNCTION__, value));
+	/* set specific cpucore */
+	dhd_set_cpucore(dhd, TRUE);
+#endif /* CUSTOM_SET_CPUCORE */
 	if (dhd->up) {
 		if (value && dhd->in_suspend) {
 #ifdef PKT_FILTER_SUPPORT
@@ -2181,6 +2205,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 		ifp->stats.rx_bytes += skb->len;
 		ifp->stats.rx_packets++;
 
+
 		if (in_interrupt()) {
 			netif_rx(skb);
 		} else {
@@ -2274,7 +2299,9 @@ dhd_get_stats(struct net_device *net)
 	ifidx = dhd_net2idx(dhd, net);
 	if (ifidx == DHD_BAD_IF) {
 		DHD_ERROR(("%s: BAD_IF\n", __FUNCTION__));
-		return NULL;
+
+		memset(&net->stats, 0, sizeof(net->stats));
+		return &net->stats;
 	}
 
 	ifp = dhd->iflist[ifidx];
@@ -2396,7 +2423,24 @@ dhd_sched_policy(int prio)
 	}
 }
 #endif /* ENABLE_ADAPTIVE_SCHED */
-
+#ifdef DEBUG_CPU_FREQ
+static int dhd_cpufreq_notifier(struct notifier_block *nb, unsigned long val, void *data)
+{
+	dhd_info_t *dhd = container_of(nb, struct dhd_info, freq_trans);
+	struct cpufreq_freqs *freq = data;
+	if (dhd) {
+		if (!dhd->new_freq)
+			goto exit;
+		if (val == CPUFREQ_POSTCHANGE) {
+			DHD_ERROR(("cpu freq is changed to %u kHZ on CPU %d\n",
+				freq->new, freq->cpu));
+			*per_cpu_ptr(dhd->new_freq, freq->cpu) = freq->new;
+		}
+	}
+exit:
+	return 0;
+}
+#endif /* DEBUG_CPU_FREQ */
 static int
 dhd_dpc_thread(void *data)
 {
@@ -2416,6 +2460,9 @@ dhd_dpc_thread(void *data)
 #ifdef CUSTOM_DPC_CPUCORE
 	set_cpus_allowed_ptr(current, cpumask_of(CUSTOM_DPC_CPUCORE));
 #endif
+#ifdef CUSTOM_SET_CPUCORE
+	dhd->pub.current_dpc = current;
+#endif /* CUSTOM_SET_CPUCORE */
 
 	/* Run until signal received */
 	while (1) {
@@ -2470,6 +2517,10 @@ dhd_rxf_thread(void *data)
 	tsk_ctl_t *tsk = (tsk_ctl_t *)data;
 	dhd_info_t *dhd = (dhd_info_t *)tsk->parent;
 	dhd_pub_t *pub = &dhd->pub;
+#if defined(WAIT_DEQUEUE)
+#define RXF_WATCHDOG_TIME 250 /* BARK_TIME(1000) /  */
+	ulong watchdogTime = OSL_SYSUPTIME(); /* msec */
+#endif
 
 	/* This thread doesn't need any user-level access,
 	 * so get rid of all our resources
@@ -2486,6 +2537,9 @@ dhd_rxf_thread(void *data)
 
 	/*  signal: thread has started */
 	complete(&tsk->completed);
+#ifdef CUSTOM_SET_CPUCORE
+	dhd->pub.current_rxf = current;
+#endif /* CUSTOM_SET_CPUCORE */
 
 	/* Run until signal received */
 	while (1) {
@@ -2523,6 +2577,12 @@ dhd_rxf_thread(void *data)
 #endif
 				skb = skbnext;
 			}
+#if defined(WAIT_DEQUEUE)
+			if (OSL_SYSUPTIME() - watchdogTime > RXF_WATCHDOG_TIME) {
+				OSL_SLEEP(1);
+				watchdogTime = OSL_SYSUPTIME();
+			}
+#endif
 
 			DHD_OS_WAKE_UNLOCK(pub);
 		}
@@ -3207,11 +3267,10 @@ exit:
 	return 0;
 }
 
-#if defined(WL_CFG80211) && defined(SUPPORT_DEEP_SLEEP) && \
-	(defined(USE_INITIAL_2G_SCAN) || defined(USE_INITIAL_SHORT_DWELL_TIME))
+#if defined(WL_CFG80211) && (defined(USE_INITIAL_2G_SCAN) || \
+	defined(USE_INITIAL_SHORT_DWELL_TIME))
 extern bool g_first_broadcast_scan;
-#endif /* OEM_ANDROID && WL_CFG80211 && SUPPORT_DEEP_SLEEP && */
-/* (USE_INITIAL_2G_SCAN || USE_INITIAL_SHORT_DWELL_TIME) */
+#endif /* OEM_ANDROID && WL_CFG80211 && (USE_INITIAL_2G_SCAN || USE_INITIAL_SHORT_DWELL_TIME) */
 
 static int
 dhd_open(struct net_device *net)
@@ -3807,13 +3866,14 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	 */
 	memcpy(netdev_priv(net), &dhd, sizeof(dhd));
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && (LINUX_VERSION_CODE <= \
-	KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM_SLEEP)
+#if defined(CONFIG_PM_SLEEP)
+	dhd->pm_notifier.notifier_call = dhd_pm_callback;
+	dhd->pm_notifier.priority = 10;
 	if (!dhd_pm_notifier_registered) {
 		dhd_pm_notifier_registered = TRUE;
-		register_pm_notifier(&dhd_pm_notifier);
+		register_pm_notifier(&dhd->pm_notifier);
 	}
-#endif /* (LINUX_VERSION >= 2.6.27 && LINUX_VERSION <= 2.6.39 && CONFIG_PM_SLEEP */
+#endif /* CONFIG_PM_SLEEP */
 
 #if defined(CONFIG_HAS_EARLYSUSPEND) && defined(DHD_USE_EARLYSUSPEND)
 	dhd->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 20;
@@ -3835,7 +3895,11 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 		register_inet6addr_notifier(&dhd_inet6addr_notifier);
 	}
 	dhd->dhd_deferred_wq = dhd_deferred_work_init((void *)dhd);
-
+#ifdef DEBUG_CPU_FREQ
+	dhd->new_freq = alloc_percpu(int);
+	dhd->freq_trans.notifier_call = dhd_cpufreq_notifier;
+	cpufreq_register_notifier(&dhd->freq_trans, CPUFREQ_TRANSITION_NOTIFIER);
+#endif
 #ifdef DHDTCPACK_SUPPRESS
 	dhd->pub.tcpack_sup_enabled = TRUE;
 	dhd->pub.tcp_ack_info_cnt = 0;
@@ -4228,6 +4292,8 @@ dhd_get_concurrent_capabilites(dhd_pub_t *dhd)
 	return 0;
 }
 #endif 
+
+
 int
 dhd_preinit_ioctls(dhd_pub_t *dhd)
 {
@@ -4242,6 +4308,9 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	defined(CUSTOM_IBSS_AMPDU_BA_WSIZE))
 	uint32 ampdu_ba_wsize = 0;
 #endif /* CUSTOM_AMPDU_BA_WSIZE ||(WLAIBSS && CUSTOM_IBSS_AMPDU_BA_WSIZE) */
+#if defined(CUSTOM_AMPDU_MPDU)
+	uint32 ampdu_mpdu = 0;
+#endif
 
 #ifdef PROP_TXSTATUS
 	int wlfc_enable = TRUE;
@@ -4321,6 +4390,8 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #ifdef DISABLE_11N
 	uint32 nmode = 0;
 #endif /* DISABLE_11N */
+
+
 #if defined(VSDB) && defined(CUSTOMER_HW4)
 	int interference_mode = 3;
 #endif
@@ -4511,6 +4582,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0)) < 0)
 			DHD_ERROR(("%s: country code setting failed\n", __FUNCTION__));
 	}
+
 
 	/* Set Listen Interval */
 	bcm_mkiovar("assoc_listen", (char *)&listen_interval, 4, iovbuf, sizeof(iovbuf));
@@ -4707,6 +4779,18 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		}
 	}
 #endif /* CUSTOM_AMPDU_BA_WSIZE || (WLAIBSS && CUSTOM_IBSS_AMPDU_BA_WSIZE) */
+#if defined(CUSTOM_AMPDU_MPDU)
+	ampdu_mpdu = CUSTOM_AMPDU_MPDU;
+	if (ampdu_mpdu != 0 && (ampdu_mpdu <= ampdu_ba_wsize)) {
+		bcm_mkiovar("ampdu_mpdu", (char *)&ampdu_mpdu, 4, iovbuf, sizeof(iovbuf));
+		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf,
+			sizeof(iovbuf), TRUE, 0)) < 0) {
+			DHD_ERROR(("%s Set ampdu_mpdu to %d failed  %d\n",
+				__FUNCTION__, CUSTOM_AMPDU_MPDU, ret));
+		}
+	}
+#endif /* CUSTOM_AMPDU_MPDU */
+
 #if defined(BCMSUP_4WAY_HANDSHAKE) && defined(WLAN_AKM_SUITE_FT_8021X)
 	/* Read 4-way handshake requirements */
 	if (dhd_use_idsup == 1) {
@@ -4927,6 +5011,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	bcm_mkiovar("ampdu_tid", (char *)&tid, sizeof(tid), iovbuf, sizeof(iovbuf));
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
 #endif
+
 	/* query for 'ver' to get version info from firmware */
 	memset(buf, 0, sizeof(buf));
 	ptr = buf;
@@ -5595,14 +5680,18 @@ void dhd_detach(dhd_pub_t *dhdp)
 	if (dhdp->pno_state)
 		dhd_pno_deinit(dhdp);
 #endif
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && (LINUX_VERSION_CODE <= \
-	KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM_SLEEP)
+#if defined(CONFIG_PM_SLEEP)
 	if (dhd_pm_notifier_registered) {
+		unregister_pm_notifier(&dhd->pm_notifier);
 		dhd_pm_notifier_registered = FALSE;
-		unregister_pm_notifier(&dhd_pm_notifier);
 	}
-#endif /* (LINUX_VERSION >= 2.6.27 && LINUX_VERSION <= 2.6.39 && CONFIG_PM_SLEEP */
-
+#endif /* CONFIG_PM_SLEEP */
+#ifdef DEBUG_CPU_FREQ
+		if (dhd->new_freq)
+			free_percpu(dhd->new_freq);
+		dhd->new_freq = NULL;
+		cpufreq_unregister_notifier(&dhd->freq_trans, CPUFREQ_TRANSITION_NOTIFIER);
+#endif
 	if (dhd->dhd_state & DHD_ATTACH_STATE_WAKELOCKS_INIT) {
 		DHD_TRACE(("wd wakelock count:%d\n", dhd->wakelock_wd_counter));
 #ifdef CONFIG_HAS_WAKELOCK
@@ -5677,7 +5766,9 @@ dhd_module_init(void)
 
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
-#ifdef USE_LATE_INITCALL_SYNC
+#if defined(CONFIG_DEFERRED_INITCALLS)
+deferred_module_init(dhd_module_init);
+#elif defined(USE_LATE_INITCALL_SYNC)
 late_initcall_sync(dhd_module_init);
 #else
 late_initcall(dhd_module_init);
@@ -6139,6 +6230,64 @@ dhd_sendup_event(dhd_pub_t *dhdp, wl_event_msg_t *event, void *data)
 		break;
 	}
 }
+
+#ifdef LOG_INTO_TCPDUMP
+void
+dhd_sendup_log(dhd_pub_t *dhdp, void *data, int data_len)
+{
+	struct sk_buff *p, *skb;
+	uint32 pktlen;
+	int len;
+	dhd_if_t *ifp;
+	dhd_info_t *dhd;
+	uchar *skb_data;
+	int ifidx = 0;
+	struct ether_header eth;
+
+	pktlen = sizeof(eth) + data_len;
+	dhd = dhdp->info;
+
+	if ((p = PKTGET(dhdp->osh, pktlen, FALSE))) {
+		ASSERT(ISALIGNED((uintptr)PKTDATA(dhdp->osh, p), sizeof(uint32)));
+
+		bcopy(&dhdp->mac, &eth.ether_dhost, ETHER_ADDR_LEN);
+		bcopy(&dhdp->mac, &eth.ether_shost, ETHER_ADDR_LEN);
+		ETHER_TOGGLE_LOCALADDR(&eth.ether_shost);
+		eth.ether_type = hton16(ETHER_TYPE_BRCM);
+
+		bcopy((void *)&eth, PKTDATA(dhdp->osh, p), sizeof(eth));
+		bcopy(data, PKTDATA(dhdp->osh, p) + sizeof(eth), data_len);
+		skb = PKTTONATIVE(dhdp->osh, p);
+		skb_data = skb->data;
+		len = skb->len;
+
+		ifidx = dhd_ifname2idx(dhd, "wlan0");
+		ifp = dhd->iflist[ifidx];
+		if (ifp == NULL)
+			 ifp = dhd->iflist[0];
+
+		ASSERT(ifp);
+		skb->dev = ifp->net;
+		skb->protocol = eth_type_trans(skb, skb->dev);
+		skb->data = skb_data;
+		skb->len = len;
+
+		/* Strip header, count, deliver upward */
+		skb_pull(skb, ETH_HLEN);
+
+		/* Send the packet */
+		if (in_interrupt()) {
+			netif_rx(skb);
+		} else {
+			netif_rx_ni(skb);
+		}
+	}
+	else {
+		/* Could not allocate a sk_buf */
+		DHD_ERROR(("%s: unable to alloc sk_buf", __FUNCTION__));
+	}
+}
+#endif /* LOG_INTO_TCPDUMP */
 
 void dhd_wait_for_event(dhd_pub_t *dhd, bool *lockvar)
 {
@@ -7535,3 +7684,56 @@ void htsf_update(dhd_info_t *dhd, void *data)
 }
 
 #endif /* WLMEDIA_HTSF */
+
+#ifdef CUSTOM_SET_CPUCORE
+void dhd_set_cpucore(dhd_pub_t *dhd, int set)
+{
+	int e_dpc = 0, e_rxf = 0, retry_set = 0;
+
+	if (!(dhd->chan_isvht80)) {
+		DHD_ERROR(("%s: chan_status(%d) cpucore!!!\n", __FUNCTION__, dhd->chan_isvht80));
+		return;
+	}
+
+	if (DPC_CPUCORE) {
+		do {
+			if (set == TRUE) {
+				e_dpc = set_cpus_allowed_ptr(dhd->current_dpc,
+					cpumask_of(DPC_CPUCORE));
+			} else {
+				e_dpc = set_cpus_allowed_ptr(dhd->current_dpc,
+					cpumask_of(PRIMARY_CPUCORE));
+				dhd->chan_isvht80 = 0;
+			}
+			if (retry_set++ > MAX_RETRY_SET_CPUCORE) {
+				DHD_ERROR(("%s: dpc(%d) invalid cpu!\n", __FUNCTION__, e_dpc));
+				return;
+			}
+			if (e_dpc < 0)
+				OSL_SLEEP(1);
+		} while (e_dpc < 0);
+	}
+	if (RXF_CPUCORE) {
+		do {
+			if (set == TRUE) {
+				e_rxf = set_cpus_allowed_ptr(dhd->current_rxf,
+					cpumask_of(RXF_CPUCORE));
+			} else {
+				e_rxf = set_cpus_allowed_ptr(dhd->current_rxf,
+					cpumask_of(PRIMARY_CPUCORE));
+				dhd->chan_isvht80 = 0;
+			}
+			if (retry_set++ > MAX_RETRY_SET_CPUCORE) {
+				DHD_ERROR(("%s: rxf(%d) invalid cpu!\n", __FUNCTION__, e_rxf));
+				return;
+			}
+			if (e_rxf < 0)
+				OSL_SLEEP(1);
+		} while (e_rxf < 0);
+	}
+
+	DHD_TRACE(("%s: set(%d) cpucore success!\n", __FUNCTION__, set));
+
+	return;
+}
+#endif /* CUSTOM_SET_CPUCORE */

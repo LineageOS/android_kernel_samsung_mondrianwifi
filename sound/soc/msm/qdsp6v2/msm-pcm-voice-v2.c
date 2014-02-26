@@ -347,7 +347,10 @@ static int msm_pcm_ioctl(struct snd_pcm_substream *substream,
 	return ret;
 }
 
-#if defined(CONFIG_SND_SOC_ES325) && !defined(CONFIG_SEC_LOCALE_KOR_H)
+#ifdef CONFIG_SND_SOC_ES705
+int es705_put_veq_block(int volume);
+#endif
+#if defined(CONFIG_SND_SOC_ES325) && !defined(CONFIG_SEC_LOCALE_KOR_H) && !defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
 int es325_set_VEQ_max_gain(int volume);
 #endif
 static int msm_voice_gain_put(struct snd_kcontrol *kcontrol,
@@ -398,7 +401,11 @@ static int msm_voice_gain_put(struct snd_kcontrol *kcontrol,
 
 	voc_set_rx_vol_step(session_id, RX_PATH, volume, ramp_duration);
 #endif
-#if defined(CONFIG_SND_SOC_ES325) && !defined(CONFIG_SEC_LOCALE_KOR_H)
+
+#ifdef CONFIG_SND_SOC_ES705
+	es705_put_veq_block(volume);
+#endif
+#if defined(CONFIG_SND_SOC_ES325) && !defined(CONFIG_SEC_LOCALE_KOR_H) && !defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
 	es325_set_VEQ_max_gain(volume);
 #endif
 done:

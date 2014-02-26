@@ -22,6 +22,11 @@
 #include <linux/qpnp/pwm.h>
 #include <linux/err.h>
 
+#if defined(CONFIG_LCD_CLASS_DEVICE)
+#include <linux/lcd.h>
+#include <linux/of_platform.h>
+static const char *panel_type;
+#endif
 #include "mdss_dsi.h"
 
 #define DT_CMD_HDR 6
@@ -908,6 +913,46 @@ static int mdss_panel_parse_dt(struct device_node *np,
 error:
 	return -EINVAL;
 }
+#if defined(CONFIG_LCD_CLASS_DEVICE)
+static ssize_t mdss_disp_get_power(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	return 0;
+}
+
+static ssize_t mdss_disp_set_power(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	return size;
+}
+
+static DEVICE_ATTR(lcd_power, S_IRUGO | S_IWUSR | S_IWGRP,
+			mdss_disp_get_power,
+			mdss_disp_set_power);
+
+static ssize_t mdss_disp_lcdtype_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	char temp[20];
+
+	if(panel_type) {
+		snprintf(temp, 20, panel_type);
+	} else {
+		snprintf(temp, 20, "NOT_DEFINED");
+	}
+
+	strncat(buf, temp, 20);
+	return strnlen(buf, 20);
+}
+static DEVICE_ATTR(lcd_type, S_IRUGO, mdss_disp_lcdtype_show, NULL);
+
+static struct lcd_ops mdss_disp_props = {
+
+	.get_power = NULL,
+	.set_power = NULL,
+
+};
+#endif
 
 int mdss_dsi_panel_init(struct device_node *node,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata,
@@ -917,6 +962,19 @@ int mdss_dsi_panel_init(struct device_node *node,
 	static const char *panel_name;
 	bool cont_splash_enabled;
 	bool partial_update_enabled;
+#if defined(CONFIG_LCD_CLASS_DEVICE)
+	struct lcd_device *lcd_device;
+	struct device_node *np = NULL;
+	struct platform_device *pdev = NULL;
+	np = of_parse_phandle(node,
+			"qcom,mdss-dsi-panel-controller", 0);
+	if (!np) {
+		pr_err("%s: Dsi controller node not initialized\n", __func__);
+		return -EPROBE_DEFER;
+	}
+
+	pdev = of_find_device_by_node(np);
+#endif
 
 	if (!node) {
 		pr_err("%s: no panel node\n", __func__);
@@ -930,6 +988,9 @@ int mdss_dsi_panel_init(struct device_node *node,
 						__func__, __LINE__);
 	else
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
+#if defined(CONFIG_LCD_CLASS_DEVICE)
+	panel_type = panel_name;
+#endif
 
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
@@ -969,5 +1030,29 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->off = mdss_dsi_panel_off;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 
+#if defined(CONFIG_LCD_CLASS_DEVICE)
+	lcd_device = lcd_device_register("panel", &pdev->dev, NULL,
+					&mdss_disp_props);
+
+	if (IS_ERR(lcd_device)) {
+		rc = PTR_ERR(lcd_device);
+		printk(KERN_ERR "lcd : failed to register device\n");
+		return rc;
+	}
+
+	sysfs_remove_file(&lcd_device->dev.kobj,&dev_attr_lcd_power.attr);
+
+	rc = sysfs_create_file(&lcd_device->dev.kobj,&dev_attr_lcd_power.attr);
+
+	if (rc) {
+		pr_info("sysfs create fail-%s\n",dev_attr_lcd_power.attr.name);
+	}
+	rc = sysfs_create_file(&lcd_device->dev.kobj,
+					&dev_attr_lcd_type.attr);
+	if (rc) {
+		pr_info("sysfs create fail-%s\n",
+				dev_attr_lcd_type.attr.name);
+	}
+#endif
 	return 0;
 }

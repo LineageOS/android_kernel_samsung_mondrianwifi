@@ -79,6 +79,7 @@ struct gp2a_data {
 
 	int light_delay;
 	int lux;
+	bool bShutdown;
 
 #ifdef CONFIG_SENSORS_GP2A030A_PROX
 	struct input_dev *prox_input_dev;
@@ -276,15 +277,18 @@ int gp2a_get_lux(struct gp2a_data *data)
 		if (d0_raw_data < 250) {
 			light_alpha = 200;
 			light_beta = 140;
-		} else if (d0_raw_data < 1200) {
+		} else if (d0_raw_data < 650) {
 			light_alpha = 200;
 			light_beta = 90;
-		} else if (d0_raw_data < 3000) {
+		} else if (d0_raw_data < 1700) {
+			light_alpha = 200;
+			light_beta = 150;
+		}  else if (d0_raw_data < 2900) {
 			light_alpha = 190;
-			light_beta = 90;
+			light_beta = 115;
 		} else {
 			light_alpha = 215;
-			light_beta = 75;
+			light_beta = 115;
 		}
 	} else {
 		light_alpha = 0;
@@ -299,7 +303,7 @@ int gp2a_get_lux(struct gp2a_data *data)
 		d1_data = d1_raw_data;
 	}
 
-	if (d0_data < 3) {
+	if (d0_data < 2) {
 		lx = 0;
 	} else if (data->lightsensor_mode == 0
 		&& (d0_raw_data >= 16000 || d1_raw_data >= 16000)
@@ -381,10 +385,9 @@ static void gp2a_work_func_light(struct work_struct *work)
 		}
 	} else
 		count = 0;
-	mutex_lock(&data->light_mutex);
+
 	input_report_rel(data->light_input_dev, REL_MISC, data->lux + 1);
 	input_sync(data->light_input_dev);
-	mutex_unlock(&data->light_mutex);
 
 	if (data->light_enabled)
 		schedule_delayed_work(&data->light_work,
@@ -407,6 +410,11 @@ gp2a_light_delay_store(struct device *dev, struct device_attribute *attr,
 
 	int delay;
 	int err = 0;
+
+	if (data->bShutdown == true){
+		pr_err("%s already shutdown.", __func__);
+		goto done;
+	}
 
 	err = kstrtoint(buf, 10, &delay);
 
@@ -458,6 +466,11 @@ gp2a_light_enable_store(struct device *dev, struct device_attribute *attr,
 
 	int value;
 	int err = 0;
+
+	if (data->bShutdown == true){
+		pr_err("%s already shutdown.", __func__);
+		goto done;
+	}
 
 	err = kstrtoint(buf, 10, &value);
 
@@ -736,10 +749,9 @@ gp2a_prox_enable_store(struct device *dev, struct device_attribute *attr,
 				enable_irq_wake(data->irq);
 				enable_irq(data->irq);
 
-				mutex_lock(&data->data_mutex);
 				input_report_abs(data->prox_input_dev, ABS_DISTANCE, 1);
 				input_sync(data->prox_input_dev);
-				mutex_unlock(&data->data_mutex);
+
 			}
 			data->prox_enabled = SENSOR_ENABLE;
 		} else {
@@ -946,16 +958,18 @@ static ssize_t gp2a_prox_cal_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct gp2a_data *data = dev_get_drvdata(dev);
-	int thresh_hi;
-	unsigned char get_D2_data[2];
+	int thresh_hi, thresh_low;
+	unsigned char get_D2_data[4];
 
     msleep(20);
-	gp2a_i2c_read(data, PS_HT_LSB, get_D2_data,
+	gp2a_i2c_read(data, PS_LT_LSB, get_D2_data,
 		sizeof(get_D2_data));
-	thresh_hi = (get_D2_data[1] << 8) | get_D2_data[0];
+	thresh_hi = (get_D2_data[3] << 8) | get_D2_data[2];
+	thresh_low = (get_D2_data[1] << 8) | get_D2_data[0];
 	data->threshold_high = thresh_hi;
-	return sprintf(buf, "%d,%d\n",
-			data->offset_value, data->threshold_high);
+
+	return sprintf(buf, "%d,%d,%d\n",
+			data->offset_value, thresh_hi, thresh_low);
 }
 
 static ssize_t gp2a_prox_cal_store(struct device *dev,
@@ -1159,16 +1173,17 @@ static ssize_t gp2a_prox_thresh_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct gp2a_data *data = dev_get_drvdata(dev);
-	int thresh_hi = 0;
-	unsigned char get_D2_data[2];
+	int thresh_hi, thresh_low;
+	unsigned char get_D2_data[4];
 
 	msleep(20);
-	gp2a_i2c_read(data, PS_HT_LSB, get_D2_data,
+	gp2a_i2c_read(data, PS_LT_LSB, get_D2_data,
 		sizeof(get_D2_data));
-	thresh_hi = (get_D2_data[1] << 8) | get_D2_data[0];
+	thresh_hi = (get_D2_data[3] << 8) | get_D2_data[2];
+	thresh_low = (get_D2_data[1] << 8) | get_D2_data[0];
 	pr_info("%s THRESHOLD = %d\n", __func__, thresh_hi);
 
-	return sprintf(buf, "prox_threshold = %d\n", thresh_hi);
+	return sprintf(buf, "%d,%d\n", thresh_hi, thresh_low);
 }
 
 static ssize_t gp2a_prox_thresh_store(struct device *dev,
@@ -1285,10 +1300,8 @@ static void gp2a_work_func_prox(struct work_struct *work)
 	pr_info("%s, detection=%d, mode=%d\n", __func__,
 		data->proximity_detection, data->lightsensor_mode);
 
-	mutex_lock(&data->data_mutex);
 	input_report_abs(data->prox_input_dev, ABS_DISTANCE, data->proximity_detection);
 	input_sync(data->prox_input_dev);
-	mutex_unlock(&data->data_mutex);
 }
 
 static irqreturn_t gp2a_irq_handler(int irq, void *dev_id)
@@ -1426,6 +1439,7 @@ static int gp2a_probe(struct i2c_client *client,
 
 	data->client = client;
 	data->light_delay = MAX_DELAY;
+	data->bShutdown = false;
 
 	i2c_set_clientdata(client, data);
 
@@ -1574,14 +1588,15 @@ static void gp2a_shutdown(struct i2c_client *client)
 	struct gp2a_data *data = i2c_get_clientdata(client);
 
 	pr_info("%s, is called\n", __func__);
+
+	data->bShutdown = true;
+
 	if (data->light_enabled) {
 		cancel_delayed_work_sync(&data->light_work);
 		lightsensor_onoff(0, data);
 
-		mutex_lock(&data->light_mutex);
 		input_report_rel(data->light_input_dev, REL_MISC, data->lux + 1);
 		input_sync(data->light_input_dev);
-		mutex_unlock(&data->light_mutex);
 	}
 #ifdef CONFIG_SENSORS_GP2A030A_PROX
 	if (data->prox_enabled) {
@@ -1592,6 +1607,9 @@ static void gp2a_shutdown(struct i2c_client *client)
 	gpio_free(data->gpio);
 	gpio_free(data->vled_gpio);
 #endif
+	mutex_destroy(&data->light_mutex);
+	mutex_destroy(&data->data_mutex);
+
 	kfree(data);
 	gp2a_regulator_onoff(&client->dev, false);
 }

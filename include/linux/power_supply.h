@@ -151,6 +151,9 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_BATTERY,			/* 1 */
 	POWER_SUPPLY_TYPE_UPS,				/* 2 */
 	POWER_SUPPLY_TYPE_MAINS,			/* 3 */
+#if defined (CONFIG_MACH_KLTE_JPN)
+	POWER_SUPPLY_TYPE_MAINS_HV,			/* Adaptive Charger */
+#endif
 	POWER_SUPPLY_TYPE_USB,				/* Standard Downstream Port (4) */
 	POWER_SUPPLY_TYPE_USB_DCP,			/* Dedicated Charging Port (5) */
 	POWER_SUPPLY_TYPE_USB_CDP,			/* Charging Downstream Port (6) */

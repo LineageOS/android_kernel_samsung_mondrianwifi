@@ -79,22 +79,11 @@ enum mipi_samsung_cmd_list {
 	PANEL_DUAL_SCAN_HALF_ENABLE,
 	PANEL_HMT_CHANGE_FPS,
 	PANEL_HMT_HBM_ENABLE,
-	PANEL_HMT_HBM_DISABLE,
 	PANEL_HMT_CHANGE_PORCH,
 	PANEl_FORCE_500CD,
 #endif
 #endif
 };
-
-#if defined(CONFIG_LCD_HMT)
-enum hmt_cmd_list{
-	HMT_ENABLE,
-	HMT_DUAL_SCAN,
-	HMT_HBM,
-	HMT_AID,
-	HMT_FPS
-};
-#endif
 
 enum {
 	MIPI_RESUME_STATE,
@@ -147,6 +136,10 @@ struct display_status {
 };
 
 #if defined(CONFIG_LCD_HMT)
+#define HMT_SINGLE_SCAN 0
+#define HMT_DUAL_SCAN 1
+#define HMT_OFF -1
+
 struct hmt_status {
 	unsigned int hmt_on;
 	unsigned int hmt_bl_level;

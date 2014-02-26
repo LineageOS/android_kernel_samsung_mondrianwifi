@@ -9,7 +9,7 @@
 #include "GMvSystem.h"
 
 // ! struct
-#if DG_MV_BRANE_BUFFER_MMAP_ENABLE
+#if 0//DG_MV_BRANE_BUFFER_MMAP_ENABLE
 struct bin_buffer // from fs/sysfs/bin.c
 {
 	struct mutex			mutex;
@@ -43,7 +43,7 @@ struct CGMvBrane
 	sint32 m_s32BbMvPid;
 	struct pid *m_psBbPid;
 	struct task_struct *m_psBbTask;
-	struct bin_buffer *m_psBbBb;
+	//struct bin_buffer *m_psBbBb;
 	struct SGMvBraneBufInfo *m_psBbi;
 	uint8 *m_pu8Bb;
 #if DG_MV_BRANE_BUFFER_MMAP_INTERCEPT
@@ -60,7 +60,9 @@ struct CGMvBrane
 };
 
 // ! extern
+#if !defined( DG_SOC_SEC )
 extern struct class *sec_class;
+#endif
 
 // ! Prototype
 #if DG_MV_BRANE_BUFFER_MMAP_ENABLE
@@ -72,6 +74,7 @@ static ssize_t SGMvBraneRead( struct device*, struct device_attribute*, char* );
 static ssize_t SGMvBraneWrite( struct device*, struct device_attribute*, const char*, size_t );
 #endif
 static sint32 SGMvBraneSendPacket( uint8*, sint32, sint32 );
+static void SGMvBraneSendAckPacket( uint16 );
 static void SGMvBraneSendResetPacket( void );
 
 // ! Global Variable
@@ -169,7 +172,7 @@ mutex_lock( &sg_cMb.m_sPublicMutex ); // goto LG_UNLOCK_AND_RETURN;
 				sg_cMb.m_s32BbMvPid = DG_NONE;
 				sg_cMb.m_psBbPid = NULL;
 				sg_cMb.m_psBbTask = NULL;
-				sg_cMb.m_psBbBb = NULL;
+				//sg_cMb.m_psBbBb = NULL;
 				sg_cMb.m_psBbi = NULL;
 				sg_cMb.m_pu8Bb = NULL;
 				mutex_unlock( &sg_cMb.m_sBbMutex );
@@ -198,7 +201,7 @@ static int SGMvBraneMmap( struct file *psFile, struct kobject *psKObj, struct bi
 {
 	int s32Rst;
 	uint32 u32PageOffset;
-	struct bin_buffer *psBb;
+	//struct bin_buffer *psBb;
 DG_DBG_PRINT_INFO( "0" );
 mutex_lock( &sg_cMb.m_sPublicMutex ); // goto LG_UNLOCK_AND_RETURN;
 mutex_lock( &sg_cMb.m_sBbMutex ); // goto LG_UNLOCK_AND_RETURN;
@@ -210,7 +213,7 @@ mutex_lock( &sg_cMb.m_sBbMutex ); // goto LG_UNLOCK_AND_RETURN;
 #if DG_MV_BRANE_BUFFER_MMAP_INTERCEPT
 	DG_SAFE_IS_ZERO( sg_cMb.m_pu8BbIntercepted, DG_DBG_PRINT_ERROR( _T("m_pu8BbIntercepted == NULL") ); s32Rst = -EAGAIN; goto LG_UNLOCK_AND_RETURN );
 
-	psBb = (struct bin_buffer*)psFile->private_data;
+	//psBb = (struct bin_buffer*)psFile->private_data;
 	u32PageOffset = page_to_pfn( virt_to_page( sg_cMb.m_pu8BbIntercepted ) );
 	psVma->vm_ops = &sg_sVmOps;
 	psVma->vm_flags |= VM_RESERVED;
@@ -223,13 +226,13 @@ mutex_lock( &sg_cMb.m_sBbMutex ); // goto LG_UNLOCK_AND_RETURN;
 		goto LG_UNLOCK_AND_RETURN;
 	}
 
-	sg_cMb.m_psBbBb = psBb;
+	//sg_cMb.m_psBbBb = psBb;
 	sg_cMb.m_pu8Bb = sg_cMb.m_pu8BbIntercepted;
 	sg_cMb.m_psBbi = (struct SGMvBraneBufInfo*)&sg_cMb.m_pu8Bb[sg_cMb.m_s32BbInterceptedSize - sizeof( struct SGMvBraneBufInfo )];
 	memset( sg_cMb.m_psBbi, 0, sizeof( struct SGMvBraneBufInfo ) );
 	sg_cMb.m_psBbi->u16TotalSize = sg_cMb.m_s32BbInterceptedSize;
 #else
-	psBb = (struct bin_buffer*)psFile->private_data;
+	//psBb = (struct bin_buffer*)psFile->private_data;
 	u32PageOffset = page_to_pfn( virt_to_page( psBb->buffer ) );
 	psVma->vm_ops = &sg_sVmOps;
 	psVma->vm_flags |= VM_RESERVED;
@@ -242,7 +245,7 @@ mutex_lock( &sg_cMb.m_sBbMutex ); // goto LG_UNLOCK_AND_RETURN;
 		goto LG_UNLOCK_AND_RETURN;
 	}
 
-	sg_cMb.m_psBbBb = psBb;
+	//sg_cMb.m_psBbBb = psBb;
 	sg_cMb.m_pu8Bb = (uint8*)psBb->buffer;
 	sg_cMb.m_psBbi = (struct SGMvBraneBufInfo*)&sg_cMb.m_pu8Bb[DG_KERNEL_PAGE_SIZE - sizeof( struct SGMvBraneBufInfo )];
 	memset( sg_cMb.m_psBbi, 0, sizeof( struct SGMvBraneBufInfo ) );
@@ -378,7 +381,7 @@ LG_ERROR:
 	sg_cMb.m_s32BbMvPid = DG_NONE;
 	sg_cMb.m_psBbPid = NULL;
 	sg_cMb.m_psBbTask = NULL;
-	sg_cMb.m_psBbBb = NULL;
+	//sg_cMb.m_psBbBb = NULL;
 	sg_cMb.m_psBbi = NULL;
 	sg_cMb.m_pu8Bb = NULL;
 	DG_DBG_PRINT_ERROR( _T("close or unmmap, becase of the Multiverse was dead by LMK?!") );
@@ -408,7 +411,11 @@ LG_RETRY:
 	// Wait for ACK or NACK
 	for( i=0; i<DG_MV_I2C_ACK_WAIT_COUNT; i++ )
 	{
-        usleep_range(DG_MV_I2C_ACK_WAIT_US, DG_MV_I2C_ACK_WAIT_US);
+#if 0
+		msleep( DG_MV_I2C_ACK_WAIT_MS );
+#else
+        usleep_range( DG_MV_I2C_ACK_WAIT_MCS, DG_MV_I2C_ACK_WAIT_MCS );
+#endif
 		if( sg_cMb.m_ePktAck == EG_MV_PKT_ARG1_ACK_ACK )
 			return s32PktSize;
 		else if( sg_cMb.m_ePktAck == EG_MV_PKT_ARG1_ACK_NACK )
@@ -420,6 +427,17 @@ LG_RETRY:
 	goto LG_RETRY;
 
 	return -1;
+}
+
+static void SGMvBraneSendAckPacket( uint16 u16Type )
+{
+#if 0
+	uint8 pu8PktBuf[sizeof( struct SGMvPktHdr ) + DG_MV_PKT_PARITY_SIZE_HEADER];
+
+	SGMvBraneSendPacket( pu8PktBuf, GMvPacketMakeHeader( pu8PktBuf, EG_MV_PKT_ID_ACK, s32Nack ? EG_MV_PKT_ARG1_ACK_NACK : EG_MV_PKT_ARG1_ACK_ACK, 0, 0 ), 0 );
+#else
+	GMvGtWriteI2cRegister( DG_MV_I2C_REG_ACK_LSB, &u16Type, sizeof( uint16 ) );
+#endif
 }
 
 static void SGMvBraneSendResetPacket( void )
@@ -457,9 +475,7 @@ DG_DBG_PRINT_INFO( "0" );
 
 		//
 		GMvGtReadI2cRegister( DG_MV_I2C_REG_PKT_HEADER_RX, sg_cMb.m_pu8PktRxBuf, s32HdrSize );
-		DG_SAFE_GET_POINTER( psPktHdr, GMvPacketCheckHeader( sg_cMb.m_pu8PktRxBuf, s32HdrSize ), continue );
-
-		//
+		DG_SAFE_GET_POINTER( psPktHdr, GMvPacketCheckHeader( sg_cMb.m_pu8PktRxBuf, s32HdrSize ), SGMvBraneSendAckPacket( 2 ); continue );
 		switch( psPktHdr->u8PktId )
 		{
 		case EG_MV_PKT_ID_ACK:
@@ -478,7 +494,7 @@ DG_DBG_PRINT_INFO( "0" );
 					sg_cMb.m_s32BbMvPid = DG_NONE;
 					sg_cMb.m_psBbPid = NULL;
 					sg_cMb.m_psBbTask = NULL;
-					sg_cMb.m_psBbBb = NULL;
+					//sg_cMb.m_psBbBb = NULL;
 					sg_cMb.m_psBbi = NULL;
 					sg_cMb.m_pu8Bb = NULL;
 					DG_DBG_PRINT_ERROR( _T("send_sig_info() failed!") );
@@ -488,6 +504,7 @@ DG_DBG_PRINT_INFO( "0" );
 #endif
 			break;
 		}
+		SGMvBraneSendAckPacket( 1 );
 	}
 	sg_cMb.m_s32BtRun = 0;
 
@@ -566,7 +583,11 @@ static int SGMvBraneModuleInit( void )
 		DG_SAFE_IS_ZERO( sg_psMvDev, DG_DBG_PRINT_ERROR( "Failed to create a parent device!" ); return 0 );
 	}
 #else
+#if defined( DG_SOC_SEC )
+	sg_psMvDev = sec_device_create( NULL, "Multiverse" );
+#else
 	sg_psMvDev = device_create( sec_class, NULL, 0, NULL, "Multiverse" );
+#endif
 	DG_SAFE_IS_ZERO( sg_psMvDev, DG_DBG_PRINT_ERROR( "sg_psMvDev == NULL" ); return 0 );
 #endif
 #if DG_MV_BRANE_BUFFER_MMAP_ENABLE
@@ -603,7 +624,7 @@ mutex_lock( &sg_cMb.m_sPublicMutex ); // goto LG_UNLOCK_AND_RETURN;
 	sg_cMb.m_s32BbMvPid = DG_NONE;
 	sg_cMb.m_psBbPid = NULL;
 	sg_cMb.m_psBbTask = NULL;
-	sg_cMb.m_psBbBb = NULL;
+	//sg_cMb.m_psBbBb = NULL;
 	sg_cMb.m_psBbi = NULL;
 	sg_cMb.m_pu8Bb = NULL;
 #if DG_MV_BRANE_BUFFER_MMAP_INTERCEPT
@@ -612,7 +633,9 @@ mutex_lock( &sg_cMb.m_sPublicMutex ); // goto LG_UNLOCK_AND_RETURN;
 #endif
 #endif
 
+#if defined( DG_MV_PKT_PARITY_CRC16 )
 	GMvCrc16Open();
+#endif
 	SGMvBraneThreadStart();
 
 //LG_UNLOCK_AND_RETURN:

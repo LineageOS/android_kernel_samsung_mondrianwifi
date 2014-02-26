@@ -27,7 +27,7 @@
 
 #include "fci_types.h"
 
-#define DRIVER_VER "S1.4.0"
+#define DRIVER_VER "S1.10.0"
 
 s32 bbm_com_reset(HANDLE handle, DEVICEID devid);
 s32 bbm_com_probe(HANDLE handle, DEVICEID devid);

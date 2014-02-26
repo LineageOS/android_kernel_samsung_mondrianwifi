@@ -27,7 +27,7 @@
 #include <linux/kconfig.h>
 #include <linux/device.h>
 
-#define SUPPORTED_CABLE_MAX	26
+#define SUPPORTED_CABLE_MAX 30	
 #define CABLE_NAME_MAX		SUPPORTED_CABLE_MAX
 #define EXTCON_DEV_NAME			"extcon-muic"
 /*
@@ -51,6 +51,7 @@
 enum extcon_cable_name {
 	EXTCON_USB = 0,
 	EXTCON_USB_HOST,
+	EXTCON_USB_HOST_5V,
 	EXTCON_TA, /* Travel Adaptor */
 	EXTCON_CEA936_CHG,	/* CEA936 A/B USB cable, Only for charging. */
 	EXTCON_FAST_CHARGER,
@@ -73,7 +74,10 @@ enum extcon_cable_name {
 	EXTCON_JIG_USBOFF,
 	EXTCON_JIG_USBON,
 	EXTCON_INCOMPATIBLE,
-
+	EXTCON_CHARGING_CABLE,
+#if defined(CONFIG_MUIC_MAX77804K_SUPPORT_HMT_DETECTION)
+	EXTCON_HMT,
+#endif
 	EXTCON_NONE,
 };
 extern const char *extcon_cable_name[];
@@ -342,5 +346,8 @@ static inline int extcon_unregister_interest(struct extcon_specific_cable_nb
 {
 	return 0;
 }
+
+/* added sec common function */
+extern int get_jig_state(void);
 #endif /* CONFIG_EXTCON */
 #endif /* __LINUX_EXTCON_H__ */

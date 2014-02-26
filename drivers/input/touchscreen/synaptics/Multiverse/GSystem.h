@@ -44,6 +44,9 @@
 	#include <linux/delay.h>
 	#include <linux/syscalls.h>
 	#include <linux/string.h>
+	#if defined( DG_SOC_SEC )
+		#include <linux/sec_sysfs.h>
+	#endif
 
 	#include <asm/siginfo.h>
 

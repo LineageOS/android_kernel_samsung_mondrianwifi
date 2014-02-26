@@ -122,6 +122,7 @@ static int irda_fw_update(struct ir_remocon_data *ir_data)
 		if (ret < 0) {
 			printk(KERN_INFO "%s: broken FW!\n", __func__);
 			retry_count = 1;
+			goto err_bootmode;
 		}
 	}
 	
@@ -337,7 +338,6 @@ static void ir_remocon_work(struct ir_remocon_data *ir_data, int count)
 	int end_data;
 	int emission_time;
 	int ack_pin_onoff;
-	int i;
 
 	if (count_number >= 100)
 		count_number = 0;
@@ -374,11 +374,13 @@ static void ir_remocon_work(struct ir_remocon_data *ir_data, int count)
 
 	mutex_unlock(&data->mutex);
 
+#if 0
 	for (i = 0; i < buf_size; i++) {
 		printk(KERN_INFO "%s: data[%d] : 0x%02x\n", __func__, i,
 					data->signal[i]);
 	
 	}
+#endif
 	data->count = 2;
 
 	end_data = data->signal[count-2] << 8 | data->signal[count-1];
@@ -412,6 +414,7 @@ static void ir_remocon_work(struct ir_remocon_data *ir_data, int count)
 	data->on_off = 0;
 	data->pdata->ir_wake_en(data->pdata,0);
 	data->pdata->ir_vdd_onoff(&client->dev,0);
+	gpio_set_value(data->pdata->irda_led_en, 0);
 #endif
 	data->ir_freq = 0;
 	data->ir_sum = 0;
@@ -426,6 +429,7 @@ static ssize_t remocon_store(struct device *dev, struct device_attribute *attr,
 	unsigned int _data;
 	int count, i;
 
+	gpio_set_value(data->pdata->irda_led_en, 1);
 	for (i = 0; i < MAX_SIZE; i++) {
 		if (sscanf(buf++, "%u", &_data) == 1) {
 			if (_data == 0 || buf == '\0')
@@ -622,6 +626,7 @@ static int __devinit ir_remocon_probe(struct i2c_client *client,
 		irda_fw_update(data);
 	}
 
+	gpio_set_value(pdata->irda_led_en, 0);
 //	irda_read_device_info(data);
 
 	ir_remocon_dev = device_create(sec_class, NULL, 0, data, "sec_ir");

@@ -32,12 +32,12 @@
 #define LDI_GRAY	'1'
 #define LDI_WHITE	'2'
 
-#define DEFUALT_HIGH_THRESHOLD	60
-#define DEFUALT_LOW_THRESHOLD	45
-#define TBD_HIGH_THRESHOLD	60
-#define TBD_LOW_THRESHOLD	45
-#define WHITE_HIGH_THRESHOLD	60
-#define WHITE_LOW_THRESHOLD	45
+#define DEFUALT_HIGH_THRESHOLD	130
+#define DEFUALT_LOW_THRESHOLD	90
+#define TBD_HIGH_THRESHOLD	130
+#define TBD_LOW_THRESHOLD	90
+#define WHITE_HIGH_THRESHOLD	130
+#define WHITE_LOW_THRESHOLD	90
 
 /*************************************************************************/
 /* factory Sysfs                                                         */
@@ -244,8 +244,6 @@ int proximity_open_calibration(struct ssp_data *data)
 	set_fs(old_fs);
 
 exit:
-	set_proximity_threshold(data, data->uProxHiThresh, data->uProxLoThresh);
-
 	return iRet;
 }
 

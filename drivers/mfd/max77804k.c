@@ -146,8 +146,10 @@ static int of_max77804k_dt(struct device *dev, struct max77804k_platform_data *p
 	haptic_data = kzalloc(sizeof(struct max77804k_haptic_platform_data), GFP_KERNEL);
 	if (haptic_data == NULL)
 		return -ENOMEM;
-	if(!np)
+	if(!np) {
+		kfree(haptic_data);
 		return -EINVAL;
+	}
 
 	pdata->irq_gpio = of_get_named_gpio_flags(np, "max77804k,irq-gpio", 
 				0, &pdata->irq_gpio_flags);
@@ -173,6 +175,7 @@ static int of_max77804k_dt(struct device *dev, struct max77804k_platform_data *p
 	pr_info("%s: pwm_id: %u \n", __func__, haptic_data->pwm_id);
 	pdata->haptic_data = haptic_data;
 #endif
+	kfree(haptic_data);
 	return 0;
 }
 
@@ -202,7 +205,8 @@ static int max77804k_i2c_probe(struct i2c_client *i2c,
 		ret = of_max77804k_dt(&i2c->dev, pdata);
 		if (ret < 0){
 			dev_err(&i2c->dev, "Failed to get device of_node \n");
-			return ret;
+			ret = -ENOMEM;
+			goto err;
 		}
 		/*Filling the platform data*/
 		pdata->muic_data = &max77804k_muic;
@@ -266,6 +270,10 @@ static int max77804k_i2c_probe(struct i2c_client *i2c,
 		goto err_mfd;
 
 	device_init_wakeup(max77804k->dev, pdata->wakeup);
+
+	/* Set continuous mode */
+	max77804k_update_reg(max77804k->muic, MAX77804K_MUIC_REG_CTRL4,
+			ADC_ALWAYS, CTRL4_ADCMODE_MASK);
 
 	return ret;
 

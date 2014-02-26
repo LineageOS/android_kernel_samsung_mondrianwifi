@@ -1095,14 +1095,14 @@ static const struct snd_kcontrol_new tapan_common_snd_controls[] = {
 	SOC_ENUM_EXT("EAR PA Gain", tapan_ear_pa_gain_enum[0],
 		tapan_pa_gain_get, tapan_pa_gain_put),
 
-	SOC_SINGLE_TLV("HPHL Volume", TAPAN_A_RX_HPH_L_GAIN, 0, 14, 1,
+	SOC_SINGLE_TLV("HPHL Volume", TAPAN_A_RX_HPH_L_GAIN, 0, 20, 1,
 		line_gain),
-	SOC_SINGLE_TLV("HPHR Volume", TAPAN_A_RX_HPH_R_GAIN, 0, 14, 1,
+	SOC_SINGLE_TLV("HPHR Volume", TAPAN_A_RX_HPH_R_GAIN, 0, 20, 1,
 		line_gain),
 
-	SOC_SINGLE_TLV("LINEOUT1 Volume", TAPAN_A_RX_LINE_1_GAIN, 0, 14, 1,
+	SOC_SINGLE_TLV("LINEOUT1 Volume", TAPAN_A_RX_LINE_1_GAIN, 0, 20, 1,
 		line_gain),
-	SOC_SINGLE_TLV("LINEOUT2 Volume", TAPAN_A_RX_LINE_2_GAIN, 0, 14, 1,
+	SOC_SINGLE_TLV("LINEOUT2 Volume", TAPAN_A_RX_LINE_2_GAIN, 0, 20, 1,
 		line_gain),
 
 	SOC_SINGLE_TLV("SPK DRV Volume", TAPAN_A_SPKR_DRV_GAIN, 3, 8, 1,
@@ -2555,8 +2555,10 @@ static int tapan_codec_enable_micbias_power(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 		tapan->mclk_cb_fn(codec, 1, true);
 		WCD9XXX_BCL_LOCK(&tapan->resmgr);
+		WCD9XXX_BG_CLK_LOCK(&tapan->resmgr);
 		wcd9xxx_resmgr_get_bandgap(&tapan->resmgr,
 					   WCD9XXX_BANDGAP_AUDIO_MODE);
+		WCD9XXX_BG_CLK_UNLOCK(&tapan->resmgr);
 		WCD9XXX_BCL_UNLOCK(&tapan->resmgr);
 		tapan_enable_ldo_h(codec, 1);
 		tapan_codec_enable_micbias(w, kcontrol, event);
@@ -2569,8 +2571,10 @@ static int tapan_codec_enable_micbias_power(struct snd_soc_dapm_widget *w,
 		tapan_codec_enable_micbias(w, kcontrol, event);
 		tapan_enable_ldo_h(codec, 0);
 		WCD9XXX_BCL_LOCK(&tapan->resmgr);
+		WCD9XXX_BG_CLK_LOCK(&tapan->resmgr);
 		wcd9xxx_resmgr_put_bandgap(&tapan->resmgr,
 					   WCD9XXX_BANDGAP_AUDIO_MODE);
+		WCD9XXX_BG_CLK_UNLOCK(&tapan->resmgr);
 		WCD9XXX_BCL_UNLOCK(&tapan->resmgr);
 		break;
 	}
@@ -3319,7 +3323,7 @@ static void tapan_shutdown(struct snd_pcm_substream *substream,
 	dev_dbg(dai->codec->dev, "%s(): substream = %s  stream = %d\n",
 		 __func__, substream->name, substream->stream);
 
-	if (dai->id <= NUM_CODEC_DAIS) {
+	if (dai->id < NUM_CODEC_DAIS) {
 		if (tapan->dai[dai->id].ch_mask) {
 			active = 1;
 			dev_dbg(dai->codec->dev, "%s(): Codec DAI: chmask[%d] = 0x%lx\n",
@@ -4061,6 +4065,10 @@ static int tapan_codec_enable_slimrx(struct snd_soc_dapm_widget *w,
 	struct wcd9xxx_codec_dai_data *dai;
 
 	core = dev_get_drvdata(codec->dev->parent);
+	if (!core) {
+		dev_err(codec->dev,"core is NULL\n");
+		return -ENOMEM;
+	}
 
 	dev_dbg(codec->dev, "%s: event called! codec name %s\n",
 		__func__, w->codec->name);
@@ -4116,7 +4124,10 @@ static int tapan_codec_enable_slimtx(struct snd_soc_dapm_widget *w,
 	struct wcd9xxx_codec_dai_data *dai;
 
 	core = dev_get_drvdata(codec->dev->parent);
-
+	if (!core) {
+		dev_err(codec->dev,"core is NULL\n");
+		return -ENOMEM;
+	}
 	dev_dbg(codec->dev, "%s: event called! codec name %s\n",
 		__func__, w->codec->name);
 	dev_dbg(codec->dev, "%s: num_dai %d stream name %s\n",
@@ -4325,8 +4336,6 @@ static const struct snd_soc_dapm_widget tapan_9306_dapm_widgets[] = {
 		&rx4_mix1_inp1_mux),
 	SND_SOC_DAPM_MUX("RX4 MIX1 INP2", SND_SOC_NOPM, 0, 0,
 		&rx4_mix1_inp2_mux),
-	SND_SOC_DAPM_MUX("RX4 MIX1 INP3", SND_SOC_NOPM, 0, 0,
-		&rx4_mix1_inp3_mux),
 
 	/* RX4 MIX2 mux inputs */
 	SND_SOC_DAPM_MUX("RX4 MIX2 INP1", SND_SOC_NOPM, 0, 0,
@@ -4792,9 +4801,9 @@ static int tapan_handle_pdata(struct tapan_priv *tapan)
 	struct snd_soc_codec *codec = tapan->codec;
 	struct wcd9xxx_pdata *pdata = tapan->resmgr.pdata;
 	int k1, k2, k3, rc = 0;
-	u8 txfe_bypass = pdata->amic_settings.txfe_enable;
-	u8 txfe_buff = pdata->amic_settings.txfe_buff;
-	u8 flag = pdata->amic_settings.use_pdata;
+	u8 txfe_bypass;
+	u8 txfe_buff;
+	u8 flag;
 	u8 i = 0, j = 0;
 	u8 val_txfe = 0, value = 0;
 	u8 dmic_sample_rate_value = 0;
@@ -4807,6 +4816,9 @@ static int tapan_handle_pdata(struct tapan_priv *tapan)
 		goto done;
 	}
 
+	txfe_bypass = pdata->amic_settings.txfe_enable;
+	txfe_buff = pdata->amic_settings.txfe_buff;
+	flag = pdata->amic_settings.use_pdata;
 	/* Make sure settings are correct */
 	if ((pdata->micbias.ldoh_v > WCD9XXX_LDOH_3P0_V) ||
 	    (pdata->micbias.bias1_cfilt_sel > WCD9XXX_CFILT3_SEL) ||
@@ -5023,7 +5035,7 @@ static const struct tapan_reg_mask_val tapan_reg_defaults[] = {
 	/*Reduce EAR DAC bias to 70% */
 	TAPAN_REG_VAL(TAPAN_A_RX_EAR_BIAS_PA, 0x76),
 	/* Reduce LINE DAC bias to 70% */
-	TAPAN_REG_VAL(TAPAN_A_RX_LINE_BIAS_PA, 0x78),
+	TAPAN_REG_VAL(TAPAN_A_RX_LINE_BIAS_PA, 0x7B),
 
 	/*
 	 * There is a diode to pull down the micbias while doing

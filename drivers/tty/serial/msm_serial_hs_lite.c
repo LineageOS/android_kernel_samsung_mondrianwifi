@@ -1478,7 +1478,9 @@ static void wait_for_xmitr(struct uart_port *port)
 	struct msm_hsl_port *msm_hsl_port = UART_TO_MSM(port);
 	unsigned int vid = msm_hsl_port->ver_id;
 	int count = 0;
-
+#if defined(CONFIG_ARCH_MSM8226)
+	int recovery = 0;
+#endif
 	if (!(msm_hsl_read(port, regmap[vid][UARTDM_SR]) &
 			UARTDM_SR_TXEMT_BMSK)) {
 		while (!(msm_hsl_read(port, regmap[vid][UARTDM_ISR]) &
@@ -1489,8 +1491,25 @@ static void wait_for_xmitr(struct uart_port *port)
 			touch_nmi_watchdog();
 			cpu_relax();
 			if (++count == msm_hsl_port->tx_timeout) {
-				dump_hsl_regs(port);
-				panic("MSM HSL wait_for_xmitr is stuck!");
+				/* Adding the code for reseting the UART Subsystem
+				 * once this once issue occurs for the first time
+				 * QC-Case#01360353, PLM#P140106-02508, Also seen
+				 * in MS01 3G EUR Open PLM#P131116-00479.
+				 */
+#if defined(CONFIG_ARCH_MSM8226)
+				if ( recovery == 0) {
+					pr_err("%s: UART TX Stuck, Resetting TX\n", __func__);
+					dump_hsl_regs(port);
+					msm_hsl_write(port, RESET_TX, regmap[vid][UARTDM_CR]);
+					recovery = 1;
+					count = 0;
+				} else 
+#endif
+				{
+					dump_hsl_regs(port);
+					panic("MSM HSL wait_for_xmitr is stuck!");
+				}
+
 			}
 		}
 		msm_hsl_write(port, CLEAR_TX_READY, regmap[vid][UARTDM_CR]);

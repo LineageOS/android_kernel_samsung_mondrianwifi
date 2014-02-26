@@ -35,6 +35,8 @@
 #define msg_maxim(format, args...)
 #endif
 
+static struct regulator *max98504_vcc_i2c;
+
 static DEFINE_MUTEX(rx_lock);
 static DEFINE_MUTEX(tx_lock);
 
@@ -692,7 +694,7 @@ static void max98504_handle_pdata(struct snd_soc_codec *codec)
 
 	struct max98504_dsp_cfg *dsp_cfg;
 	u8 cmon_en, rx_en, tx_en, tx_hiz_en, tx_ch_src, auth_en, wdog_time_out;
-	u8 regval;
+	u8 regval = 0;
 
 #if 1	// TEST
 	pdata = &max98504_config;
@@ -740,6 +742,15 @@ static void max98504_handle_pdata(struct snd_soc_codec *codec)
 static int max98504_suspend(struct snd_soc_codec *codec)
 {
 	msg_maxim("\n");
+	if (max98504_vcc_i2c)
+	{
+		int rc;
+		rc= regulator_disable(max98504_vcc_i2c);
+		if(rc) {
+				pr_err("Regulator vcc_i2c enable failed rc=%d\n", rc);
+				return rc;
+			}
+	}
 
 	return 0;
 }
@@ -747,7 +758,15 @@ static int max98504_suspend(struct snd_soc_codec *codec)
 static int max98504_resume(struct snd_soc_codec *codec)
 {
 	msg_maxim("\n");
-
+	if(max98504_vcc_i2c)
+	{
+		int rc;
+		rc = regulator_enable(max98504_vcc_i2c);
+		if (rc) {
+			pr_err("Regulator vcc_i2c enable failed rc=%d\n", rc);
+			return rc;
+		}
+	}
 	return 0;
 }
 
@@ -932,7 +951,6 @@ static int reg_set_optimum_mode_check(struct regulator *reg, int load_uA)
 
 static int max98504_regulator_config(struct i2c_client *i2c, bool pullup, bool on)
 {
-	struct regulator *max98504_vcc_i2c;
 	int rc;
     #define VCC_I2C_MIN_UV	1800000
     #define VCC_I2C_MAX_UV	1800000
@@ -974,17 +992,17 @@ static int max98504_regulator_config(struct i2c_client *i2c, bool pullup, bool o
 	//pr_info("[RYAN] %s OUT\n", __func__);
 
 	return 0;
-	
-	error_set_vtg_i2c:
-		regulator_put(max98504_vcc_i2c);
-	error_get_vtg_i2c:
+
+error_reg_en_vcc_i2c:
+	if(pullup) reg_set_optimum_mode_check(max98504_vcc_i2c, 0);
+error_reg_opt_i2c:
+	regulator_disable(max98504_vcc_i2c);
+error_set_vtg_i2c:
 	if (regulator_count_voltages(max98504_vcc_i2c) > 0)
 		regulator_set_voltage(max98504_vcc_i2c, 0,
 			VCC_I2C_MAX_UV);
-	error_reg_en_vcc_i2c:
-			if(pullup) 	reg_set_optimum_mode_check(max98504_vcc_i2c, 0);
-	error_reg_opt_i2c:
-			regulator_disable(max98504_vcc_i2c);
+error_get_vtg_i2c:
+	regulator_put(max98504_vcc_i2c);
 
 	//pr_info("[RYAN] %s OUT WITH ERROR.\n", __func__);
 

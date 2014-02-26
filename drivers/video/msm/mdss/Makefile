@@ -43,10 +43,16 @@ else ifeq ($(CONFIG_FB_MSM_MIPI_SAMSUNG_YOUM_CMD_FULL_HD_PT_PANEL),y)
 mdss-dsi-objs += mdss_samsung_dsi_panel.o smart_mtp_se6e8fa.o smart_mtp_se6e3fa.o
 else ifeq ($(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL),y)
 mdss-dsi-objs += logo.o mdss_samsung_dsi_panel.o smart_mtp_se6e8fa.o smart_mtp_se6e3fa.o
+else ifeq ($(CONFIG_FB_MSM_MDSS_MAGNA_OCTA_VIDEO_720P_PT_PANEL),y)
+mdss-dsi-objs += logo.o mdss_samsung_dsi_panel.o smart_mtp_se6e8fa.o smart_mtp_se6e3fa.o
 else ifeq ($(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL),y)
 mdss-dsi-objs +=logo.o  mdss_samsung_tft_video_dual_dsi_panel.o LP8556-backlight.o
 else ifeq ($(CONFIG_FB_MSM_MDSS_SDC_WXGA_PANEL),y)
 mdss-dsi-objs +=logo.o mdss_sdc_wxga_dsi_panel.o  LP8556-backlight.o
+else ifeq ($(CONFIG_FB_MSM_MIPI_MAGNA_OCTA_VIDEO_720P_PT_PANEL),y)
+mdss-dsi-objs += logo.o mdss_samsung_dsi_panel.o smart_mtp_se6e8fa.o smart_mtp_se6e3fa.o
+else ifeq ($(CONFIG_FB_MSM_MIPI_S6E8AA0A_720P_PT_PANEL),y)
+mdss-dsi-objs += logo.o mdss_samsung_dsi_panel.o smart_mtp_se6e8fa.o smart_mtp_se6e3fa.o
 else
 ifeq ($(CONFIG_FB_MSM_MDSS_TC_DSI2LVDS_WXGA_PANEL),y)
 mdss-dsi-objs +=logo.o mdss_tc358764_dsi2lvds.o LP8556-backlight.o mdss_msm_gpio_pwm.o
@@ -54,7 +60,11 @@ else
 ifeq ($(CONFIG_FB_MSM_MIPI_CMD_WVGA_ILI9806B_PT_PANEL),y)
 mdss-dsi-objs +=mdss_dsi_panel.o
 else
+ifeq ($(CONFIG_FB_MSM_MDSS_CPT_QHD_PANEL),y)
+mdss-dsi-objs +=logo.o mdss_cpt_qHD_dsi_panel.o
+else
 mdss-dsi-objs +=logo.o  mdss_samsung_tft_video_dual_dsi_panel.o LP8556-backlight.o
+endif
 endif
 endif
 endif

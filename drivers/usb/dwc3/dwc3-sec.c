@@ -20,8 +20,9 @@
 #include <linux/power_supply.h>
 #endif
 
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
-	extern int vienna_usb_rdrv_pin;
+#if defined(CONFIG_SEC_K_PROJECT)
+	extern int sec_qcom_usb_rdrv;
+	extern void force_dwc3_gadget_disconnect(void);
 #endif
 
 struct dwc3_sec {
@@ -32,6 +33,7 @@ static struct dwc3_sec sec_noti;
 
 #ifdef CONFIG_USB_HOST_NOTIFY
 static int booster_enable;
+static int gpio_usb_vbus_msm;
 #endif
 
 #ifdef CONFIG_CHARGER_BQ24260
@@ -94,8 +96,16 @@ static void bq24260_late_power(struct work_struct *work)
 	
 	pr_info("%s, ext_xceiv.id=%d\n", __func__, dwcm->ext_xceiv.id);
 
-	if (dwcm->ext_xceiv.id == DWC3_ID_GROUND)
-		bq24260_otg_control(booster_enable);
+#ifdef CONFIG_USB_HOST_NOTIFY
+	if (dwcm->ext_xceiv.id == DWC3_ID_GROUND) {
+		if (gpio_usb_vbus_msm > 0) {
+			if (gpio_get_value(gpio_usb_vbus_msm) == 0)
+				bq24260_otg_control(booster_enable);
+		} else {
+			bq24260_otg_control(booster_enable);
+		}
+	}
+#endif
 }
 
 struct booster_data sec_booster = {
@@ -103,6 +113,7 @@ struct booster_data sec_booster = {
 	.boost = bq24260_otg_control,
 };
 
+#ifdef CONFIG_USB_HOST_NOTIFY
 #if defined(CONFIG_MACH_VIENNA)
 static struct rpm_regulator *s2a_regulator;
 
@@ -118,6 +129,7 @@ static void usb_vbus_s2a_force_pwm(unsigned int en)
 			en ? RPM_REGULATOR_MODE_HPM : RPM_REGULATOR_MODE_AUTO);
 }
 #endif
+#endif
 
 static void usb_vbus_msm_init(struct dwc3_msm *dwcm, struct usb_phy *phy)
 {
@@ -130,7 +142,6 @@ static void usb_vbus_msm_init(struct dwc3_msm *dwcm, struct usb_phy *phy)
 
 
 #ifdef CONFIG_USB_HOST_NOTIFY
-static int gpio_usb_vbus_msm;
 static irqreturn_t msm_usb_vbus_msm_irq(int irq, void *data)
 {
 	struct dwc3_sec *snoti = &sec_noti;
@@ -310,28 +321,33 @@ struct sec_cable {
 static struct sec_cable support_cable_list[] = {
 	{ .cable_type = EXTCON_USB, },
 	{ .cable_type = EXTCON_USB_HOST, },
+	{ .cable_type = EXTCON_USB_HOST_5V, },
 	{ .cable_type = EXTCON_TA, },
 	{ .cable_type = EXTCON_AUDIODOCK, },
 	{ .cable_type = EXTCON_SMARTDOCK_TA, },
 	{ .cable_type = EXTCON_SMARTDOCK_USB, },
 };
 
+#ifdef CONFIG_USB_HOST_NOTIFY
 static void sec_usb_work(int usb_mode)
 {
 	struct power_supply *psy;
 
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
-	gpio_set_value(vienna_usb_rdrv_pin, usb_mode);
+#if defined(CONFIG_SEC_K_PROJECT)
+	gpio_set_value(sec_qcom_usb_rdrv, usb_mode);
 	pr_info("%s klte_usb_rdrv_pin = %d, enable=%d\n",
 		__func__,
-		vienna_usb_rdrv_pin,
+		sec_qcom_usb_rdrv,
 		usb_mode);
+	if(!usb_mode)
+		force_dwc3_gadget_disconnect();
 #endif
 
 	psy = power_supply_get_by_name("dwc-usb");
 	pr_info("usb: dwc3 power supply set(%d)", usb_mode);
 	power_supply_set_present(psy, usb_mode);
 }
+#endif
 
 static void sec_cable_event_worker(struct work_struct *work)
 {
@@ -366,6 +382,12 @@ static void sec_cable_event_worker(struct work_struct *work)
 			sec_otg_notify(HNOTIFY_SMARTDOCK_ON);
 		else
 			sec_otg_notify(HNOTIFY_SMARTDOCK_OFF);
+		break;
+	case EXTCON_USB_HOST_5V:
+		if (cable->cable_state)
+			sec_otg_notify(HNOTIFY_OTG_POWER_ON);
+		else
+			sec_otg_notify(HNOTIFY_OTG_POWER_OFF);
 		break;
 	default : break;
 	}

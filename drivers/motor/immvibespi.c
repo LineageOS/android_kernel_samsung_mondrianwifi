@@ -155,6 +155,8 @@ static int32_t ImmVibeSPI_ForceOut_AmpDisable(u_int8_t nActuatorIndex)
 		max77803_vibtonz_en(0);
 #elif defined(CONFIG_MOTOR_DRV_MAX77804K)
 		max77804k_vibtonz_en(0);
+#elif defined(CONFIG_MOTOR_DRV_MAX77828)
+		max77828_vibtonz_en(0);
 #elif defined(CONFIG_MOTOR_DRV_DRV2603)
 		drv2603_gpio_en(0);
 #endif
@@ -198,6 +200,8 @@ static int32_t ImmVibeSPI_ForceOut_AmpEnable(u_int8_t nActuatorIndex)
 		max77803_vibtonz_en(1);
 #elif defined(CONFIG_MOTOR_DRV_MAX77804K)
 		max77804k_vibtonz_en(1);
+#elif defined(CONFIG_MOTOR_DRV_MAX77828)
+                max77828_vibtonz_en(1);
 #elif defined(CONFIG_MOTOR_DRV_DRV2603)
 		drv2603_gpio_en(1);
 #endif

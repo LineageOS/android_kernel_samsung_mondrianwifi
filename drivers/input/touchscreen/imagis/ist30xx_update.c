@@ -29,7 +29,7 @@
 #endif
 
 #if IST30XX_INTERNAL_BIN
-#include "HEAT3G_TSP_FW_v0006.h"
+#include "HEAT3G_TSP_FW_v0008.h"
 #endif // IST30XX_INTERNAL_BIN
 
 struct ist30xx_tags *ts_tags;

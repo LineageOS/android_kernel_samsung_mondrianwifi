@@ -38,6 +38,25 @@
 #include <linux/regulator/lp8720.h>
 #endif
 
+/* if you want to check gpio status continually use this */
+#if 0
+#define PERIODIC_CHECK_GPIOS
+#endif
+
+#if defined(PERIODIC_CHECK_GPIOS)
+#include <mach/gpiomux.h>
+#include <mach/msm_iomap.h>
+#include <linux/io.h>
+struct delayed_work g_gpio_check_work;
+static void sec_gpiocheck_work(struct work_struct *work);
+enum {
+    GPIO_IN_BIT  = 0,
+    GPIO_OUT_BIT = 1
+};
+#define GPIO_IN_OUT(gpio)        (MSM_TLMM_BASE + 0x1004 + (0x10 * (gpio)))
+#define PERIODIC_CHECK_GAP          1000
+#define PERIODIC_CHECK_GPIONUM      95
+#endif
 
 struct gpio_button_data {
 	struct gpio_keys_button *button;
@@ -67,6 +86,25 @@ struct gpio_keys_drvdata {
 	struct gpio_button_data data[0];
 };
 
+#ifdef PERIODIC_CHECK_GPIOS
+static unsigned __msm_gpio_get_inout_lh(unsigned gpio)
+{
+    return __raw_readl(GPIO_IN_OUT(gpio)) & BIT(GPIO_IN_BIT);
+}
+
+static void sec_gpiocheck_work(struct work_struct *work)
+{
+    struct gpiomux_setting val;
+    u32 i = PERIODIC_CHECK_GPIONUM;
+
+    __msm_gpiomux_read(i, &val);
+
+    printk(KERN_DEBUG "[gpio=%d] func=%d, drv=%d, full=%d, dir=%d dat=%d\n",
+            i, val.func, val.drv, val.pull, val.dir, __msm_gpio_get_inout_lh(i) );
+
+    schedule_delayed_work(&g_gpio_check_work, msecs_to_jiffies(PERIODIC_CHECK_GAP));
+}
+#endif
 /*
  * SYSFS interface for enabling/disabling keys and switches:
  *
@@ -848,6 +886,11 @@ out:
 }
 
 static DEVICE_ATTR(wakeup_keys, 0664, NULL, wakeup_enable);
+
+#if defined (CONFIG_SEC_MILLET_PROJECT) || defined (CONFIG_SEC_BERLUTI_PROJECT)
+struct regulator *lvs1_1p8 = NULL;
+#endif
+
 #endif
 
 static int __devinit gpio_keys_probe(struct platform_device *pdev)
@@ -862,10 +905,6 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 	int i, error;
 	int wakeup = 0;
 #ifdef CONFIG_SENSORS_HALL
-
-#if defined (CONFIG_SEC_MILLET_PROJECT) || defined (CONFIG_SEC_BERLUTI_PROJECT)
-struct regulator *lvs1_1p8 = NULL;
-#endif 
 	int ret;
 	struct device *sec_key;
 #endif
@@ -993,8 +1032,10 @@ struct regulator *lvs1_1p8 = NULL;
 			printk(KERN_CRIT "%s: regulator_get for 8226_lvs1 failed\n", __func__);
 		else {
 			ret = regulator_enable(lvs1_1p8);
-			if (ret)
+			if (ret){
+				regulator_put(lvs1_1p8);
 				printk(KERN_CRIT "%s: Failed to enable regulator lvs1_1p8.\n",__func__);
+			}
 		}
 	}
 #endif
@@ -1009,6 +1050,13 @@ struct regulator *lvs1_1p8 = NULL;
 	dev_set_drvdata(sec_key, ddata);
 #endif
 	device_init_wakeup(&pdev->dev, wakeup);
+
+#ifdef PERIODIC_CHECK_GPIOS
+    INIT_DELAYED_WORK_DEFERRABLE(&g_gpio_check_work,
+            sec_gpiocheck_work);
+    schedule_delayed_work(&g_gpio_check_work,
+            msecs_to_jiffies(0));
+#endif
 
 	return 0;
 
@@ -1049,6 +1097,10 @@ static int __devexit gpio_keys_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_SENSORS_HALL
 	wake_lock_destroy(&ddata->flip_wake_lock);
+#if defined CONFIG_SEC_MILLET_PROJECT || defined (CONFIG_SEC_BERLUTI_PROJECT)
+	regulator_disable(lvs1_1p8);
+	regulator_put(lvs1_1p8);
+#endif
 #endif
 	/*
 	 * If we had no platform_data, we allocated buttons dynamically, and

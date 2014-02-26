@@ -47,6 +47,11 @@
 #define ENCRYPT 1
 #define DECRYPT 0
 
+#ifdef CONFIG_CRYPTO_FIPS
+extern long integrity_mem_reservoir;
+extern void free_bootmem_late(unsigned long addr, unsigned long size);
+#endif
+
 /*
  * Used by test_cipher_speed()
  */
@@ -1625,6 +1630,12 @@ static int __init tcrypt_mod_init(void)
 			printk(KERN_ERR "tcrypt: CRYPTO API in FIPS Error!!!\n");
 		} else {
 			printk(KERN_ERR "tcrypt: CRYPTO API started in FIPS mode!!!\n");
+		}
+
+		if (integrity_mem_reservoir != 0) {
+		  	printk(KERN_NOTICE "FIPS free integrity_mem_reservoir = %ld\n", integrity_mem_reservoir);
+		 	free_bootmem_late((unsigned long)CONFIG_CRYPTO_FIPS_INTEG_COPY_ADDRESS, integrity_mem_reservoir);
+		 	integrity_mem_reservoir = 0;
 		}
 	}
 #endif

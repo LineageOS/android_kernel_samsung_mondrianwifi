@@ -136,6 +136,7 @@ struct qpnp_pon {
 static struct qpnp_pon *sys_reset_dev;
 #ifdef CONFIG_SEC_PM_DEBUG
 static int wake_enabled;
+static int reset_enabled;
 #endif
 
 static u32 s1_delay[PON_S1_COUNT_MAX + 1] = {
@@ -1169,6 +1170,40 @@ static struct kernel_param_ops module_ops = {
 };
 
 module_param_cb(wake_enabled, &module_ops, &wake_enabled, 0644);
+
+static int qpnp_reset_enabled(const char *val, const struct kernel_param *kp)
+{
+	int ret = 0;
+	struct qpnp_pon_config *cfg;
+
+	ret = param_set_bool(val, kp);
+	if (ret) {
+		pr_err("Unable to set qpnp_reset_enabled: %d\n", ret);
+		return ret;
+	}
+
+	cfg = qpnp_get_cfg(sys_reset_dev, PON_KPDPWR);
+	if (!cfg) {
+		pr_err("Invalid config pointer\n");
+		return -EFAULT;
+	}
+
+	if (!reset_enabled)
+		qpnp_control_s2_reset(sys_reset_dev, cfg, 0);
+	else
+		qpnp_control_s2_reset(sys_reset_dev, cfg, 1);
+
+	pr_info("%s: reset_enabled = %d\n", KBUILD_MODNAME, reset_enabled);
+
+	return ret;
+}
+
+static struct kernel_param_ops reset_module_ops = {
+	.set = qpnp_reset_enabled,
+	.get = param_get_bool,
+};
+
+module_param_cb(reset_enabled, &reset_module_ops, &reset_enabled, 0644);
 #endif
 
 static int __devinit qpnp_pon_probe(struct spmi_device *spmi)

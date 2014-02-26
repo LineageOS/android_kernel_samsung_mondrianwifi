@@ -79,6 +79,18 @@ config FB_MSM_MIPI_SAMSUNG_OCTA_VIDEO_FULL_HD_PT_PANEL
 	bool "Support SAMSUNG OCTA Video Full-HD Panel"
 	default n
 
+config FB_MSM_MIPI_MAGNA_OCTA_VIDEO_720P_PT_PANEL
+	bool "Support MAGNA OCTA Video 720P Panel"
+	default n
+
+config FB_MSM_MDSS_MAGNA_OCTA_VIDEO_720P_PT_PANEL
+	bool "Support Magna OCTA Video 720P (EA8061) Panel"
+	default n
+
+config FB_MSM_MDSS_MSM8X26
+	bool "Support Panel for MSM8x26 chipset"
+	default n
+
 config FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL
 	bool "Support SAMSUNG OCTA Command Full-HD Panel"
 	default n
@@ -89,6 +101,10 @@ config FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL
 
 config FB_MSM_MIPI_SAMSUNG_YOUM_CMD_FULL_HD_PT_PANEL
 	bool "Support SAMSUNG YOUM Command Full-HD Panel"
+	default n
+
+config FB_MSM_MIPI_S6E8AA0A_720P_PT_PANEL
+	bool "Support SAMSUNG OCTA Video 720P Panel"
 	default n
 
 config MIPI_LCD_S6E3FA0_FORCE_VIDEO_MODE
@@ -142,6 +158,10 @@ config EDP_TCON_MDNIE
 	bool "Support EDP mdnie function"
 	default n
 
+config CABC_TUNING
+	bool "CABC panel tuning"
+	default n
+
 config FB_MSM_MIPI_TFT_VIDEO_FULL_HD_PT_PANEL
 	bool "Support TFT VIDEO FULL HD Panel"
 	select FB_MSM_MIPI_DSI
@@ -156,6 +176,10 @@ config FB_MSM_MDSS_SDC_WXGA_PANEL
 	default n
 	---help---
 	The MDSS SDC LCD Panel support
+
+config FB_MSM_MDSS_CPT_QHD_PANEL
+	bool "support CPT qHD panel"
+	default n
 
 config LCD_CONNECTION_CHECK
 	bool "check if LCD connected or not and detect panel vendor"

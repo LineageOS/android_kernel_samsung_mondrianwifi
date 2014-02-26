@@ -772,7 +772,7 @@ static short AUTO_GALLERY[MDNIE_COL * MDNIE_ROW] = {
 	0x0CBA,0x03,	//CS(CC) roi_ctrl | on/off 3/0
 	0x0CBB,0x00,	//CC(Gamma) roi_ctrl | on/off 3/0
 	0x0CBC,0x00,	//SCR roi_ctrl | on/off 3/0
-	0x0CDF,0x02,	//Sharpen Level
+	0x0CDF,0x01,	//Sharpen Level
 	0x0CEE,0x01,	//CC_en 0.1
 	0x0CEF,0x48,	//CC R1_L
 	0x0CF0,0x04,	//CC R1_H
@@ -1385,7 +1385,7 @@ static short DYNAMIC_GALLERY[MDNIE_COL * MDNIE_ROW] = {
 	0x0CBA,0x03,	//CS(CC) roi_ctrl | on/off 3/0
 	0x0CBB,0x03,	//CC(Gamma) roi_ctrl | on/off 3/0
 	0x0CBC,0x00,	//SCR roi_ctrl | on/off 3/0
-	0x0CDF,0x02,	//Sharpen Level
+	0x0CDF,0x01,	//Sharpen Level
 	0x0CEE,0x01,	//CC_en 0.1
 	0x0CEF,0x48,	//CC R1_L
 	0x0CF0,0x04,	//CC R1_H
@@ -2406,7 +2406,7 @@ static short STANDARD_GALLERY[MDNIE_COL * MDNIE_ROW] = {
 	0x0CBA,0x03,	//CS(CC) roi_ctrl | on/off 3/0
 	0x0CBB,0x00,	//CC(Gamma) roi_ctrl | on/off 3/0
 	0x0CBC,0x00,	//SCR roi_ctrl | on/off 3/0
-	0x0CDF,0x02,	//Sharpen Level
+	0x0CDF,0x01,	//Sharpen Level
 	0x0CEE,0x01,	//CC_en 0.1
 	0x0CEF,0x48,	//CC R1_L
 	0x0CF0,0x04,	//CC R1_H

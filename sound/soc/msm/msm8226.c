@@ -160,9 +160,7 @@ static struct clk *codec_clk;
 static int clk_users;
 static int lineout_en_gpio = -1;
 static int vdd_spkr_gpio = -1;
-#ifdef CONFIG_SEC_MATISSE_PROJECT
-static struct regulator* cradle_switch_ldo;
-#endif
+static struct regulator* earjack_ldo;
 static int msm_proxy_rx_ch = 2;
 static int slim0_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 
@@ -844,7 +842,7 @@ static const struct soc_enum cradle_switch_enum[] = {
 static int cradle_switch_enum_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	printk("%s:\n", __func__);
+	pr_debug("%s:\n", __func__);
 	return 0;
 }
 
@@ -854,7 +852,7 @@ static int cradle_switch_enum_put(struct snd_kcontrol *kcontrol,
 
 	int val = ucontrol->value.integer.value[0];
 
-	pr_info("%s: %d\n",__func__,val);
+	pr_debug("%s: %d\n",__func__,val);
 	if(val == 0 || val == 1)
 	{
 			if (lineout_en_gpio >= 0) {
@@ -862,9 +860,12 @@ static int cradle_switch_enum_put(struct snd_kcontrol *kcontrol,
 					pr_info("%s:Lineout EN GPIO state %d\n",
 							__func__,val);
 			}
-		else
-			pr_err("%s Lineout EN GPIO not defined\n",__func__);
+			else
+				pr_err("%s Lineout EN GPIO not defined\n",__func__);
 	}
+	else
+		pr_err("%s Invalid CRADLE Switch Value\n",__func__);
+
 	return 0;
 }
 #endif
@@ -1083,20 +1084,8 @@ out:
 
 static int msm_snd_startup(struct snd_pcm_substream *substream)
 {
-#ifdef CONFIG_SEC_MATISSE_PROJECT
-	int ret;
-#endif
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
-#ifdef CONFIG_SEC_MATISSE_PROJECT
-	ret = regulator_enable(cradle_switch_ldo);
-	if(ret < 0) {
-		pr_err("%s: Failed to enable regulator l15.\n",
-				__func__);
-		return -1;
-	} else
-		regulator_set_mode(cradle_switch_ldo, REGULATOR_MODE_NORMAL);
-#endif
 	return 0;
 }
 
@@ -1240,17 +1229,8 @@ end:
 
 static void msm_snd_shutdown(struct snd_pcm_substream *substream)
 {
-#ifdef CONFIG_SEC_MATISSE_PROJECT
-	int ret;
-#endif
 	pr_debug("%s(): substream = %s stream = %d\n", __func__,
 		 substream->name, substream->stream);
-#ifdef CONFIG_SEC_MATISSE_PROJECT
-	ret = regulator_disable(cradle_switch_ldo);
-	if(ret < 0)
-		pr_err("%s: Failed to disable regulator l15.\n",
-				__func__);
-#endif
 }
 
 #ifdef CONFIG_SND_SOC_MAX98504
@@ -2291,7 +2271,7 @@ void msm8226_enable_ear_micbias(bool state)
 	}
 	codec = jack->codec;
 	dapm = &codec->dapm;
-	mutex_lock(&codec->mutex);
+	mutex_lock(&jack->mutex);
 
 	if (state == 1) {
 		nRetVal = snd_soc_dapm_force_enable_pin(dapm, str);
@@ -2303,7 +2283,7 @@ void msm8226_enable_ear_micbias(bool state)
 				, __func__, nRetVal, state);
 	}
 	snd_soc_dapm_sync(dapm);
-	mutex_unlock(&codec->mutex);
+	mutex_unlock(&jack->mutex);
 }
 
 EXPORT_SYMBOL(msm8226_enable_ear_micbias);
@@ -2368,36 +2348,35 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	} else {
 
 #ifdef CONFIG_SND_SOC_MAX98504
-				extern int system_rev;
+		extern int system_rev;
 #if defined(CONFIG_MACH_MILLETLTE_OPEN)
-				if ( system_rev >= 0 && system_rev < 3)
+		if ( system_rev >= 0 && system_rev < 3)
 #elif defined (CONFIG_MACH_MILLET3G_EUR) || defined (CONFIG_MACH_BERLUTI3G_EUR)
-				if ( system_rev >= 2 && system_rev < 4)
-#elif defined(CONFIG_MACH_MILLETWIFI_OPEN)
-				if ( system_rev >= 0 && system_rev < 5)
+		if ( system_rev >= 2 && system_rev < 4)
+#elif defined(CONFIG_MACH_MILLETWIFI_OPEN) || defined (CONFIG_MACH_VICTORLTE_CMCC)
+		if ( system_rev >= 0 && system_rev < 5)
 #endif
-				{
-					card = &snd_soc_card_msm8226_new;
+		{
+			card = &snd_soc_card_msm8226_new;
 
-					memcpy(msm8226_9306_98504_dai_links, msm8226_common_dai,
-							sizeof(msm8226_common_dai));
-					memcpy(msm8226_9306_98504_dai_links + ARRAY_SIZE(msm8226_common_dai),
-						msm8226_9306_dai, sizeof(msm8226_9306_dai));
-					memcpy(msm8226_9306_98504_dai_links + ARRAY_SIZE(msm8226_common_dai)+ ARRAY_SIZE(msm8226_9306_dai),
-						msm8226_max98504_dai, sizeof(msm8226_max98504_dai));
-				}
-				else	{
+			memcpy(msm8226_9306_98504_dai_links, msm8226_common_dai,
+					sizeof(msm8226_common_dai));
+			memcpy(msm8226_9306_98504_dai_links + ARRAY_SIZE(msm8226_common_dai),
+					msm8226_9306_dai, sizeof(msm8226_9306_dai));
+			memcpy(msm8226_9306_98504_dai_links + ARRAY_SIZE(msm8226_common_dai)+ ARRAY_SIZE(msm8226_9306_dai),
+					msm8226_max98504_dai, sizeof(msm8226_max98504_dai));
+		}
+		else	{
 #endif
-				card = &snd_soc_card_msm8226;
+			card = &snd_soc_card_msm8226;
 
-				memcpy(msm8226_9306_dai_links, msm8226_common_dai,
-						sizeof(msm8226_common_dai));
-				memcpy(msm8226_9306_dai_links + ARRAY_SIZE(msm8226_common_dai),
+			memcpy(msm8226_9306_dai_links, msm8226_common_dai,
+					sizeof(msm8226_common_dai));
+			memcpy(msm8226_9306_dai_links + ARRAY_SIZE(msm8226_common_dai),
 					msm8226_9306_dai, sizeof(msm8226_9306_dai));
 #ifdef CONFIG_SND_SOC_MAX98504
-				}
+		}
 #endif
-
 	}
 
 	return card;
@@ -2422,7 +2401,7 @@ static __devinit int msm8226_asoc_machine_probe(struct platform_device *pdev)
 	if (!pdata) {
 		dev_err(&pdev->dev, "Can't allocate msm8226_asoc_mach_data\n");
 		ret = -ENOMEM;
-		goto err;
+		goto err1;
 	}
 
 	card = populate_snd_card_dailinks(&pdev->dev);
@@ -2560,6 +2539,26 @@ static __devinit int msm8226_asoc_machine_probe(struct platform_device *pdev)
 		}
 	}
 
+	reg_node = of_parse_phandle(pdev->dev.of_node, "vdd-earjack-supply", 0);
+	if(reg_node)
+	{
+		earjack_ldo = regulator_get(&pdev->dev, "vdd-earjack");
+		if (IS_ERR(earjack_ldo)) {
+				pr_err("[%s] could not get earjack_ldo, %ld\n", __func__, PTR_ERR(earjack_ldo));
+		}
+		else
+		{
+			ret = regulator_enable(earjack_ldo);
+			if(ret < 0) {
+				pr_err("%s: Failed to enable regulator.\n",
+					__func__);
+				goto err_reg_enable;
+			} else
+				regulator_set_mode(earjack_ldo, REGULATOR_MODE_NORMAL);
+		}
+	}else
+		pr_err("%s Ear jack LDO node not available\n",__func__);
+
 	msm8226_setup_hs_jack(pdev, pdata);
 
 	ret = of_property_read_string(pdev->dev.of_node,
@@ -2588,12 +2587,6 @@ static __devinit int msm8226_asoc_machine_probe(struct platform_device *pdev)
 #ifdef CONFIG_SND_SOC_MAX98504
 	atomic_set(&pri_mi2s_clk.mi2s_rsc_ref, 0);
 #endif
-#ifdef CONFIG_SEC_MATISSE_PROJECT
-		cradle_switch_ldo = regulator_get(&pdev->dev, "8226_l15");
-		if (IS_ERR(cradle_switch_ldo)) {
-				pr_err("[%s] could not get cradle switch_ldo, %ld\n", __func__, PTR_ERR(cradle_switch_ldo));
-		}
-#endif
 	return 0;
 
 err_lineout_spkr:
@@ -2617,6 +2610,10 @@ err:
 	}
 err1:
 	devm_kfree(&pdev->dev, pdata);
+
+err_reg_enable:
+	if(earjack_ldo)
+		regulator_put(earjack_ldo);
 	return ret;
 }
 
@@ -2632,6 +2629,17 @@ static int __devexit msm8226_asoc_machine_remove(struct platform_device *pdev)
 		gpio_free(lineout_en_gpio);
 	if (pdata->us_euro_gpio > 0)
 		gpio_free(pdata->us_euro_gpio);
+
+	if(earjack_ldo)
+	{
+		int ret;
+
+		ret = regulator_disable(earjack_ldo);
+		if(ret < 0) {
+				pr_err("%s: Failed to disable regulator.\n",__func__);
+		}
+		regulator_put(earjack_ldo);
+	}
 
 	vdd_spkr_gpio = -1;
 	lineout_en_gpio = -1;

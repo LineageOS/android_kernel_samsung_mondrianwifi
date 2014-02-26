@@ -437,6 +437,16 @@ config ZSWAP
 	  swap devices resulting in reduced I/O and faster performance
 	  for many workloads.
 
+config SWAP_ENABLE_READAHEAD
+	bool "Enable readahead on page swap in"
+	depends on SWAP
+	default y
+	help
+	  When a page fault occurs, adjacent pages of SWAP_CLUSTER_MAX are
+	  also paged in expecting those pages will be used in near future.
+	  This behaviour is good at disk-based system, but not on in-memory
+	  compression (e.g. zram).
+
 config ZSWAP_ENABLE_WRITEBACK
 	bool "Enable writeback"
 	depends on ZSWAP

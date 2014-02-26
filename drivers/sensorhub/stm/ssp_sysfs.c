@@ -81,6 +81,7 @@ static void enable_sensor(struct ssp_data *data,
 		if (iSensorType == PROXIMITY_SENSOR) {
 			proximity_open_lcd_ldi(data);
 			proximity_open_calibration(data);
+			set_proximity_threshold(data, data->uProxHiThresh, data->uProxLoThresh);
 
 			input_report_abs(data->prox_input_dev, ABS_DISTANCE, 1);
 			input_sync(data->prox_input_dev);
@@ -275,6 +276,7 @@ static ssize_t set_sensors_enable(struct device *dev,
 					else if (uChangedSensor == PROXIMITY_SENSOR) {
 						proximity_open_lcd_ldi(data);
 						proximity_open_calibration(data);
+						set_proximity_threshold(data, data->uProxHiThresh, data->uProxLoThresh);
 					}
 				}
 				data->aiCheckStatus[uChangedSensor] = ADD_SENSOR_STATE;

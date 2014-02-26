@@ -460,53 +460,34 @@ int vfsspi_xfer(struct vfsspi_devData *vfsSpiDev, struct vfsspi_iocTransfer *tr)
 }
 #endif
 
+void vfsspi_pin_control(bool pin_set)
+{
+	if (pin_set)
+		gpio_tlmm_config(GPIO_CFG(g_data->drdyPin, 0,
+			GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
+			GPIO_CFG_2MA), 1);
+	else
+		gpio_tlmm_config(GPIO_CFG(g_data->drdyPin, 0,
+			GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN,
+			GPIO_CFG_2MA), 1);
+}
+
 void vfsspi_regulator_onoff(struct vfsspi_devData *vfsSpiDev, bool onoff)
 {
-	struct regulator *vfs_vcc;
-	struct regulator *vfs_sovcc;
 	pr_info("%s: %s\n", __func__, onoff ? "on" : "off");
 
 	if (vfsSpiDev->ldo_pin) {
 		if (vfsSpiDev->ldocontrol) {
-			if (onoff)
+			if (onoff) {
+				vfsspi_pin_control(true);
 				gpio_set_value(vfsSpiDev->ldo_pin, 1);
-			else
+			} else {
 				gpio_set_value(vfsSpiDev->ldo_pin, 0);
-
+				vfsspi_pin_control(false);
+			}
 			vfsSpiDev->ldo_onoff = onoff;
 		} else
 			pr_info("%s: can't control in this revion\n", __func__);
-	} else {
-		vfs_vcc = devm_regulator_get(&vfsSpiDev->spi->dev,
-			"vfsspi-vcc");
-
-		if (IS_ERR(vfs_vcc)) {
-			pr_err("%s: cannot get vfs_vcc\n", __func__);
-			goto set_sovcc;
-		}
-		if (onoff)
-			regulator_enable(vfs_vcc);
-		else
-			regulator_disable(vfs_vcc);
-
-		regulator_put(vfs_vcc);
-
-set_sovcc:
-		vfs_sovcc = devm_regulator_get(&vfsSpiDev->spi->dev,
-			"vfsspi-sovcc");
-
-		if (IS_ERR(vfs_sovcc)) {
-			pr_err("%s: cannot get vfs_sovcc\n", __func__);
-			return;
-		}
-		if (onoff) {
-			regulator_set_voltage(vfs_sovcc,
-				3300000, 3300000);
-			regulator_enable(vfs_sovcc);
-		} else
-			regulator_disable(vfs_sovcc);
-
-		regulator_put(vfs_sovcc);
 	}
 }
 

@@ -380,7 +380,9 @@ extern int max77804k_bulk_write(struct i2c_client *i2c, u8 reg, int count,
 				u8 *buf);
 extern int max77804k_update_reg(struct i2c_client *i2c,
 				u8 reg, u8 val, u8 mask);
+#if !defined(CONFIG_EXTCON_MAX77804K)
 extern int max77804k_muic_get_charging_type(void);
+#endif
 extern int max77804k_muic_get_status1_adc1k_value(void);
 extern int max77804k_muic_get_status1_adc_value(void);
 extern void otg_control(int);

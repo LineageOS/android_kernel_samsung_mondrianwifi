@@ -81,7 +81,7 @@ int max77804k_muic_set_safeout(int path)
 
 	pr_info("%s: MUIC safeout path=%d\n", __func__, path);
 
-	if (path == CP_USB_MODE) {
+	if (path == PATH_USB_CP) {
 		regulator = regulator_get(NULL, "safeout1");
 		if (IS_ERR(regulator))
 			return -ENODEV;

@@ -475,9 +475,10 @@ struct es705_priv {
 	struct snd_soc_codec *codec;
 	struct firmware *standard;
 	struct firmware *vs;
+#if defined(SAMSUNG_ES705_FEATURE)
 	struct firmware *vs_grammar;
 	struct firmware *vs_net;
-
+#endif
 	unsigned int intf;
 
 	struct esxxx_platform_data *pdata;
@@ -556,6 +557,8 @@ struct es705_priv {
 	unsigned int voice_lpm_enable;
 	unsigned int use_uart_for_wakeup_gpio;
 	unsigned int change_uart_config;
+	unsigned int vs_grammar_set_flag;
+	unsigned int vs_net_set_flag;
 #endif
 };
 

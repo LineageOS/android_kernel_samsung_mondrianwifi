@@ -294,7 +294,7 @@ static int es705_cfg_slim_rx(struct slim_device *sbdev, unsigned int *ch_num,
 		goto slim_control_ch_error;
 	}
 	for (i = 0; i < ch_cnt; i++) {
-		dev_dbg(&sbdev->dev, "%s(): ch_num = %d\n",
+		dev_info(&sbdev->dev, "%s(): ch_num = %d\n",
 			__func__, ch_num[i]);
 		idx = es705_rx_ch_num_to_idx(ch_num[i]);
 		rx[idx].grph = grph;
@@ -361,7 +361,7 @@ static int es705_cfg_slim_tx(struct slim_device *sbdev, unsigned int *ch_num,
 		goto slim_control_ch_error;
 	}
 	for (i = 0; i < ch_cnt; i++) {
-		dev_dbg(&sbdev->dev, "%s(): ch_num = %d\n",
+		dev_info(&sbdev->dev, "%s(): ch_num = %d\n",
 			__func__, ch_num[i]);
 		idx = es705_tx_ch_num_to_idx(ch_num[i]);
 		tx[idx].grph = grph;
@@ -482,15 +482,6 @@ int es705_remote_cfg_slim_rx(int dai_id)
 		es705->dai[DAI_INDEX(be_id)].ch_tot = es705->dai[DAI_INDEX(dai_id)].ch_tot;
 		es705->dai[DAI_INDEX(be_id)].rate = es705->dai[DAI_INDEX(dai_id)].rate;
 		rc = es705_codec_cfg_slim_tx(es705, be_id);
-
-		dev_info(&sbdev->dev, "%s(): MDM->>>[%d][%d]ES705[%d][%d]->>>WCD channel mapping\n",
-			__func__,
-			es705->dai[DAI_INDEX(dai_id)].ch_num[0],
-			es705->dai[DAI_INDEX(dai_id)].ch_tot == 1 ? 0 :
-					es705->dai[DAI_INDEX(dai_id)].ch_num[1],
-			es705->dai[DAI_INDEX(be_id)].ch_num[0],
-			es705->dai[DAI_INDEX(be_id)].ch_tot == 1 ? 0 :
-					es705->dai[DAI_INDEX(be_id)].ch_num[1]);
 	}
 
 	return rc;
@@ -513,6 +504,18 @@ int es705_remote_cfg_slim_tx(int dai_id)
 	if (es705->dai[DAI_INDEX(dai_id)].ch_tot != 0) {
 		/* start slim channels associated with id */
 		ch_cnt = es705->ap_tx1_ch_cnt;
+#if defined(CONFIG_MACH_KLTE_EUR) || defined(CONFIG_MACH_KLTE_CMCC) \
+	|| defined(CONFIG_MACH_K3GDUOS_CTC) || defined(CONFIG_MACH_KLTE_CTC)
+		rc = es705_cfg_slim_tx(es705->gen0_client,
+				       es705->dai[DAI_INDEX(dai_id)].ch_num,
+				       es705->dai[DAI_INDEX(dai_id)].ch_tot,
+				       es705->dai[DAI_INDEX(dai_id)].rate);
+
+		be_id = es705_slim_be_id[DAI_INDEX(dai_id)];
+		es705->dai[DAI_INDEX(be_id)].ch_tot = ch_cnt;
+		es705->dai[DAI_INDEX(be_id)].rate = es705->dai[DAI_INDEX(dai_id)].rate;
+		rc = es705_codec_cfg_slim_rx(es705, be_id);
+#else
 		rc = es705_cfg_slim_tx(es705->gen0_client,
 				       es705->dai[DAI_INDEX(dai_id)].ch_num,
 				       ch_cnt,
@@ -522,15 +525,7 @@ int es705_remote_cfg_slim_tx(int dai_id)
 		es705->dai[DAI_INDEX(be_id)].ch_tot = es705->dai[DAI_INDEX(dai_id)].ch_tot;
 		es705->dai[DAI_INDEX(be_id)].rate = es705->dai[DAI_INDEX(dai_id)].rate;
 		rc = es705_codec_cfg_slim_rx(es705, be_id);
-
-		dev_info(&sbdev->dev, "%s(): MDM<<<-[%d][%d]ES705[%d][%d]<<<-WCD channel mapping\n",
-			__func__,
-			es705->dai[DAI_INDEX(dai_id)].ch_num[0],
-			es705->dai[DAI_INDEX(dai_id)].ch_tot == 1 ? 0 :
-					es705->dai[DAI_INDEX(dai_id)].ch_num[1],
-			es705->dai[DAI_INDEX(be_id)].ch_num[0],
-			es705->dai[DAI_INDEX(be_id)].ch_tot == 1 ? 0 :
-					es705->dai[DAI_INDEX(be_id)].ch_num[1]);
+#endif
 	}
 
 	return rc;
@@ -542,7 +537,7 @@ int es705_get_ap_esxxx_channels(int dai_id)
 	struct es705_priv *es705 = &es705_priv;
 	if (dai_id != ES705_SLIM_1_CAP)
 		return 0;
-	if (es705_priv.tx1_route_enable)
+	if (es705->tx1_route_enable)
 		return (es705->ap_tx1_ch_cnt);
 	else
 		return 0;
@@ -603,12 +598,24 @@ int es705_remote_close_slim_tx(int dai_id)
 		if (dai_id == ES705_SLIM_1_CAP)
 #endif
 			ch_cnt = es705->ap_tx1_ch_cnt;
+
+#if defined(CONFIG_MACH_KLTE_EUR) || defined(CONFIG_MACH_KLTE_CMCC) \
+	|| defined(CONFIG_MACH_K3GDUOS_CTC) || defined(CONFIG_MACH_KLTE_CTC)
+		es705_close_slim_tx(es705->gen0_client,
+				    es705->dai[DAI_INDEX(dai_id)].ch_num,
+				    es705->dai[DAI_INDEX(dai_id)].ch_tot);
+
+		be_id = es705_slim_be_id[DAI_INDEX(dai_id)];
+		es705->dai[DAI_INDEX(be_id)].ch_tot = ch_cnt;
+		rc = es705_codec_close_slim_rx(es705, be_id);
+#else
 		es705_close_slim_tx(es705->gen0_client,
 				    es705->dai[DAI_INDEX(dai_id)].ch_num,
 				    ch_cnt);
 
 		be_id = es705_slim_be_id[DAI_INDEX(dai_id)];
 		rc = es705_codec_close_slim_rx(es705, be_id);
+#endif
 
 		es705->dai[DAI_INDEX(dai_id)].ch_tot = 0;
 	}
@@ -880,8 +887,8 @@ void es705_slim_map_channels(struct es705_priv *es705)
 	/* back end for TX1 */
 	es705->dai[DAI_INDEX(ES705_SLIM_3_PB)].ch_num[0] = 134;
 	es705->dai[DAI_INDEX(ES705_SLIM_3_PB)].ch_num[1] = 135;
-	es705_priv.dai[DAI_INDEX(ES705_SLIM_3_PB)].ch_num[2] = 136;
-	es705_priv.dai[DAI_INDEX(ES705_SLIM_3_PB)].ch_num[3] = 137;
+	es705->dai[DAI_INDEX(ES705_SLIM_3_PB)].ch_num[2] = 136;
+	es705->dai[DAI_INDEX(ES705_SLIM_3_PB)].ch_num[3] = 137;
 
 	/* front end for RX2 */
 	es705->dai[DAI_INDEX(ES705_SLIM_2_PB)].ch_num[0] = 154;

@@ -19,8 +19,10 @@
 #include <linux/regulator/krait-regulator.h>
 
 #define SHORT_BATTERY_STANDARD      100
+extern int mhl_connection_state(void);
 
 #if defined(CONFIG_EXTCON)
+extern int get_jig_state(void);
 int current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
 #else
 extern int current_cable_type;
@@ -31,8 +33,8 @@ extern unsigned int system_rev;
 static struct battery_data_t samsung_battery_data[] = {
 	/* SDI battery data (High voltage 4.35V) */
 	{
-#if defined(CONFIG_MACH_HLTESKT) || defined(CONFIG_MACH_HLTEKTT) || \
-		defined(CONFIG_MACH_HLTELGT)
+#if defined(CONFIG_MACH_HLTESKT) || defined(CONFIG_MACH_HLTEKTT) || defined(CONFIG_MACH_HLTELGT)\
+	|| defined(CONFIG_MACH_FRESCOLTESKT)||defined(CONFIG_MACH_FRESCOLTEKTT)||defined(CONFIG_MACH_FRESCOLTELGT)
 		.RCOMP0 = 0x73,
 		.RCOMP_charging = 0x84,
 		.temp_cohot = -1025,
@@ -68,6 +70,11 @@ static struct battery_data_t samsung_battery_data[] = {
 		.RCOMP_charging = 0x79,
 		.temp_cohot = -850,
 		.temp_cocold = -4200,
+#elif defined(CONFIG_SEC_K_PROJECT)
+		.RCOMP0 = 0x55,
+		.RCOMP_charging = 0x55,
+		.temp_cohot = -650,
+		.temp_cocold = -5050,
 #else
 		.RCOMP0 = 0x73,
 		.RCOMP_charging = 0x8D,
@@ -115,7 +122,8 @@ static struct battery_data_t samsung_battery_data[] = {
 #define CAPACITY_MAX_MARGIN	50
 #define CAPACITY_MIN			0
 #elif defined(CONFIG_MACH_HLTESKT) || defined(CONFIG_MACH_HLTEKTT) || \
-	defined(CONFIG_MACH_HLTELGT) || defined(CONFIG_MACH_HLTEDCM)
+	defined(CONFIG_MACH_HLTELGT) || defined(CONFIG_MACH_HLTEDCM)\
+	|| defined(CONFIG_MACH_FRESCOLTESKT)||defined(CONFIG_MACH_FRESCOLTEKTT)||defined(CONFIG_MACH_FRESCOLTELGT)
 #define CAPACITY_MAX			980
 #define CAPACITY_MAX_MARGIN	50
 #define CAPACITY_MIN			-7
@@ -123,7 +131,11 @@ static struct battery_data_t samsung_battery_data[] = {
 #define CAPACITY_MAX			990
 #define CAPACITY_MAX_MARGIN	50
 #define CAPACITY_MIN			0
-#elif defined(CONFIG_SEC_H_PROJECT)	/* from H USA/EUR */
+#elif defined(CONFIG_MACH_MONDRIAN)
+#define CAPACITY_MAX			991
+#define CAPACITY_MAX_MARGIN	50
+#define CAPACITY_MIN			-9
+#elif defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)	/* from H USA/EUR */
 #define CAPACITY_MAX			990
 #define CAPACITY_MAX_MARGIN	50
 #define CAPACITY_MIN			-7
@@ -138,9 +150,13 @@ static struct battery_data_t samsung_battery_data[] = {
 static enum qpnp_vadc_channels temp_channel;
 static struct sec_fuelgauge_info *sec_fuelgauge =  NULL;
 
-#if defined(CONFIG_MACH_KLTE_EUR) || defined(CONFIG_MACH_K3GDUOS_CTC) || defined(CONFIG_MACH_KLTE_CMCC)|| defined(CONFIG_MACH_KLTE_CTC) || defined(CONFIG_MACH_KACTIVELTE_EUR) \
+#if defined(CONFIG_MACH_KLTE_EUR) || defined(CONFIG_SEC_LOCALE_CHN) || defined(CONFIG_MACH_KACTIVELTE_EUR) \
 	|| defined(CONFIG_MACH_KACTIVELTE_ATT)
 static sec_bat_adc_table_data_t temp_table[] = {
+	{25844,	900},
+	{26113,	850},
+	{26398,	800},
+	{26764,	750},
 	{26884,	700},
 	{27346,	650},
 	{27750,	600},
@@ -161,8 +177,46 @@ static sec_bat_adc_table_data_t temp_table[] = {
 	{40852,	-150},
 	{41420,	-200},
 };
+#elif defined (CONFIG_MACH_KLTE_ATT)
+static sec_bat_adc_table_data_t temp_table[] = {
+	{25844,	900},
+	{26113,	850},
+	{26398,	800},
+	{26764,	750},
+	{27160,	700},
+	{27559,	650},
+	{28120,	600},
+	{28850,	550},
+	{29558,	500},
+	{30532,	450},
+	{31200,	400},
+	{32180,	350},
+	{33265,	300},
+	{34300,	250},
+	{35211,	200},
+	{36098,	150},
+	{37198,	100},
+	{38199,	50},
+	{38392,	40},
+	{38541,	30},
+	{38723,	20},
+	{38897,	10},
+	{39050,	0},
+	{39210,	-10},
+	{39345,	-20},
+	{39490,	-30},
+	{39613,	-40},
+	{39697,	-50},
+	{40539,	-100},
+	{41082,	-150},
+	{41585,	-200},
+};
 #elif defined (CONFIG_MACH_KLTE_DCM)
 static sec_bat_adc_table_data_t temp_table[] = {
+	{25844,	900},
+	{26113,	850},
+	{26398,	800},
+	{26764,	750},
 	{26884,	700},
 	{27346,	650},
 	{27750,	600},
@@ -185,6 +239,10 @@ static sec_bat_adc_table_data_t temp_table[] = {
 };
 #elif defined (CONFIG_MACH_KLTE_SBM)
 static sec_bat_adc_table_data_t temp_table[] = {
+	{25844,	900},
+	{26113,	850},
+	{26398,	800},
+	{26764,	750},
 	{26884,	700},
 	{27346,	650},
 	{27750,	600},
@@ -207,6 +265,10 @@ static sec_bat_adc_table_data_t temp_table[] = {
 };
 #elif defined (CONFIG_MACH_KLTE_KDI)
 static sec_bat_adc_table_data_t temp_table[] = {
+	{25844,	900},
+	{26113,	850},
+	{26398,	800},
+	{26764,	750},
 	{26884,	700},
 	{27346,	650},
 	{27750,	600},
@@ -229,6 +291,10 @@ static sec_bat_adc_table_data_t temp_table[] = {
 };
 #elif defined(CONFIG_MACH_H3GDUOS_CTC)
 static sec_bat_adc_table_data_t temp_table[] = {
+	{25844,	900},
+	{26113,	850},
+	{26398,	800},
+	{26764,	750},
 	{27240,	700},
 	{27662,	650},
 	{28202,	600},
@@ -284,6 +350,10 @@ static sec_bat_adc_table_data_t temp_table[] = {
 };
 #elif defined(CONFIG_MACH_HLTEKDI)
 static sec_bat_adc_table_data_t temp_table[] = {
+	{25844,	900},
+	{26113,	850},
+	{26398,	800},
+	{26764,	750},
 	{27293,	700},
 	{27703,	650},
 	{28203,	600},
@@ -304,7 +374,7 @@ static sec_bat_adc_table_data_t temp_table[] = {
 	{41130,	-150},
 	{41651,	-200},
 };
-#elif defined(CONFIG_SEC_H_PROJECT)
+#elif defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 static sec_bat_adc_table_data_t temp_table[] = {
 	{25950, 900},
 	{26173, 850},
@@ -339,6 +409,10 @@ static sec_bat_adc_table_data_t temp_table[] = {
 };
 #elif defined(CONFIG_MACH_FLTEEUR) || defined(CONFIG_MACH_FLTESKT)
 static sec_bat_adc_table_data_t temp_table[] = {
+	{25844,	900},
+	{26113,	850},
+	{26398,	800},
+	{26764,	750},
 	{26960,	700},
 	{27435,	650},
 	{27885,	600},
@@ -362,6 +436,10 @@ static sec_bat_adc_table_data_t temp_table[] = {
 #elif defined(CONFIG_MACH_KS01SKT) || defined(CONFIG_MACH_KS01KTT) || \
 		defined(CONFIG_MACH_KS01LGT)
 static sec_bat_adc_table_data_t temp_table[] = {
+	{25844,	900},
+	{26113,	850},
+	{26398,	800},
+	{26764,	750},
 	{27281,	700},
 	{27669,	650},
 	{28178,	600},
@@ -388,6 +466,69 @@ static sec_bat_adc_table_data_t temp_table[] = {
 	{40523,	-100},
 	{41123,	-150},
 	{41619,	-200},
+};
+#elif defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_V2_PROJECT) ||\
+	defined(CONFIG_MACH_PICASSO_LTE)
+static sec_bat_adc_table_data_t temp_table[] = {
+	{1100,	1140},
+	{1000,	1040},
+	{900,	940},
+	{800,	840},
+	{700,	740},
+	{600,	640},
+	{561,	601},
+	{560,	590},
+	{536,	566},
+	{535,	555},
+	{521,	541},
+	{520,	520},
+	{400,	400},
+	{300,	300},
+	{200,	200},
+	{100,	100},
+	{0,	0},
+	{-100,	-100},
+	{-200,	-200},
+	{-300,	-300},
+};
+#elif defined(CONFIG_MACH_MONDRIAN)
+static sec_bat_adc_table_data_t temp_table[] = {
+	{1100,	1165},
+	{1000,	1065},
+	{900,	965},
+	{800,	865},
+	{700,   795},
+	{616,   700},
+	{607,	670},
+	{590,   655},
+	{580,   640},
+	{574,   635},
+	{570,   630},
+	{565,   605},
+	{555,   600},
+	{550,   595},
+	{545,   585},
+	{540,   575},
+	{480,   463},
+	{470,   453},
+	{460,   440},
+	{450,   428},
+	{400,	400},
+	{300,	300},
+	{200,	200},
+	{100,	100},
+	{0,	0},
+	{-10, -10},
+	{-20, -25},
+	{-30, -38},
+	{-40, -52},
+	{-50, -65},
+	{-60, -78},
+	{-70, -90},
+	{-100,  -150},
+	{-200,  -250},
+	{-300,  -350},
+	{-400,  -450},
 };
 #else
 static sec_bat_adc_table_data_t temp_table[] = {
@@ -417,7 +558,6 @@ static sec_bat_adc_table_data_t temp_table[] = {
 };
 #endif
 
-
 #if defined(CONFIG_SEC_K_PROJECT)
 #define TEMP_HIGH_THRESHOLD_EVENT	700
 #define TEMP_HIGH_RECOVERY_EVENT		420
@@ -432,8 +572,8 @@ static sec_bat_adc_table_data_t temp_table[] = {
 #define TEMP_LOW_THRESHOLD_LPM		-50
 #define TEMP_LOW_RECOVERY_LPM		0
 
-#elif defined(CONFIG_MACH_HLTESKT) || defined(CONFIG_MACH_HLTEKTT) || \
-		defined(CONFIG_MACH_HLTELGT)
+#elif defined(CONFIG_MACH_HLTESKT) || defined(CONFIG_MACH_HLTEKTT) || defined(CONFIG_MACH_HLTELGT)\
+	|| defined(CONFIG_MACH_FRESCOLTESKT)||defined(CONFIG_MACH_FRESCOLTEKTT)||defined(CONFIG_MACH_FRESCOLTELGT)
 #define TEMP_HIGH_THRESHOLD_EVENT	680
 #define TEMP_HIGH_RECOVERY_EVENT	440
 #define TEMP_LOW_THRESHOLD_EVENT	-45
@@ -531,7 +671,7 @@ static sec_bat_adc_table_data_t temp_table[] = {
 #define TEMP_LOW_THRESHOLD_LPM	 -45
 #define TEMP_LOW_RECOVERY_LPM	 0
 /* H Project*/
-#elif defined(CONFIG_SEC_H_PROJECT)
+#elif defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 #define TEMP_HIGH_THRESHOLD_EVENT	650
 #define TEMP_HIGH_RECOVERY_EVENT	440
 #define TEMP_LOW_THRESHOLD_EVENT	-45
@@ -586,7 +726,33 @@ static sec_bat_adc_table_data_t temp_table[] = {
 #define TEMP_LOW_THRESHOLD_LPM		-45
 #define TEMP_LOW_RECOVERY_LPM		0
 #endif
-#elif defined(CONFIG_MACH_MONDRIAN) || defined(CONFIG_SEC_KACTIVE_PROJECT)
+#elif defined(CONFIG_MACH_MONDRIANWIFI_USA)
+#define TEMP_HIGH_THRESHOLD_EVENT	600
+#define TEMP_HIGH_RECOVERY_EVENT		450
+#define TEMP_LOW_THRESHOLD_EVENT		-50
+#define TEMP_LOW_RECOVERY_EVENT		0
+#define TEMP_HIGH_THRESHOLD_NORMAL	510
+#define TEMP_HIGH_RECOVERY_NORMAL	460
+#define TEMP_LOW_THRESHOLD_NORMAL	-50
+#define TEMP_LOW_RECOVERY_NORMAL	0
+#define TEMP_HIGH_THRESHOLD_LPM		600
+#define TEMP_HIGH_RECOVERY_LPM		450
+#define TEMP_LOW_THRESHOLD_LPM		-50
+#define TEMP_LOW_RECOVERY_LPM		0
+#elif defined(CONFIG_MACH_MONDRIANWIFI_EUR)
+#define TEMP_HIGH_THRESHOLD_EVENT	650
+#define TEMP_HIGH_RECOVERY_EVENT		450
+#define TEMP_LOW_THRESHOLD_EVENT		-50
+#define TEMP_LOW_RECOVERY_EVENT		0
+#define TEMP_HIGH_THRESHOLD_NORMAL	600
+#define TEMP_HIGH_RECOVERY_NORMAL	460
+#define TEMP_LOW_THRESHOLD_NORMAL	-50
+#define TEMP_LOW_RECOVERY_NORMAL	0
+#define TEMP_HIGH_THRESHOLD_LPM		600
+#define TEMP_HIGH_RECOVERY_LPM		450
+#define TEMP_LOW_THRESHOLD_LPM		-50
+#define TEMP_LOW_RECOVERY_LPM		0
+#elif defined(CONFIG_SEC_KACTIVE_PROJECT)
 #define TEMP_HIGH_THRESHOLD_EVENT	650
 #define TEMP_HIGH_RECOVERY_EVENT		440
 #define TEMP_LOW_THRESHOLD_EVENT		-45
@@ -602,39 +768,65 @@ static sec_bat_adc_table_data_t temp_table[] = {
 #elif defined(CONFIG_MACH_VIENNAVZW)
 #define TEMP_HIGH_THRESHOLD_EVENT	590
 #define TEMP_HIGH_RECOVERY_EVENT		470
-#define TEMP_LOW_THRESHOLD_EVENT		-15
-#define TEMP_LOW_RECOVERY_EVENT		20
-#define TEMP_HIGH_THRESHOLD_NORMAL	520
-#define TEMP_HIGH_RECOVERY_NORMAL	470
-#define TEMP_LOW_THRESHOLD_NORMAL	-15
-#define TEMP_LOW_RECOVERY_NORMAL	20
+#define TEMP_LOW_THRESHOLD_EVENT		-40
+#define TEMP_LOW_RECOVERY_EVENT		0
+#define TEMP_HIGH_THRESHOLD_NORMAL	530
+#define TEMP_HIGH_RECOVERY_NORMAL	480
+#define TEMP_LOW_THRESHOLD_NORMAL	-40
+#define TEMP_LOW_RECOVERY_NORMAL	0
 #define TEMP_HIGH_THRESHOLD_LPM		500
 #define TEMP_HIGH_RECOVERY_LPM		460
 #define TEMP_LOW_THRESHOLD_LPM		-40
 #define TEMP_LOW_RECOVERY_LPM		5
-#elif defined(CONFIG_MACH_VIENNAEUR) || defined(CONFIG_MACH_V2)
+#elif defined(CONFIG_MACH_VIENNAATT)
 #define TEMP_HIGH_THRESHOLD_EVENT	590
-#define TEMP_HIGH_RECOVERY_EVENT		410
+#define TEMP_HIGH_RECOVERY_EVENT		470
+#define TEMP_LOW_THRESHOLD_EVENT		-25
+#define TEMP_LOW_RECOVERY_EVENT		5
+#define TEMP_HIGH_THRESHOLD_NORMAL	545
+#define TEMP_HIGH_RECOVERY_NORMAL	470
+#define TEMP_LOW_THRESHOLD_NORMAL	-25
+#define TEMP_LOW_RECOVERY_NORMAL	5
+#define TEMP_HIGH_THRESHOLD_LPM		500
+#define TEMP_HIGH_RECOVERY_LPM		480
+#define TEMP_LOW_THRESHOLD_LPM		-35
+#define TEMP_LOW_RECOVERY_LPM		5
+#elif defined(CONFIG_MACH_V2)
+#define TEMP_HIGH_THRESHOLD_EVENT	600
+#define TEMP_HIGH_RECOVERY_EVENT		460
+#define TEMP_LOW_THRESHOLD_EVENT		-40
+#define TEMP_LOW_RECOVERY_EVENT		10
+#define TEMP_HIGH_THRESHOLD_NORMAL	600
+#define TEMP_HIGH_RECOVERY_NORMAL	460
+#define TEMP_LOW_THRESHOLD_NORMAL	-40
+#define TEMP_LOW_RECOVERY_NORMAL	10
+#define TEMP_HIGH_THRESHOLD_LPM		600
+#define TEMP_HIGH_RECOVERY_LPM		460
+#define TEMP_LOW_THRESHOLD_LPM		-40
+#define TEMP_LOW_RECOVERY_LPM		10
+#elif defined(CONFIG_MACH_VIENNAEUR)
+#define TEMP_HIGH_THRESHOLD_EVENT	590
+#define TEMP_HIGH_RECOVERY_EVENT		460
 #define TEMP_LOW_THRESHOLD_EVENT		-40
 #define TEMP_LOW_RECOVERY_EVENT		10
 #define TEMP_HIGH_THRESHOLD_NORMAL	590
-#define TEMP_HIGH_RECOVERY_NORMAL	410
+#define TEMP_HIGH_RECOVERY_NORMAL	460
 #define TEMP_LOW_THRESHOLD_NORMAL	-40
 #define TEMP_LOW_RECOVERY_NORMAL	10
 #define TEMP_HIGH_THRESHOLD_LPM		590
-#define TEMP_HIGH_RECOVERY_LPM		410
+#define TEMP_HIGH_RECOVERY_LPM		460
 #define TEMP_LOW_THRESHOLD_LPM		-40
 #define TEMP_LOW_RECOVERY_LPM		10
 #elif defined(CONFIG_MACH_PICASSO)
-#define TEMP_HIGH_THRESHOLD_EVENT	560
+#define TEMP_HIGH_THRESHOLD_EVENT	600
 #define TEMP_HIGH_RECOVERY_EVENT		460
 #define TEMP_LOW_THRESHOLD_EVENT		-50
 #define TEMP_LOW_RECOVERY_EVENT		0
-#define TEMP_HIGH_THRESHOLD_NORMAL	560
+#define TEMP_HIGH_THRESHOLD_NORMAL	600
 #define TEMP_HIGH_RECOVERY_NORMAL	460
 #define TEMP_LOW_THRESHOLD_NORMAL	-50
 #define TEMP_LOW_RECOVERY_NORMAL	0
-#define TEMP_HIGH_THRESHOLD_LPM		560
+#define TEMP_HIGH_THRESHOLD_LPM		600
 #define TEMP_HIGH_RECOVERY_LPM		460
 #define TEMP_LOW_THRESHOLD_LPM		-50
 #define TEMP_LOW_RECOVERY_LPM		0
@@ -653,7 +845,6 @@ static sec_bat_adc_table_data_t temp_table[] = {
 #define TEMP_LOW_RECOVERY_LPM		0
 #endif
 
-
 void sec_bat_check_batt_id(struct sec_battery_info *battery)
 {
 #if defined(CONFIG_SENSORS_QPNP_ADC_VOLTAGE)
@@ -661,7 +852,11 @@ void sec_bat_check_batt_id(struct sec_battery_info *battery)
 	int rc, data =  -1;
 	struct qpnp_vadc_result results;
 
+#if defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_LT03) || defined(CONFIG_MACH_VIENNA)
+	rc = qpnp_vadc_read(NULL, LR_MUX9_PU2_AMUX_THM5, &results);
+#else
 	rc = qpnp_vadc_read(NULL, LR_MUX5_PU2_AMUX_THM2, &results);
+#endif
 	if (rc) {
 		pr_err("%s: Unable to read batt id rc=%d\n",
 				__func__, rc);
@@ -671,18 +866,29 @@ void sec_bat_check_batt_id(struct sec_battery_info *battery)
 
 	pr_info("%s: batt_id_adc = (%d)\n", __func__, data);
 
+#if defined(CONFIG_MACH_PICASSO) || defined(CONFIG_MACH_LT03)
+	/* SDI: 28000, BYD: 29000, ATL: 31000 */
+	if (data > 31000) { /* ATL */
+		battery->pdata->vendor = "ATL ATL";
+		samsung_battery_data[0].Capacity = 0x4074;
+		samsung_battery_data[0].type_str = "ATL";
+	} else if (data > 29000) { /* BYD */
+		battery->pdata->vendor = "BYD BYD";
+		samsung_battery_data[0].Capacity = 0x4010;
+		samsung_battery_data[0].type_str = "BYD";
+	}
+#else
 	/* SDI: 28500, ATL: 31000 */
 	if (data > 31000) {
 		battery->pdata->vendor = "ATL ATL";
-#if defined(CONFIG_MACH_PICASSO)
-		samsung_battery_data[0].Capacity = 0x4074; /* Picasso */
-#elif defined(CONFIG_MACH_MONDRIAN)
+#if defined(CONFIG_MACH_MONDRIAN)
 		samsung_battery_data[0].Capacity = 0x2614; /* Mondrian : 4874mAh */
 #else
 		samsung_battery_data[0].Capacity = 0x4958; /* Vienna */
 #endif
 		samsung_battery_data[0].type_str = "ATL";
 	}
+#endif
 
 	pr_err("%s: batt_type(%s), batt_id(%d), cap(0x%x), type(%s)\n",
 			__func__, battery->pdata->vendor, data,
@@ -717,7 +923,7 @@ static void sec_bat_adc_ap_init(struct platform_device *pdev,
 
 #if defined(CONFIG_ARCH_MSM8974PRO)
 	temp_channel = LR_MUX5_PU1_AMUX_THM2;
-#elif defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_KS01_PROJECT)
+#elif defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_KS01_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	temp_channel = LR_MUX5_PU2_AMUX_THM2;
 #else
 	temp_channel = LR_MUX4_PU2_AMUX_THM1;
@@ -877,11 +1083,14 @@ void adc_exit(struct sec_battery_info *battery)
 bool sec_bat_check_jig_status(void)
 {
 #if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT) || \
-	defined(CONFIG_SEC_KS01_PROJECT) || defined(CONFIG_MACH_MONDRIAN)
+	defined(CONFIG_SEC_KS01_PROJECT) || defined(CONFIG_MACH_MONDRIAN) || \
+	defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
+#if defined(CONFIG_EXTCON)
+	return get_jig_state();
+#else
 	extern bool is_jig_attached;	// from sec-switch
 	return is_jig_attached;
-#elif defined(CONFIG_SEC_K_PROJECT)
-	return false;
+#endif
 #else
 	if (!sec_fuelgauge) {
 		pr_err("%s: sec_fuelgauge is empty\n", __func__);
@@ -977,7 +1186,7 @@ bool sec_bat_check_callback(struct sec_battery_info *battery)
 bool sec_bat_check_cable_result_callback(
 		int cable_type)
 {
-#if defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	struct regulator *ldo11;
 	current_cable_type = cable_type;
 
@@ -1019,6 +1228,7 @@ bool sec_bat_check_cable_result_callback(
 			regulator_enable(max77826_ldo6);
 		}
 	}
+	regulator_put(max77826_ldo6);
 #endif
 	return true;
 }
@@ -1032,7 +1242,7 @@ int sec_bat_check_cable_callback(struct sec_battery_info *battery)
 		pr_err("%s: ta_int_gpio is 0 or not assigned yet(cable_type(%d))\n",
 			__func__, current_cable_type);
 	} else {
-		if (battery->cable_type == POWER_SUPPLY_TYPE_BATTERY &&
+		if (battery->wire_status == POWER_SUPPLY_TYPE_BATTERY &&
 			!gpio_get_value_cansleep(battery->pdata->ta_irq_gpio)) {
 			pr_info("%s : VBUS IN\n", __func__);
 
@@ -1043,8 +1253,8 @@ int sec_bat_check_cable_callback(struct sec_battery_info *battery)
 			return POWER_SUPPLY_TYPE_UARTOFF;
 		}
 
-		if ((battery->cable_type == POWER_SUPPLY_TYPE_UARTOFF ||
-			battery->cable_type == POWER_SUPPLY_TYPE_CARDOCK) &&
+		if ((battery->wire_status == POWER_SUPPLY_TYPE_UARTOFF ||
+			battery->wire_status == POWER_SUPPLY_TYPE_CARDOCK) &&
 			gpio_get_value_cansleep(battery->pdata->ta_irq_gpio)) {
 			pr_info("%s : VBUS OUT\n", __func__);
 
@@ -1071,7 +1281,6 @@ void board_battery_init(struct platform_device *pdev, struct sec_battery_info *b
 		battery->pdata->temp_adc_table_size = sizeof(temp_table)/sizeof(sec_bat_adc_table_data_t);
 		battery->pdata->temp_amb_adc_table_size = sizeof(temp_table)/sizeof(sec_bat_adc_table_data_t);
 	}
-
 	battery->pdata->event_check = true;
 	battery->pdata->temp_high_threshold_event = TEMP_HIGH_THRESHOLD_EVENT;
 	battery->pdata->temp_high_recovery_event = TEMP_HIGH_RECOVERY_EVENT;
@@ -1111,6 +1320,11 @@ void board_fuelgauge_init(struct sec_fuelgauge_info *fuelgauge)
 	fuelgauge->pdata->capacity_max = CAPACITY_MAX;
 	fuelgauge->pdata->capacity_max_margin = CAPACITY_MAX_MARGIN;
 	fuelgauge->pdata->capacity_min = CAPACITY_MIN;
+#if defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_V2_PROJECT) ||\
+	defined(CONFIG_MACH_PICASSO_LTE) || defined(CONFIG_MACH_MONDRIAN)
+	fuelgauge->pdata->temp_adc_table = temp_table;
+	fuelgauge->pdata->temp_adc_table_size = sizeof(temp_table)/sizeof(sec_bat_adc_table_data_t);
+#endif
 
 #if defined(CONFIG_FUELGAUGE_MAX17048)
 	pr_info("%s: RCOMP0: 0x%x, RCOMP_charging: 0x%x, "
@@ -1148,6 +1362,36 @@ void cable_initial_check(struct sec_battery_info *battery)
 			value.intval = 1;
 			psy_do_property("wireless", set,
 					POWER_SUPPLY_PROP_ONLINE, value);
+		}
+
+		if (battery->pdata->ta_irq_gpio == 0) {
+			pr_err("%s: ta_int_gpio is 0 or not assigned yet(cable_type(%d))\n",
+				__func__, current_cable_type);
+		} else {
+			if (battery->wire_status == POWER_SUPPLY_TYPE_BATTERY &&
+				!gpio_get_value_cansleep(battery->pdata->ta_irq_gpio)) {
+#if defined(CONFIG_USB_SWITCH_FSA9485)
+				if (!mhl_connection_state()) {
+#endif
+				pr_info("%s : VBUS IN\n", __func__);
+
+				value.intval = POWER_SUPPLY_TYPE_UARTOFF;
+				psy_do_property("battery", set, POWER_SUPPLY_PROP_ONLINE, value);
+				current_cable_type = POWER_SUPPLY_TYPE_UARTOFF;
+#if defined(CONFIG_USB_SWITCH_FSA9485)
+			}
+#endif
+			}
+
+			if ((battery->wire_status == POWER_SUPPLY_TYPE_UARTOFF ||
+				battery->wire_status == POWER_SUPPLY_TYPE_CARDOCK) &&
+				gpio_get_value_cansleep(battery->pdata->ta_irq_gpio)) {
+				pr_info("%s : VBUS OUT\n", __func__);
+
+				value.intval = POWER_SUPPLY_TYPE_BATTERY;
+				psy_do_property("battery", set, POWER_SUPPLY_PROP_ONLINE, value);
+				current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
+			}
 		}
 	}
 }

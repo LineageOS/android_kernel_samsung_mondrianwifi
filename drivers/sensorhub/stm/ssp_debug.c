@@ -37,29 +37,27 @@ void ssp_dump_task(struct work_struct *work) {
 	char *buffer;
 	char strFilePath[60];
 	struct timeval cur_time;
-	int iTimeTemp;
 	mm_segment_t fs;
 	int buf_len, packet_len, residue, iRet = 0, index = 0 ,iRetTrans=0 ,iRetWrite=0;
 
 
 	big = container_of(work, struct ssp_big, work);
-	pr_err("[SSP]: %s - start ssp dumping (%d)(%d)\n",
-		__func__,big->data->bMcuDumpMode,big->data->uDumpCnt);
+	pr_err("[SSP]: %s - start ssp dumping (%d)(%d)\n", __func__, big->data->bMcuDumpMode, big->data->uDumpCnt);
 	big->data->uDumpCnt++;
 	wake_lock(&big->data->ssp_wake_lock);
 
-
 	fs = get_fs();
 	set_fs(get_ds());
+	
 	if(big->data->bMcuDumpMode == true)
 	{
 		do_gettimeofday(&cur_time);
-		iTimeTemp = (int) cur_time.tv_sec;
 
-		sprintf(strFilePath, "%s%d.txt", DUMP_FILE_PATH, iTimeTemp);
-
+		sprintf(strFilePath, "%s%d.dump", DUMP_FILE_PATH, (int)cur_time.tv_sec);
 		dump_file = filp_open(strFilePath, O_RDWR | O_CREAT | O_APPEND, 0666);
-		if (IS_ERR(dump_file)) {
+
+		if (IS_ERR(dump_file))
+		{
 			pr_err("[SSP]: %s - Can't open dump file\n", __func__);
 			set_fs(fs);
 			iRet = PTR_ERR(dump_file);
@@ -76,7 +74,8 @@ void ssp_dump_task(struct work_struct *work) {
 	buffer = kzalloc(buf_len, GFP_KERNEL);
 	residue = big->length;
 
-	while (residue > 0) {
+	while (residue > 0)
+	{
 		packet_len = residue > DATA_PACKET_SIZE ? DATA_PACKET_SIZE : residue;
 
 		msg = kzalloc(sizeof(*msg), GFP_KERNEL);
@@ -87,16 +86,20 @@ void ssp_dump_task(struct work_struct *work) {
 		msg->buffer = buffer;
 		msg->free_buffer = 0;
 
-		iRetTrans = ssp_spi_sync(big->data, msg, 1000);
-		if (iRetTrans != SUCCESS) {
+		iRetTrans = ssp_spi_sync(big->data, msg, 5000);
+		
+		if (iRetTrans != SUCCESS)
+		{
 			pr_err("[SSP]: %s - Fail to receive data %d (%d)\n", __func__, iRetTrans,residue);
 			break;
 		}
 
-		if(big->data->bMcuDumpMode == true) {
-			iRetWrite = vfs_write(dump_file, (char __user *) buffer, packet_len,
-				&dump_file->f_pos);
-			if (iRetWrite < 0) {
+		if(big->data->bMcuDumpMode == true)
+		{
+			iRetWrite = vfs_write(dump_file, (char __user *) buffer, packet_len, &dump_file->f_pos);
+			
+			if (iRetWrite < 0)
+			{
 				pr_err("[SSP]: %s - Can't write dump to file\n", __func__);
 				break;
 			}
@@ -104,21 +107,20 @@ void ssp_dump_task(struct work_struct *work) {
 		residue -= packet_len;
 	}
 
-	if(big->data->bMcuDumpMode == true && (iRetTrans != SUCCESS || iRetWrite < 0) )
-	{
-		char FAILSTRING[100];
-		sprintf(FAILSTRING,"FAIL OCCURED(%d)(%d)(%d)",iRetTrans,iRetWrite,big->length);
-		vfs_write(dump_file, (char __user *) FAILSTRING, strlen(FAILSTRING),&dump_file->f_pos);
-	}
-
-	ssp_send_cmd(big->data, MSG2SSP_AP_MCU_DUMP_FINISH, SUCCESS);
-
-	big->data->bDumping = false;
 
 	if(big->data->bMcuDumpMode == true)
 	{
+		if(iRetTrans != SUCCESS || iRetWrite < 0)	// error case
+		{
+			char FAILSTRING[100];
+			sprintf(FAILSTRING,"FAIL OCCURED(%d)(%d)(%d)",iRetTrans,iRetWrite,big->length);
+			vfs_write(dump_file, (char __user *) FAILSTRING, strlen(FAILSTRING),&dump_file->f_pos);
+		}
+
 		filp_close(dump_file, current->files);
 	}
+
+	big->data->bDumping = false;
 
 	set_fs(fs);
 

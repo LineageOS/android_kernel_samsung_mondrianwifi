@@ -46,7 +46,7 @@
 #include "mdnie_tft_data_millet.h"
 #endif
 
-
+int get_lcd_attached(void);
 
 #define MDNIE_TFT_DEBUG
 
@@ -248,13 +248,13 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 	DPRINT("mDNIe_Set_Mode start , mode(%d), background(%d)\n",
 		mode, mdnie_tun_state.background);
 
-#if defined(CONFIG_LCD_CONNECTION_CHECK)
-	if (is_lcd_attached() == 0)
+
+	if (get_lcd_attached() == 0)
 	{
 		printk("%s: LCD not connected!\n",__func__);
 		return;
 	}
-#endif
+
 
 	if (mfd->resume_state == MIPI_SUSPEND_STATE) {
 		DPRINT("[ERROR] not ST_DSI_RESUME. do not send mipi cmd.\n");
@@ -287,6 +287,7 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 	if (mdnie_tun_state.blind == COLOR_BLIND)
 		mode = mDNIE_BLINE_MODE;
 
+#if !defined(CONFIG_SEC_MATISSE_PROJECT)
 	switch (mode) {
 #if defined (CONFIG_FB_MSM_MDSS_SDC_WXGA_PANEL)
 	case mDNIe_UI_MODE:
@@ -503,6 +504,7 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 		DPRINT("[%s] no option (%d)\n", __func__, mode);
 		return;
 	}
+#endif
 	sending_tuning_cmd();
 	free_tun_cmd();
 
@@ -522,7 +524,9 @@ void is_negative_on(void)
 		/* check the mode and tuning again when wake up*/
 		DPRINT("negative off when resume, tuning again!\n");
 		mdss_negative_color(mdnie_tun_state.negative);
+#if !defined(CONFIG_SEC_MATISSE_PROJECT)
 		mDNIe_Set_Mode(mdnie_tun_state.scenario);
+#endif
 	}
 }
 
@@ -551,7 +555,7 @@ void is_play_speed_1_5(int enable)
  * #	3. Natural
  * #
  * ##########################################################*/
-
+#if !defined(CONFIG_SEC_MATISSE_PROJECT)
 static ssize_t mode_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -810,38 +814,6 @@ static ssize_t outdoor_store(struct device *dev,
 
 static DEVICE_ATTR(outdoor, 0664, outdoor_show, outdoor_store);
 
-static ssize_t negative_show(struct device *dev,
-					      struct device_attribute *attr,
-					      char *buf)
-{
-	DPRINT("called %s\n", __func__);
-	return snprintf(buf, 256, "Current negative Value : %s\n",
-		(mdnie_tun_state.negative == 0) ? "Disabled" : "Enabled");
-}
-
-static ssize_t negative_store(struct device *dev,
-					       struct device_attribute *attr,
-					       const char *buf, size_t size)
-{
-	int value;
-
-	sscanf(buf, "%d", &value);
-
-	DPRINT
-	    ("negative_store, input value = %d\n",
-	     value);
-
-	mdnie_tun_state.negative = value;
-
-	mDNIe_set_negative(mdnie_tun_state.negative);
-
-	return size;
-}
-
-static DEVICE_ATTR(negative, 0664,
-		   negative_show,
-		   negative_store);
-
 static ssize_t playspeed_show(struct device *dev,
 			struct device_attribute *attr,
 			char *buf)
@@ -866,6 +838,73 @@ static DEVICE_ATTR(playspeed, 0664,
 			playspeed_show,
 			playspeed_store);
 
+static ssize_t cabc_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int rc;
+	unsigned char cabc;
+	cabc = mdss_dsi_show_cabc();
+	rc = snprintf((char *)buf, sizeof(buf), "%d\n",cabc);
+	pr_info("%s :[MIPI2LVDS] CABC: %d\n", __func__, cabc);
+	return rc;
+
+}
+
+
+static ssize_t cabc_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+
+	unsigned char cabc;
+	cabc = mdss_dsi_show_cabc();
+
+	if (sysfs_streq(buf, "1") && !cabc)
+		cabc = true;
+	else if (sysfs_streq(buf, "0") && cabc)
+		cabc = false;
+	else
+		pr_info("%s: Invalid argument!!", __func__);
+	mdss_dsi_store_cabc(cabc);
+
+	return size;
+
+}
+static DEVICE_ATTR(cabc, 0664, cabc_show, cabc_store);
+#endif
+
+static ssize_t negative_show(struct device *dev,
+					      struct device_attribute *attr,
+					      char *buf)
+{
+	DPRINT("called %s\n", __func__);
+	return snprintf(buf, 256, "Current negative Value : %s\n",
+		(mdnie_tun_state.negative == 0) ? "Disabled" : "Enabled");
+}
+
+static ssize_t negative_store(struct device *dev,
+					       struct device_attribute *attr,
+					       const char *buf, size_t size)
+{
+	int value;
+
+	sscanf(buf, "%d", &value);
+
+	DPRINT
+	    ("negative_store, input value = %d\n",
+	     value);
+
+	mdnie_tun_state.negative = value;
+
+	mDNIe_set_negative(mdnie_tun_state.negative);
+	DPRINT
+	    ("negative_store, input value11 = %d\n",
+	     value);
+	return size;
+}
+
+static DEVICE_ATTR(negative, 0664,
+		   negative_show,
+		   negative_store);
 static ssize_t accessibility_show(struct device *dev,
 			struct device_attribute *attr,
 			char *buf)
@@ -874,6 +913,27 @@ static ssize_t accessibility_show(struct device *dev,
 	return snprintf(buf, 256, "%d\n", play_speed_1_5);
 }
 
+#if defined(CONFIG_SEC_MATISSE_PROJECT)
+static ssize_t accessibility_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t size)
+{
+	int cmd_value;
+
+	sscanf(buf, "%d", &cmd_value);
+
+	if (cmd_value == NEGATIVE) {
+		mdnie_tun_state.negative = mDNIe_NEGATIVE_ON;
+		mdnie_tun_state.blind = ACCESSIBILITY_OFF;
+	} else if (cmd_value == ACCESSIBILITY_OFF) {
+		mdnie_tun_state.blind = ACCESSIBILITY_OFF;
+		mdnie_tun_state.negative = mDNIe_NEGATIVE_OFF;
+	} else
+		pr_info("%s ACCESSIBILITY_MAX", __func__);
+	is_negative_on();
+	return size;
+}
+#else
 static ssize_t accessibility_store(struct device *dev,
 			struct device_attribute *attr,
 			const char *buf, size_t size)
@@ -920,46 +980,11 @@ static ssize_t accessibility_store(struct device *dev,
 
 	return size;
 }
+#endif
 
 static DEVICE_ATTR(accessibility, 0664,
 			accessibility_show,
 			accessibility_store);
-
-
-
-static ssize_t cabc_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	int rc;
-	unsigned char cabc;
-	cabc = mdss_dsi_show_cabc();
-	rc = snprintf((char *)buf, sizeof(buf), "%d\n",cabc);
-	pr_info("%s :[MIPI2LVDS] CABC: %d\n", __func__, cabc);
-	return rc;
-
-}
-
-
-static ssize_t cabc_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size)
-{
-
-	unsigned char cabc;
-	cabc = mdss_dsi_show_cabc();
-
-	if (sysfs_streq(buf, "1") && !cabc)
-		cabc = true;
-	else if (sysfs_streq(buf, "0") && cabc)
-		cabc = false;
-	else
-		pr_info("%s: Invalid argument!!", __func__);
-	mdss_dsi_store_cabc(cabc);
-
-	return size;
-
-}
-static DEVICE_ATTR(cabc, 0664, cabc_show, cabc_store);
-
 
 
 static struct class *mdnie_class;
@@ -980,6 +1005,7 @@ void init_mdnie_class(void)
 	if (IS_ERR(tune_mdnie_dev))
 		pr_err("Failed to create device(mdnie)!\n");
 
+#if !defined(CONFIG_SEC_MATISSE_PROJECT)
 	if (device_create_file
 	    (tune_mdnie_dev, &dev_attr_scenario) < 0)
 		pr_err("Failed to create device file(%s)!\n",
@@ -1007,23 +1033,25 @@ void init_mdnie_class(void)
 	       dev_attr_outdoor.attr.name);
 
 	if (device_create_file
-		(tune_mdnie_dev, &dev_attr_negative) < 0)
-		pr_err("Failed to create device file(%s)!\n",
-			dev_attr_negative.attr.name);
-
-	if (device_create_file
 		(tune_mdnie_dev, &dev_attr_playspeed) < 0)
 		pr_err("Failed to create device file(%s)!=n",
 			dev_attr_playspeed.attr.name);
 
-	if (device_create_file
-		(tune_mdnie_dev, &dev_attr_accessibility) < 0)
-		pr_err("Failed to create device file(%s)!=n",
-			dev_attr_accessibility.attr.name);
 	if (device_create_file(tune_mdnie_dev, &dev_attr_cabc) < 0) {
 		pr_info("[mipi2lvds:ERROR] device_create_file(%s)\n",\
 			dev_attr_cabc.attr.name);
 	}
+#endif
+	if (device_create_file
+		(tune_mdnie_dev, &dev_attr_accessibility) < 0)
+		pr_err("Failed to create device file(%s)!=n",
+			dev_attr_accessibility.attr.name);
+
+	if (device_create_file
+		(tune_mdnie_dev, &dev_attr_negative) < 0)
+		pr_err("Failed to create device file(%s)!\n",
+			dev_attr_negative.attr.name);
+
 	mdnie_tun_state.mdnie_enable = true;
 
 	DPRINT("end!\n");

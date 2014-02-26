@@ -368,7 +368,7 @@ static int tspdrv_parse_dt(struct platform_device *pdev)
 	return rc;
 }
 
-#if defined(CONFIG_MOTOR_DRV_MAX77804K)
+#if defined(CONFIG_MOTOR_DRV_MAX77804K) || defined(CONFIG_MOTOR_DRV_MAX77828)
 static void max77803_haptic_power_onoff(int onoff)
 {
 	int ret;
@@ -412,7 +412,7 @@ static void max77803_haptic_power_onoff(int onoff)
 	int ret;
 #if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_MONTBLANC_PROJECT) || defined(CONFIG_SEC_JS_PROJECT) || \
     defined(CONFIG_MACH_FLTEEUR) || defined(CONFIG_MACH_FLTESKT) || defined(CONFIG_MACH_JVELTEEUR) ||\
-    defined(CONFIG_MACH_VIKALCU)
+    defined(CONFIG_MACH_VIKALCU) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	static struct regulator *reg_l23;
 
 	if (!reg_l23) {
@@ -531,7 +531,7 @@ static __devinit int tspdrv_probe(struct platform_device *pdev)
 	if (!virt_mmss_gp1_base)
 		panic("tspdrv : Unable to ioremap MSM_MMSS_GP1 memory!");
 			
-#if defined(CONFIG_MOTOR_DRV_MAX77803) || defined(CONFIG_MOTOR_DRV_MAX77804K)
+#if defined(CONFIG_MOTOR_DRV_MAX77803) || defined(CONFIG_MOTOR_DRV_MAX77804K) || defined(CONFIG_MOTOR_DRV_MAX77828)
 	vibrator_drvdata.power_onoff = max77803_haptic_power_onoff;
 #else
 	vibrator_drvdata.power_onoff = NULL;
@@ -817,7 +817,9 @@ static long ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 
 	case TSPDRV_MAGIC_NUMBER:
+#ifdef CONFIG_TACTILE_ASSIST
 	case TSPDRV_SET_MAGIC_NUMBER:
+#endif
 		filp->private_data = (void *)TSPDRV_MAGIC_NUMBER;
 		break;
 
@@ -837,8 +839,15 @@ static long ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		** If a stop was requested, ignore the request as the amp
 		** will be disabled by the timer proc when it's ready
 		*/
+#ifdef CONFIG_TACTILE_ASSIST
+		g_bstoprequested = true;
+		/* Last data processing to disable amp and stop timer */
+		VibeOSKernelProcessData(NULL);
+		g_bisplaying = false;
+#else
 		if (!g_bstoprequested)
 			ImmVibeSPI_ForceOut_AmpDisable(arg);
+#endif
 		wake_unlock(&vib_wake_lock);
 		break;
 

@@ -65,6 +65,7 @@ struct sec_charger_info {
 
 	int cable_type;
 	int status;
+	int siop_level;
 	bool is_charging;
 
 	/* charging current : + charging, - OTG */
@@ -75,6 +76,8 @@ struct sec_charger_info {
 	int reg_addr;
 	int reg_data;
 	int irq_base;
+	bool is_slow_charging;
+	struct delayed_work slow_work;
 };
 
 bool sec_hal_chg_init(struct i2c_client *);

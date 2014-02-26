@@ -64,6 +64,9 @@
 
 #if defined(CONFIG_TDMB)
 #include "mdnie_lite_tuning_data_dmb.h"
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL) // K
+#include "mdnie_lite_tuning_data_dmb_fhd_s6e3fa2.h"
+#endif
 #endif
 
 static struct mipi_samsung_driver_data *mdnie_msd;
@@ -106,6 +109,11 @@ struct mdnie_lite_tun_type mdnie_tun_state = {
 	.accessibility = ACCESSIBILITY_OFF,
 #if defined(CONFIG_TDMB)
 	.dmb = DMB_MODE_OFF,
+#endif
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL) 
+	.scr_white_red = 0xff,
+	.scr_white_green = 0xff,
+	.scr_white_blue = 0xff,
 #endif
 };
 
@@ -163,10 +171,19 @@ static char level2_key[] = {
 	0x5A, 0x5A,
 };
 
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
+static char level1_key_disable[] = {
+	0xF0,
+	0xA5, 0xA5,
+};
+#endif
+
 static char tune_data1[MDNIE_TUNE_FIRST_SIZE] = {0,};
 static char tune_data2[MDNIE_TUNE_SECOND_SIZE] = {0,};
 
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
+static char white_rgb_buf[MDNIE_TUNE_FIRST_SIZE] = {0,};
+
 static char tune_data1_adb[MDNIE_TUNE_FIRST_SIZE] = {0,};
 static char tune_data2_adb[MDNIE_TUNE_SECOND_SIZE] = {0,};
 
@@ -187,6 +204,11 @@ static struct dsi_cmd_desc mdni_tune_cmd[] = {
 		sizeof(tune_data1)}, tune_data1},
 	{{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(tune_data2)}, tune_data2},
+		
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(level1_key_disable)}, level1_key_disable},		
+#endif		
 };
 
 void print_tun_data(void)
@@ -244,7 +266,10 @@ void sending_tuning_cmd(void)
 
 		mutex_unlock(&mdnie_msd->lock);
 	}
-
+/*
+ * mDnie priority
+ * Accessibility > HBM > Screen Mode 
+ */
 void mDNIe_Set_Mode(void)
 {
 	struct msm_fb_data_type *mfd;
@@ -261,6 +286,12 @@ void mDNIe_Set_Mode(void)
 	DPRINT("mDNIe_Set_Mode start : return cause of video mode\n");
 	return;
 #endif
+
+	if (mfd->blank_mode) {
+		DPRINT("[ERROR] blank_mode (%d). do not send mipi cmd.\n", 
+			mfd->blank_mode);
+		return;
+	}
 
 	if (mfd->resume_state == MIPI_SUSPEND_STATE) {
 		DPRINT("[ERROR] not ST_DSI_RESUME. do not send mipi cmd.\n");
@@ -297,7 +328,46 @@ void mDNIe_Set_Mode(void)
 		INPUT_PAYLOAD2(blind_tune_value[mdnie_tun_state.accessibility][1]);
 #endif
 	}
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
+	else if (mdnie_msd->dstat.hbm_mode) {
+		DPRINT("[LOCAL CE] HBM mode! only LOCAL CE tuning\n");
+		if (get_lcd_panel_res() == 0) { // 0 wqhd - will be removed
+			INPUT_PAYLOAD1(LOCAL_CE_1);
+			INPUT_PAYLOAD2(LOCAL_CE_2);
+		} else {
+			INPUT_PAYLOAD1(LOCAL_CE_1_FHD);
+			INPUT_PAYLOAD2(LOCAL_CE_2_FHD);
+		}
+	}
+#endif
 #if defined(CONFIG_TDMB)
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
+	else if (mdnie_tun_state.dmb > DMB_MODE_OFF){
+		if (get_lcd_panel_res() == 0) { // 0 wqhd - will be removed
+			if (!dmb_tune_value[mdnie_tun_state.dmb][mdnie_tun_state.background][mdnie_tun_state.outdoor][0] ||
+				!dmb_tune_value[mdnie_tun_state.dmb][mdnie_tun_state.background][mdnie_tun_state.outdoor][1]) {
+				pr_err("dmb tune data is NULL!\n");
+				return;
+			} else {
+				INPUT_PAYLOAD1(
+					dmb_tune_value[mdnie_tun_state.dmb][mdnie_tun_state.background][mdnie_tun_state.outdoor][0]);
+				INPUT_PAYLOAD2(
+					dmb_tune_value[mdnie_tun_state.dmb][mdnie_tun_state.background][mdnie_tun_state.outdoor][1]);
+			}
+		}else{
+			if (!dmb_tune_value_fhd[mdnie_tun_state.dmb][mdnie_tun_state.background][mdnie_tun_state.outdoor][0] ||
+				!dmb_tune_value_fhd[mdnie_tun_state.dmb][mdnie_tun_state.background][mdnie_tun_state.outdoor][1]) {
+				pr_err("dmb tune data is NULL!\n");
+				return;
+			} else {
+				INPUT_PAYLOAD1(
+					dmb_tune_value_fhd[mdnie_tun_state.dmb][mdnie_tun_state.background][mdnie_tun_state.outdoor][0]);
+				INPUT_PAYLOAD2(
+					dmb_tune_value_fhd[mdnie_tun_state.dmb][mdnie_tun_state.background][mdnie_tun_state.outdoor][1]);
+			}
+		}
+	}
+#else
 	else if (mdnie_tun_state.dmb > DMB_MODE_OFF){
 		if (!dmb_tune_value[mdnie_tun_state.dmb][mdnie_tun_state.background][mdnie_tun_state.outdoor][0] ||
 			!dmb_tune_value[mdnie_tun_state.dmb][mdnie_tun_state.background][mdnie_tun_state.outdoor][1]) {
@@ -309,7 +379,8 @@ void mDNIe_Set_Mode(void)
 			INPUT_PAYLOAD2(
 				dmb_tune_value[mdnie_tun_state.dmb][mdnie_tun_state.background][mdnie_tun_state.outdoor][1]);	
 		}
-	} 
+	}
+#endif
 #endif
 	else {
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
@@ -694,8 +765,18 @@ static ssize_t accessibility_store(struct device *dev,
 		mdnie_tun_state.accessibility = NEGATIVE;
 	} else if (cmd_value == COLOR_BLIND) {
 		mdnie_tun_state.accessibility = COLOR_BLIND;
+
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
+		if (get_lcd_panel_res() == 0) { // 0 : wqhd
+#endif		
 		memcpy(&COLOR_BLIND_2[MDNIE_COLOR_BLINDE_OFFSET],
 				buffer, MDNIE_COLOR_BLINDE_CMD);
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
+		}else {  //1: fhd
+			memcpy(&COLOR_BLIND_2_FHD[MDNIE_COLOR_BLINDE_OFFSET],
+				buffer, MDNIE_COLOR_BLINDE_CMD);
+		}
+#endif
 	}
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
 	else if (cmd_value == SCREEN_CURTAIN) {
@@ -720,6 +801,62 @@ static ssize_t accessibility_store(struct device *dev,
 static DEVICE_ATTR(accessibility, 0664,
 			accessibility_show,
 			accessibility_store);
+
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
+static ssize_t sensorRGB_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d %d %d\n", mdnie_tun_state.scr_white_red, mdnie_tun_state.scr_white_green, mdnie_tun_state.scr_white_blue);
+}
+
+static ssize_t sensorRGB_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int red, green, blue;
+	char white_red, white_green, white_blue;
+
+	sscanf(buf, "%d %d %d", &red, &green, &blue);
+
+	if ((mdnie_tun_state.accessibility == ACCESSIBILITY_OFF) && 
+		(((mdnie_tun_state.background == AUTO_MODE) && (mdnie_tun_state.scenario == mDNIe_BROWSER_MODE)) ||	\
+		(mdnie_tun_state.scenario == mDNIe_eBOOK_MODE))) 
+	{
+		white_red = (char)(red);
+		white_green = (char)(green);
+		white_blue= (char)(blue);
+
+		mdnie_tun_state.scr_white_red = red;
+		mdnie_tun_state.scr_white_green = green;
+		mdnie_tun_state.scr_white_blue= blue;
+
+		DPRINT("%s: white_red = %d, white_green = %d, white_blue = %d\n", __func__, white_red, white_green, white_blue);
+
+		if (get_lcd_panel_res() == 0) { // 0 wqhd - will be removed
+			INPUT_PAYLOAD1(mdnie_tune_value[mdnie_tun_state.scenario][mdnie_tun_state.background][mdnie_tun_state.outdoor][0]);
+			memcpy( white_rgb_buf, mdnie_tune_value[mdnie_tun_state.scenario][mdnie_tun_state.background][mdnie_tun_state.outdoor][1], MDNIE_TUNE_FIRST_SIZE);
+		} else { // 1 fhd
+			INPUT_PAYLOAD1(mdnie_tune_value_fhd[mdnie_tun_state.scenario][mdnie_tun_state.background][mdnie_tun_state.outdoor][0]);
+			memcpy( white_rgb_buf, mdnie_tune_value_fhd[mdnie_tun_state.scenario][mdnie_tun_state.background][mdnie_tun_state.outdoor][1], MDNIE_TUNE_FIRST_SIZE);
+		}
+
+		white_rgb_buf[ADDRESS_SCR_WHITE_RED] = white_red;
+		white_rgb_buf[ADDRESS_SCR_WHITE_GREEN] = white_green;
+		white_rgb_buf[ADDRESS_SCR_WHITE_BLUE] = white_blue;
+
+		INPUT_PAYLOAD2(white_rgb_buf);
+
+		sending_tuning_cmd();
+		free_tun_cmd();
+
+	} else {
+		DPRINT("[Warning] : Wrong state - accessibility = %d, background = %d, scenario = %d\n", mdnie_tun_state.accessibility, mdnie_tun_state.background, mdnie_tun_state.scenario);	
+	}
+
+	return size;
+}
+
+static DEVICE_ATTR(sensorRGB, 0666, sensorRGB_show, sensorRGB_store);
+#endif
 
 static struct class *mdnie_class;
 struct device *tune_mdnie_dev;
@@ -785,6 +922,13 @@ void init_mdnie_class(void)
 		(tune_mdnie_dev, &dev_attr_accessibility) < 0)
 		pr_err("Failed to create device file(%s)!=n",
 			dev_attr_accessibility.attr.name);
+
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
+	if (device_create_file
+		(tune_mdnie_dev, &dev_attr_sensorRGB) < 0)
+		pr_err("Failed to create device file(%s)!=n",
+			dev_attr_sensorRGB.attr.name);
+#endif
 
 	mdnie_tun_state.mdnie_enable = true;
 

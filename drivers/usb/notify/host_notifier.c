@@ -168,10 +168,13 @@ int sec_get_notification(int ndata)
 {
 	int ret = 0;
 
-	if (HNOTIFY_EVENT == ndata)
-		ret = ninfo.event;
-	else if (HNOTIFY_MODE == ndata)
-		ret = ninfo.ndev.mode;
+	switch (ndata) {
+	case HNOTIFY_EVENT:		ret = ninfo.event;
+	case HNOTIFY_MODE:		ret = ninfo.ndev.mode;
+	case HNOTIFY_BOOSTER:	ret = ninfo.ndev.booster;
+	default:
+		break;
+	}
 
 	pr_info("ndata %d : %d\n", ndata, ret);
 	return ret;
@@ -184,6 +187,8 @@ static int host_notifier_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "notifier_probe\n");
 
+	INIT_WORK(&ninfo.noti_work, hnotifier_work);
+
 	ninfo.ndev.set_booster = host_notifier_booster;
 	ninfo.phy = usb_get_transceiver();
 	ATOMIC_INIT_NOTIFIER_HEAD(&ninfo.phy->notifier);
@@ -193,8 +198,6 @@ static int host_notifier_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to host_notify_dev_register\n");
 		return ret;
 	}
-	INIT_WORK(&ninfo.noti_work, hnotifier_work);
-
 	return 0;
 }
 

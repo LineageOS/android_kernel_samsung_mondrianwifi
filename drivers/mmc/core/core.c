@@ -35,7 +35,7 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
-
+#include <linux/mmc/sdhci.h>
 #include "core.h"
 #include "bus.h"
 #include "host.h"
@@ -1316,6 +1316,11 @@ void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card)
 	if (card->quirks & MMC_QUIRK_BROKEN_DATA_TIMEOUT) {
 		if (data->timeout_ns <  4000000000u)
 			data->timeout_ns = 4000000000u;	/* 4s */
+	}
+	/* Some eMMC cards require a longer read/write time */
+	if (card->quirks & MMC_QUIRK_BROKEN_DATA_TIMEOUT) {
+		if (data->timeout_ns < 4000000000u)
+			data->timeout_ns = 4000000000u; /* 4s */
 	}
 }
 EXPORT_SYMBOL(mmc_set_data_timeout);
@@ -3078,11 +3083,23 @@ EXPORT_SYMBOL_GPL(mmc_exit_clk_scaling);
 
 static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 {
+#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT) || defined(CONFIG_MACH_VIENNAATT)
+	struct sdhci_host *sd_host = NULL;
+#endif
 	host->f_init = freq;
 
 #ifdef CONFIG_MMC_DEBUG
 	pr_info("%s: %s: trying to init card at %u Hz\n",
 		mmc_hostname(host), __func__, host->f_init);
+#endif
+#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT) || defined(CONFIG_MACH_VIENNAATT)
+	sd_host = (struct sdhci_host *)mmc_priv(host);
+	if (sd_host != NULL) {
+		if (sd_host->flags & SDHCI_DEVICE_DEAD) {
+			pr_err("%s: host(%s), SDHCI_DEVICE_DEAD so return! \n", __func__, mmc_hostname(host));
+			return -EIO;
+		}
+	}
 #endif
 	mmc_power_up(host);
 
@@ -3252,7 +3269,8 @@ void mmc_start_host(struct mmc_host *host)
 	|| defined(CONFIG_MACH_FLTESKT) || defined(CONFIG_MACH_LT03SKT) || defined(CONFIG_MACH_LT03KTT) || defined(CONFIG_MACH_LT03LGT)\
 	|| defined(CONFIG_MACH_HLTEDCM) || defined(CONFIG_MACH_HLTEKDI) \
 	|| defined(CONFIG_MACH_JS01LTEDCM) || defined(CONFIG_MACH_JS01LTESBM) \
-	|| defined(CONFIG_MACH_H3GDUOS_CTC) || defined(CONFIG_MACH_H3GDUOS_CU)
+	|| defined(CONFIG_MACH_H3GDUOS_CTC) || defined(CONFIG_MACH_H3GDUOS_CU)\
+	|| defined(CONFIG_MACH_FRESCOLTESKT)||defined(CONFIG_MACH_FRESCOLTEKTT)||defined(CONFIG_MACH_FRESCOLTELGT)
 	if ((fw_dl_complete!=true) && (!strcmp(mmc_hostname(host),"mmc2"))){
 		pr_info("%s: %s: %d, Call mmc_rescan after 2sec\n",	mmc_hostname(host), __func__,fw_dl_complete);
 		mmc_detect_change(host, msecs_to_jiffies(2000));

@@ -23,12 +23,13 @@
 #define DEBUG_STATUS   			1
 #endif
 
-#ifdef CONFIG_USB_SWITCH_FSA9485
-#include <linux/i2c/fsa9485.h>
-#include <linux/power_supply.h>
 #ifdef CONFIG_USB_HOST_NOTIFY
 #include <linux/host_notify.h>
 #endif
+
+#ifdef CONFIG_USB_SWITCH_FSA9485
+#include <linux/i2c/fsa9485.h>
+#include <linux/power_supply.h>
 #endif
 
 #if defined(CONFIG_USB_SWITCH_RT8973)
@@ -74,9 +75,6 @@
 
 #include "devices.h"
 
-#ifdef CONFIG_USB_HOST_NOTIFY
-#include <linux/host_notify.h>
-#endif
 #include <linux/pm_runtime.h>
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
@@ -170,6 +168,21 @@ void mxt_tsp_register_callback(struct mxt_callbacks *cb)
 	mxt_charger_callbacks = cb;
 	pr_info("%s: [mxt] charger callback!\n", __func__);
 }
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_MMS252)
+struct tsp_callbacks *charger_callbacks;
+struct tsp_callbacks {
+        void (*inform_charger)(struct tsp_callbacks *tsp_cb, bool mode);
+};
+
+void melfas_register_callback(void *cbv)
+{
+	struct tsp_callbacks *cb = cbv;
+	charger_callbacks = cb;
+	pr_debug("[TSP] melfas_register_callback\n");
+}
+EXPORT_SYMBOL(melfas_register_callback);
 #endif
 
 #ifdef TK_INFORM_CHARGER
@@ -508,7 +521,7 @@ void max77803_set_jig_state(int jig_state)
 int max77803_muic_set_safeout(int path);
 
 extern void set_ncm_ready(bool);
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
+#if defined(CONFIG_SEC_K_PROJECT)
 extern unsigned int system_rev;
 static unsigned int gpio_redriver_en;
 void set_redriver_power(int on)
@@ -566,7 +579,7 @@ void max77803_muic_usb_cb(u8 usb_mode)
 
 	if (usb_mode == USB_CABLE_DETACHED
 		|| usb_mode == USB_CABLE_ATTACHED) {
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
+#if defined(CONFIG_SEC_K_PROJECT)
 		set_redriver_power(usb_mode);
 #endif
 		if (usb_mode == USB_CABLE_ATTACHED)
@@ -681,7 +694,7 @@ void max77803_muic_init_cb(void)
 	if (ret < 0)
 		pr_err("Failed to register dock switch. %d\n", ret);
 
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
+#if defined(CONFIG_SEC_K_PROJECT)
 	/* set gpio to enable redriver for USB3.0 */
 	if(system_rev>=4)
 		gpio_redriver_en = 312;
@@ -1094,7 +1107,7 @@ void max77804k_set_jig_state(int jig_state)
 int max77804k_muic_set_safeout(int path);
 
 extern void set_ncm_ready(bool);
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
+#if defined(CONFIG_SEC_K_PROJECT)
 extern unsigned int system_rev;
 static unsigned int gpio_redriver_en;
 void set_redriver_power(int on)
@@ -1132,7 +1145,7 @@ void max77804k_muic_usb_cb(u8 usb_mode)
 
 	if (usb_mode == USB_CABLE_DETACHED
 		|| usb_mode == USB_CABLE_ATTACHED) {
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
+#if defined(CONFIG_SEC_K_PROJECT)
 		set_redriver_power(usb_mode);
 #endif
 		if (usb_mode == USB_CABLE_ATTACHED)
@@ -1241,7 +1254,7 @@ void max77804k_muic_init_cb(void)
 	if (ret < 0)
 		pr_err("Failed to register dock switch. %d\n", ret);
 
-#if defined(CONFIG_SEC_K_PROJECT) || defined(CONFIG_SEC_KACTIVE_PROJECT)
+#if defined(CONFIG_SEC_K_PROJECT)
 	/* set gpio to enable redriver for USB3.0 */
 	if(system_rev>=4)
 		gpio_redriver_en = 312;
@@ -1543,6 +1556,7 @@ int max77888_muic_charger_cb(enum cable_type_muic cable_type)
 		break;
 	case CABLE_TYPE_AUDIODOCK_MUIC:
 	case CABLE_TYPE_TA_MUIC:
+	case CABLE_TYPE_LANHUB_MUIC:
 	case CABLE_TYPE_CARDOCK_MUIC:
 	case CABLE_TYPE_DESKDOCK_MUIC:
 	case CABLE_TYPE_SMARTDOCK_MUIC:
@@ -1596,6 +1610,9 @@ int max77888_muic_charger_cb(enum cable_type_muic cable_type)
 		break;
 	case CABLE_TYPE_CDP_MUIC:
 		current_cable_type = POWER_SUPPLY_TYPE_USB_CDP;
+		break;
+	case CABLE_TYPE_LANHUB_MUIC:
+		current_cable_type = POWER_SUPPLY_TYPE_MAINS;
 		break;
 	case CABLE_TYPE_AUDIODOCK_MUIC:
 		current_cable_type = POWER_SUPPLY_TYPE_MISC;
@@ -1722,15 +1739,24 @@ void max77888_muic_usb_cb(u8 usb_mode)
 
 	} else if (usb_mode == USB_POWERED_HOST_DETACHED
 		|| usb_mode == USB_POWERED_HOST_ATTACHED) {
-		if (usb_mode == USB_POWERED_HOST_DETACHED){
+		if (usb_mode == USB_POWERED_HOST_DETACHED) {
 			pr_info("USB Host HNOTIFY_SMARTDOCK_OFF");
 			sec_otg_notify(HNOTIFY_SMARTDOCK_OFF);
-		}else{
+		} else {
 			pr_info("USB Host HNOTIFY_SMARTDOCK_ON");
 			sec_otg_notify(HNOTIFY_SMARTDOCK_ON);
 		}
-#endif
+	} else if (usb_mode == USB_LANHUB_DETACHED
+		|| usb_mode == USB_LANHUB_ATTACHED) {
+		if (usb_mode == USB_LANHUB_DETACHED) {
+			pr_info("USB Host HNOTIFY_LANHUB_OFF");
+			sec_otg_notify(HNOTIFY_LANHUB_OFF);
+		} else {
+			pr_info("USB Host HNOTIFY_LANHUB_ON");
+			sec_otg_notify(HNOTIFY_LANHUB_ON);
+		}
 	}
+#endif
 }
 #if defined (CONFIG_VIDEO_MHL_V2) || defined (CONFIG_VIDEO_MHL_SII8246)
 static BLOCKING_NOTIFIER_HEAD(acc_mhl_notifier);
@@ -2392,6 +2418,7 @@ struct rt8973_platform_data  rt8973_pdata = {
 
 static enum cable_type_t set_cable_status;
 int current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
+extern int poweroff_charging;
 
 #ifdef CONFIG_VIDEO_MHL_V2
 static BLOCKING_NOTIFIER_HEAD(acc_mhl_notifier);
@@ -2525,6 +2552,21 @@ static void fsa9485_mhl_cb(bool attached)
 }
 #endif
 
+void fsa9485_set_mhl_cable(bool attached) {
+	union power_supply_propval value;
+
+	pr_info("%s: MHL Cable setting in LPM Mode%d\n", __func__, attached);
+
+	if (poweroff_charging && attached) {
+		value.intval = POWER_SUPPLY_TYPE_MHL_USB;
+		current_cable_type = value.intval;
+		value.intval = current_cable_type;
+	} else {
+		pr_info("%s: Ignore Cable setting, Not LPM mode\n", __func__);
+	}
+}
+EXPORT_SYMBOL(fsa9485_set_mhl_cable);
+
 bool fsa9485_muic_is_mhl_attached(void)
 {
 	return 0;
@@ -2547,7 +2589,11 @@ static void fsa9485_otg_cb(bool attached)
 }
 
 #if defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_V2_PROJECT)
-extern int vienna_usb_rdrv_pin;
+extern int sec_qcom_usb_rdrv;
+#endif
+
+#ifdef CONFIG_SEC_BERLUTI_PROJECT
+extern void sec_otg_set_vbus_state(int);
 #endif
 
 static void fsa9485_usb_cb(bool attached)
@@ -2559,12 +2605,13 @@ static void fsa9485_usb_cb(bool attached)
 	pr_info("fsa9485_usb_cb attached %d\n", attached);
 	set_cable_status = attached ? CABLE_TYPE_USB : CABLE_TYPE_NONE;
 
+#ifndef CONFIG_SEC_BERLUTI_PROJECT
         /* Vienna SS - USB 3.0 redriver enable/disable */
 #if defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_V2_PROJECT)
-	gpio_set_value(vienna_usb_rdrv_pin, attached);
-	pr_info("%s vienna_usb_rdrv_pin = %d, enable=%d\n",
+	gpio_set_value(sec_qcom_usb_rdrv, attached);
+	pr_info("%s sec_qcom_usb_rdrv = %d, enable=%d\n",
 		__func__,
-		vienna_usb_rdrv_pin,
+		sec_qcom_usb_rdrv,
 		attached);
 #endif
 
@@ -2576,6 +2623,9 @@ static void fsa9485_usb_cb(bool attached)
 	pr_info("%s: MUIC attached: %d\n", __func__, attached);
 
 	power_supply_set_present(psy, attached);
+#else
+	sec_otg_set_vbus_state(attached);
+#endif
 
 #if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT1664S) || defined(CONFIG_TOUCHSCREEN_ATMEL_MXT1188S)
 	mxt_tsp_charger_infom(attached);
@@ -2738,6 +2788,7 @@ static void fsa9485_usb_cdp_cb(bool attached)
 	set_cable_status =
 		attached ? CABLE_TYPE_CDP : CABLE_TYPE_NONE;
 
+#ifndef CONFIG_SEC_BERLUTI_PROJECT
 	psy = power_supply_get_by_name("dwc-usb");
 	if (!psy) {
 		pr_info("%s: couldn't get usb power supply\n", __func__);
@@ -2746,7 +2797,9 @@ static void fsa9485_usb_cdp_cb(bool attached)
 	pr_info("%s: MUIC attached: %d\n", __func__, attached);
 
 	power_supply_set_present(psy, attached);
-
+#else
+	sec_otg_set_vbus_state(attached);
+#endif
 
 	for (i = 0; i < 10; i++) {
 		psy = power_supply_get_by_name("battery");
@@ -2829,6 +2882,7 @@ static void fsa9485_dock_cb(int attached)
 	}
 }
 
+#ifndef CONFIG_SEC_BERLUTI_PROJECT
 static void fsa9485_lanhub_cb(bool attached)
 {
 	union power_supply_propval value;
@@ -2985,6 +3039,7 @@ static void fsa9485_audio_dock_cb(bool attached)
 
 //	msm_otg_set_smartdock_state(attached);
 }
+#endif
 
 static int fsa9485_dock_init(void)
 {
@@ -3062,10 +3117,17 @@ struct fsa9485_platform_data fsa9485_pdata = {
 	.dock_cb	= fsa9485_dock_cb,
 	.dock_init	= fsa9485_dock_init,
 	.usb_cdp_cb	= fsa9485_usb_cdp_cb,
+#ifndef CONFIG_SEC_BERLUTI_PROJECT
 	.lanhub_cb	= fsa9485_lanhub_cb,
 	.lanhubta_cb	= fsa9485_lanhubta_cb,
 	.smartdock_cb	= fsa9485_smartdock_cb,
 	.audio_dock_cb	= fsa9485_audio_dock_cb,
+#else
+	.lanhub_cb	= NULL,
+	.lanhubta_cb	= NULL,
+	.smartdock_cb	= NULL,
+	.audio_dock_cb	= NULL,
+#endif
 #ifdef CONFIG_VIDEO_MHL_V2
 	.mhl_cb = fsa9485_muic_mhl_cb,
 #endif
@@ -3106,15 +3168,17 @@ static unsigned status_count;
 void sm5502_callback(enum cable_type_t cable_type, int attached)
 {
 	union power_supply_propval value;
-	int i, ret = 0;
-	struct power_supply *psy;
+	struct power_supply *psy = power_supply_get_by_name("battery");
 	static enum cable_type_t previous_cable_type = CABLE_TYPE_NONE;
 
 	printk("%s, called \n",__func__);
-#if defined(CONFIG_TOUCHSCREEN_MXTS) ||defined(CONFIG_TOUCHSCREEN_MXT224E)
+#if defined(CONFIG_TOUCHSCREEN_MXTS) ||defined(CONFIG_TOUCHSCREEN_MXT224E) || defined(CONFIG_TOUCHSCREEN_MMS252)
         if (charger_callbacks && charger_callbacks->inform_charger)
                 charger_callbacks->inform_charger(charger_callbacks,
                 attached);
+#endif
+#if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT1188S)
+	mxt_tsp_charger_infom(attached);
 #endif
 
 	if (cable_type == CABLE_TYPE_INCOMPATIBLE)
@@ -3195,6 +3259,7 @@ void sm5502_callback(enum cable_type_t cable_type, int attached)
                        pr_err("%s OTG status detached (%u) \n", __func__,status_count);
                }
 #endif
+		sec_otg_notify(attached ? HNOTIFY_ID : HNOTIFY_ID_PULL);
 	       return;
 	case CABLE_TYPE_AUDIO_DOCK:
 #if defined(DEBUG_STATUS)
@@ -3256,21 +3321,6 @@ void sm5502_callback(enum cable_type_t cable_type, int attached)
 	}
 	previous_cable_type = set_cable_status;
 
-	for (i = 0; i < BATT_SEARCH_CNT_MAX; i++) {
-		psy = power_supply_get_by_name("battery");
-		if (psy)
-			break;
-	}
-	if (i == BATT_SEARCH_CNT_MAX) {
-		pr_err("%s: fail to get battery ps\n", __func__);
-		return;
-	}
-	if (psy == NULL || psy->set_property == NULL) {
-		pr_err("%s: battery ps doesn't support set_property()\n",
-				__func__);
-		return;
-	}
-
 	switch (set_cable_status) {
 	case CABLE_TYPE_MISC:
 		value.intval = POWER_SUPPLY_TYPE_MISC;
@@ -3281,9 +3331,6 @@ void sm5502_callback(enum cable_type_t cable_type, int attached)
 	case CABLE_TYPE_AC:
 	case CABLE_TYPE_AUDIO_DOCK:
 		value.intval = POWER_SUPPLY_TYPE_MAINS;
-		break;
-	case CABLE_TYPE_UARTOFF:
-		value.intval = POWER_SUPPLY_TYPE_UARTOFF;
 		break;
 	case CABLE_TYPE_CARDOCK:
 		value.intval = POWER_SUPPLY_TYPE_CARDOCK;
@@ -3304,15 +3351,13 @@ void sm5502_callback(enum cable_type_t cable_type, int attached)
 		pr_err("%s: invalid cable :%d\n", __func__, set_cable_status);
 		return;
 	}
-#if defined(CONFIG_MACH_CRATERTD_CHN_3G)
 	current_cable_type = value.intval;
-#endif
 
-	ret = psy->set_property(psy, POWER_SUPPLY_PROP_ONLINE, &value);
-	if (ret) {
-                pr_err("%s: fail to set power_suppy ONLINE property(%d)\n",
-                        __func__, ret);
-        }
+	if (!psy || !psy->set_property)
+		pr_err("%s: fail to get battery psy\n", __func__);
+	else {
+		psy->set_property(psy, POWER_SUPPLY_PROP_ONLINE, &value);
+	}
 }
 
 struct sm5502_platform_data sm5502_pdata = {

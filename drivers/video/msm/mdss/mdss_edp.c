@@ -49,6 +49,7 @@
 #define VDDA_UA_OFF_LOAD	100		/* uA units */
 
 #if defined(CONFIG_FB_MSM_EDP_SAMSUNG)
+char eeprom_version[20];
 #define MAX_PWM_RESOLUTION 511
 #define BIT_SHIFT 22
 
@@ -334,7 +335,7 @@ static int mdss_edp_regulator_init(struct mdss_edp_drv_pdata *edp_drv)
 			return -ENODEV;
 		}
 
-		ret = regulator_set_voltage(edp_drv->i2c_vreg, 3000000, 3000000);
+		ret = regulator_set_voltage(edp_drv->i2c_vreg, 2500000, 2500000);
 		if (ret) {
 			pr_err("%s: i2c_vreg set_voltage failed, ret=%d\n", __func__,
 					ret);
@@ -940,13 +941,18 @@ int mdss_edp_on(struct mdss_panel_data *pdata)
 #endif
 		mdss_edp_irq_enable(edp_drv);
 		tcon_i2c_slave_change();
+
+		if (gpio_get_value(edp_drv->gpio_panel_hpd)) {
+			tcon_interanl_clock();
+			read_firmware_version(eeprom_version);
+	}
 	}
 
 	mdss_edp_wait4train(edp_drv);
 
 	edp_drv->cont_splash = 0;
 
-	pr_info("%s:-\n", __func__);
+	pr_info("%s:- %s\n", __func__, eeprom_version);
 	return ret;
 }
 
@@ -1014,7 +1020,7 @@ int mdss_edp_off(struct mdss_panel_data *pdata)
 	qpnp_pin_config(edp_drv->gpio_panel_en, &LCD_EN_PM_GPIO_SLEEP);
 #endif
 	msleep(100); /* NDRA needs some delay after shutdown power */
-	pr_info("%s:-\n", __func__);
+	pr_info("%s:- %s\n", __func__, eeprom_version);
 
 	return 0;
 }
@@ -1285,6 +1291,20 @@ static void mdss_edp_fill_edid_data(struct mdss_edp_drv_pdata *edp_drv)
 	edid->color_depth = 8;
 	edid->dpm = 0;
 	edid->color_format = 0;
+
+#if defined(CONFIG_MACH_VIENNA)
+	edid->timing[0].pclk = 267000000;
+
+	edid->timing[0].h_addressable = 2560;
+	edid->timing[0].h_blank = 164;
+	edid->timing[0].h_fporch = 62;
+	edid->timing[0].h_sync_pulse = 22;
+
+	edid->timing[0].v_addressable = 1600;
+	edid->timing[0].v_blank = 33;
+	edid->timing[0].v_fporch = 6;
+	edid->timing[0].v_sync_pulse = 6;
+#else
 	edid->timing[0].pclk = 274000000;
 
 	edid->timing[0].h_addressable = 2560;
@@ -1296,6 +1316,7 @@ static void mdss_edp_fill_edid_data(struct mdss_edp_drv_pdata *edp_drv)
 	edid->timing[0].v_blank = 73;
 	edid->timing[0].v_fporch = 3;
 	edid->timing[0].v_sync_pulse = 6;
+#endif
 
 	edid->timing[0].width_mm = 271;
 	edid->timing[0].height_mm = 172;
@@ -1400,6 +1421,7 @@ static int edp_event_thread(void *data)
 					if (gpio_get_value(ep->gpio_panel_hpd)) {
 						pr_err("%s : hpd detected count_recovery = %d \n", __func__, count_recovery);
 						msleep(230); /* NDRA LDI REQUIREMENT  350ms delay*/
+						tcon_interanl_clock();
 						mdss_edp_do_link_train(ep);
 #if defined(CONFIG_FB_MSM_EDP_SAMSUNG)
 						edp_power_state = 1;
@@ -1745,11 +1767,11 @@ probe_err:
 static int __init edp_current_boot_mode(char *mode)
 {
 	/*
-	*	1 is recovery booting
+	*	1, 2 is recovery booting
 	*	0 is normal booting
 	*/
 
-	if (strncmp(mode, "1", 1) == 0)
+        if ((strncmp(mode, "1", 1) == 0)||(strncmp(mode, "2", 1) == 0))
 		recovery_mode = 1;
 	else
 		recovery_mode = 0;

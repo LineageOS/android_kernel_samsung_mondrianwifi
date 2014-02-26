@@ -1000,7 +1000,10 @@ static void run_reference_read(void *device_data)
 			fdata->ref_min_data, fdata->ref_max_data);
 		set_cmd_result(fdata, buff, strnlen(buff, sizeof(buff)));
 
-		fdata->cmd_state = CMD_STATUS_OK;
+		if(fdata->ref_min_data < 100 && fdata->ref_max_data < 4000)
+			fdata->cmd_state = CMD_STATUS_NG;
+		else
+			fdata->cmd_state = CMD_STATUS_OK;
 	}
 }
 
@@ -1707,6 +1710,9 @@ static ssize_t show_cmd_status(struct device *dev,
 	else if (fdata->cmd_state == CMD_STATUS_NOT_APPLICABLE)
 		snprintf(buff, sizeof(buff), "NOT_APPLICABLE");
 
+	else if (fdata->cmd_state == CMD_STATUS_NG)
+		snprintf(buff, sizeof(buff), "NG");
+
 	return snprintf(buf, TSP_BUF_SIZE, "%s\n", buff);
 }
 
@@ -1872,20 +1878,6 @@ static ssize_t touchkey_d_menu_show(struct device *dev,
 	return sprintf(buf, "%d\n", touchkey_delta_show(data, "d_menu"));
 }
 
-static ssize_t touchkey_d_home1_show(struct device *dev,
-				  struct device_attribute *attr, char *buf)
-{
-	struct mxt_data *data = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", touchkey_delta_show(data, "d_home1"));
-}
-
-static ssize_t touchkey_d_home2_show(struct device *dev,
-				  struct device_attribute *attr, char *buf)
-{
-	struct mxt_data *data = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", touchkey_delta_show(data, "d_home2"));
-}
-
 static ssize_t touchkey_d_back_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
@@ -1893,11 +1885,11 @@ static ssize_t touchkey_d_back_show(struct device *dev,
 	return sprintf(buf, "%d\n", touchkey_delta_show(data, "d_back"));
 }
 
-static ssize_t touchkey_menu_show(struct device *dev,
+static ssize_t touchkey_recent_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct mxt_data *data = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", touchkey_delta_show(data, "menu"));
+	return sprintf(buf, "%d\n", touchkey_delta_show(data, "recent"));
 }
 
 static ssize_t touchkey_back_show(struct device *dev,
@@ -2044,10 +2036,8 @@ static ssize_t boost_level_store(struct device *dev,
 #endif
 
 static DEVICE_ATTR(touchkey_d_menu, S_IRUGO | S_IWUSR | S_IWGRP, touchkey_d_menu_show, NULL);
-static DEVICE_ATTR(touchkey_d_home1, S_IRUGO | S_IWUSR | S_IWGRP, touchkey_d_home1_show, NULL);
-static DEVICE_ATTR(touchkey_d_home2, S_IRUGO | S_IWUSR | S_IWGRP, touchkey_d_home2_show, NULL);
 static DEVICE_ATTR(touchkey_d_back, S_IRUGO | S_IWUSR | S_IWGRP, touchkey_d_back_show, NULL);
-static DEVICE_ATTR(touchkey_menu, S_IRUGO | S_IWUSR | S_IWGRP, touchkey_menu_show, NULL);
+static DEVICE_ATTR(touchkey_recent, S_IRUGO | S_IWUSR | S_IWGRP, touchkey_recent_show, NULL);
 static DEVICE_ATTR(touchkey_back, S_IRUGO | S_IWUSR | S_IWGRP, touchkey_back_show, NULL);
 static DEVICE_ATTR(touchkey_threshold, S_IRUGO | S_IWUSR | S_IWGRP, get_touchkey_threshold, NULL);
 static DEVICE_ATTR(brightness, S_IRUGO | S_IWUSR | S_IWGRP, NULL, touchkey_led_control);
@@ -2059,10 +2049,8 @@ static DEVICE_ATTR(boost_level, S_IWUSR | S_IWGRP, NULL, boost_level_store);
 
 static struct attribute *touchkey_attributes[] = {
 	&dev_attr_touchkey_d_menu.attr,
-	&dev_attr_touchkey_d_home1.attr,
-	&dev_attr_touchkey_d_home2.attr,
 	&dev_attr_touchkey_d_back.attr,
-	&dev_attr_touchkey_menu.attr,
+	&dev_attr_touchkey_recent.attr,
 	&dev_attr_touchkey_back.attr,
 	&dev_attr_touchkey_threshold.attr,
 	&dev_attr_brightness.attr,

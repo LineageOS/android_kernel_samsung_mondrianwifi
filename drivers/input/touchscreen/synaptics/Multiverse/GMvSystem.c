@@ -76,6 +76,7 @@ struct SGMvPktHdr* GMvPacketCheckHeader( uint8 *pu8Pkt, sint32 s32HdrSize )
 }
 
 // CRC16
+#if defined( DG_MV_PKT_PARITY_CRC16 )
 struct CGMvCrc16
 {
 	uint16 m_u16Polynomial, m_pu16Lut[256];
@@ -124,3 +125,4 @@ uint16 GMvCrc16Encode( uint8 *pu8Data, sint32 s32Size )
 
 	return u16Crc16;
 }
+#endif

@@ -41,6 +41,10 @@
 #include <linux/of_gpio.h>
 #endif
 
+#ifdef CONFIG_USB_HOST_NOTIFY
+#include <linux/host_notify.h>
+#endif
+
 /* spmi control */
 extern int spmi_ext_register_writel_extra(u8 sid, u16 ad, u8 *buf, int len);
 extern int spmi_ext_register_readl_extra(u8 sid, u16 ad, u8 *buf, int len);
@@ -48,7 +52,7 @@ extern int spmi_ext_register_readl_extra(u8 sid, u16 ad, u8 *buf, int len);
 extern int system_rev;
 
 #define INT_MASK1					0x5C
-#define INT_MASK2					0xA1
+#define INT_MASK2					0x20
 
 /* DEVICE ID */
 #define SM5502_DEV_ID				0x0A
@@ -76,6 +80,7 @@ extern int system_rev;
 #define REG_VBUSINVALID		        0x1D
 #define REG_OCP_SET			        0x22
 #define REG_CHGPUMP_SET			    0x3A
+#define REG_CARKIT_STATUS			0x0E
 
 #define DATA_NONE					0x00
 
@@ -101,6 +106,7 @@ extern int system_rev;
 #define DEV_T1_USB_MASK		(DEV_USB_OTG | DEV_USB_CHG | DEV_USB)
 #define DEV_T1_UART_MASK	(DEV_UART)
 #define DEV_T1_CHARGER_MASK	(DEV_DEDICATED_CHG | DEV_CAR_KIT)
+#define DEV_CARKIT_CHARGER1_MASK	(1 << 1)
 
 /* Device Type 2 */
 #define DEV_AUDIO_DOCK		(1 << 8)
@@ -187,10 +193,10 @@ struct sm5502_usbsw {
 	int				dev2;
 	int				dev3;
 	int				mansw;
-    int				vbus;
+	int				vbus;
 	int				dock_attached;
 	int				dev_id;
-
+	int				carkit_dev;
 	struct delayed_work	init_work;
 	struct mutex		mutex;
 	int				adc;
@@ -308,15 +314,6 @@ static void sm5502_reg_init(struct sm5502_usbsw *usbsw)
 	ret = i2c_smbus_write_byte_data(client,	REG_INT_MASK2, INT_MASK2);
 	if (ret < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
-
-	usbsw->mansw = i2c_smbus_read_byte_data(client, REG_MANUAL_SW1);
-	if (usbsw->mansw < 0)
-		dev_err(&client->dev, "%s: err %d\n", __func__, usbsw->mansw);
-
-	if (usbsw->mansw)
-		ctrl &= ~CON_MANUAL_SW;	/* Manual Switching Mode */
-	else
-		ctrl &= ~(CON_INT_MASK);
 
 	ret = i2c_smbus_write_byte_data(client, REG_CONTROL, ctrl);
 	if (ret < 0)
@@ -587,15 +584,21 @@ int check_sm5502_jig_state(void)
 }
 EXPORT_SYMBOL(check_sm5502_jig_state);
 
+#if defined(CONFIG_TOUCHSCREEN_MMS144)
+extern void tsp_charger_infom(bool en);
+#endif
 
 static int sm5502_attach_dev(struct sm5502_usbsw *usbsw)
 {
 	int adc;
-	int val1, val2, val3 , vbus;
+	int val1, val2, val3, val4, vbus;
 	struct sm5502_platform_data *pdata = usbsw->pdata;
 	struct i2c_client *client = usbsw->client;
 #if defined(CONFIG_VIDEO_MHL_V2)
 	/*u8 mhl_ret = 0;*/
+#endif
+#if defined(CONFIG_TOUCHSCREEN_MMS144)
+	int tsp_noti_ignore = 0;
 #endif
 	val1 = i2c_smbus_read_byte_data(client, REG_DEVICE_TYPE1);
 	if (val1 < 0) {
@@ -614,6 +617,12 @@ static int sm5502_attach_dev(struct sm5502_usbsw *usbsw)
 	if (val3 < 0) {
 		dev_err(&client->dev, "%s: err %d\n", __func__, val3);
 		return val3;
+	}
+
+	val4 = i2c_smbus_read_byte_data(client, REG_CARKIT_STATUS);
+	if (val4 < 0) {
+		dev_err(&client->dev, "%s: err %d\n", __func__, val4);
+		return val4;
 	}
 
     // add start
@@ -638,12 +647,12 @@ static int sm5502_attach_dev(struct sm5502_usbsw *usbsw)
 	}
 #endif
 	dev_err(&client->dev,
-			"dev1: 0x%x, dev2: 0x%x, dev3: 0x%x, ADC: 0x%x Jig:%s\n",
-			val1, val2, val3, adc,
+			"dev1: 0x%x, dev2: 0x%x, dev3: 0x%x,Carkit: 0x%x,ADC: 0x%x Jig:%s\n",
+			val1, val2, val3, val4, adc,
 			(check_sm5502_jig_state() ? "ON" : "OFF"));
 
 	/* USB */
-	if (val1 & DEV_USB || val2 & DEV_T2_USB_MASK) {
+	if (val1 & DEV_USB || val2 & DEV_T2_USB_MASK || val4 & DEV_CARKIT_CHARGER1_MASK) {
 		pr_info("[MUIC] USB Connected\n");
 		pdata->callback(CABLE_TYPE_USB, SM5502_ATTACHED);
 	/* USB_CDP */
@@ -654,6 +663,7 @@ static int sm5502_attach_dev(struct sm5502_usbsw *usbsw)
 	} else if (val1 & DEV_T1_UART_MASK || val2 & DEV_T2_UART_MASK) {
 		uart_sm5502_connecting = 1;
 		pr_info("[MUIC] UART Connected\n");
+		i2c_smbus_write_byte_data(client, REG_MANUAL_SW1, SW_UART);
 		pdata->callback(CABLE_TYPE_UARTOFF, SM5502_ATTACHED);
 #if (!defined(CONFIG_MACH_CT01) && !defined(CONFIG_MACH_CT01_CHN_CU))
 		flash_control(true);
@@ -668,6 +678,7 @@ static int sm5502_attach_dev(struct sm5502_usbsw *usbsw)
 	} else if (val1 & DEV_USB_OTG) {
 		pr_info("[MUIC] OTG Connected\n");
 		sm5502_set_otg(usbsw, SM5502_ATTACHED);
+		pdata->callback(CABLE_TYPE_OTG, SM5502_ATTACHED);
 #endif
 	/* JIG */
 	} else if (val2 & DEV_T2_JIG_MASK) {
@@ -698,7 +709,7 @@ static int sm5502_attach_dev(struct sm5502_usbsw *usbsw)
 		pr_info("[MUIC] Cardock Connected\n");
 		local_usbsw->dock_attached = SM5502_ATTACHED;
 		sm5502_dock_control(usbsw, CABLE_TYPE_CARDOCK,
-			SM5502_ATTACHED, SW_AUDIO);
+			SM5502_ATTACHED, SW_UART);
 	/* SmartDock */
 	} else if (val2 & DEV_SMARTDOCK) {
 		pr_info("[MUIC] Smartdock Connected\n");
@@ -720,12 +731,22 @@ static int sm5502_attach_dev(struct sm5502_usbsw *usbsw)
         pdata->callback(CABLE_TYPE_INCOMPATIBLE,
                 SM5502_ATTACHED);
     }
+#if defined(CONFIG_TOUCHSCREEN_MMS144)
+	else{
+		tsp_noti_ignore = 1;
+		printk("[TSP] attached, but don't noti \n");
+	}
+	if(!tsp_noti_ignore)
+		tsp_charger_infom(1);
+
+#endif
 
 	usbsw->dev1 = val1;
 	usbsw->dev2 = val2;
 	usbsw->dev3 = val3;
 	usbsw->adc = adc;
-    usbsw->vbus = vbus; 
+	usbsw->vbus = vbus; 
+	usbsw->carkit_dev = val4;
 
 	return adc;
 }
@@ -733,10 +754,15 @@ static int sm5502_attach_dev(struct sm5502_usbsw *usbsw)
 static int sm5502_detach_dev(struct sm5502_usbsw *usbsw)
 {
 	struct sm5502_platform_data *pdata = usbsw->pdata;
+#if defined(CONFIG_TOUCHSCREEN_MMS144)
+	int tsp_noti_ignore = 0;
+
+#endif
 
 	/* USB */
 	if (usbsw->dev1 & DEV_USB ||
-			usbsw->dev2 & DEV_T2_USB_MASK) {
+			usbsw->dev2 & DEV_T2_USB_MASK ||
+				usbsw->carkit_dev & DEV_CARKIT_CHARGER1_MASK) {
 		pr_info("[MUIC] USB Disonnected\n");
 		pdata->callback(CABLE_TYPE_USB, SM5502_DETACHED);
 	} else if (usbsw->dev1 & DEV_USB_CHG) {
@@ -761,6 +787,7 @@ static int sm5502_detach_dev(struct sm5502_usbsw *usbsw)
 	} else if (usbsw->dev1 & DEV_USB_OTG) {
 		pr_info("[MUIC] OTG Disonnected\n");
 		sm5502_set_otg(usbsw, SM5502_DETACHED);
+		pdata->callback(CABLE_TYPE_OTG, SM5502_DETACHED);
 #endif
 	/* JIG */
 	} else if (usbsw->dev2 & DEV_T2_JIG_MASK) {
@@ -810,12 +837,22 @@ static int sm5502_detach_dev(struct sm5502_usbsw *usbsw)
         pdata->callback(CABLE_TYPE_INCOMPATIBLE,
                 SM5502_DETACHED);
     }
+#if defined(CONFIG_TOUCHSCREEN_MMS144)
+	else{
+		tsp_noti_ignore = 1;
+		printk("[TSP] detached, but don't noti \n");
+	}
+	if(!tsp_noti_ignore)
+		tsp_charger_infom(0);
+#endif
 
+	i2c_smbus_write_byte_data(usbsw->client, REG_CONTROL, CON_MASK);
 	usbsw->dev1 = 0;
 	usbsw->dev2 = 0;
 	usbsw->dev3 = 0;
 	usbsw->adc = 0;
-    usbsw->vbus = 0;
+    	usbsw->vbus = 0;
+	usbsw->carkit_dev = 0;
 
 	return 0;
 
@@ -862,6 +899,16 @@ static irqreturn_t sm5502_irq_thread(int irq, void *data)
 	/* interrupt detach */
 	else if (intr1 & INT_DETACH)
 		sm5502_detach_dev(usbsw);
+#ifdef CONFIG_USB_HOST_NOTIFY
+	else if (intr2 & INT_VBUSOUT_ON) {
+		pr_info("sm5502: VBUSOUT_ON\n");
+		sec_otg_notify(HNOTIFY_OTG_POWER_ON);
+	}
+	else if (intr2 & INT_VBUSOUT_OFF) {
+		pr_info("sm5502: VBUSOUT_OFF\n");
+		sec_otg_notify(HNOTIFY_OTG_POWER_OFF);
+	}
+#endif
 	mutex_unlock(&usbsw->mutex);
 	pr_info("sm5502_irq_thread,end\n");
 	return IRQ_HANDLED;
@@ -919,17 +966,17 @@ static int sm5502_parse_dt(struct device *dev, struct sm5502_platform_data *pdat
 
         struct device_node *np = dev->of_node;
 	/*changes can be added later, when needed*/
-	#if 0
+#if 0
         /* regulator info */
 	pdata->i2c_pull_up = of_property_read_bool(np, "sm5502,i2c-pull-up");
+#endif
 
         /* reset, irq gpio info */
-        pdata->gpio_scl = of_get_named_gpio_flags(np, "sm5502,scl-gpio",
+        pdata->gpio_scl = of_get_named_gpio_flags(np, "sm5502,gpio-scl",
                                0, &pdata->scl_gpio_flags);
-	#endif
         pdata->gpio_uart_on = of_get_named_gpio_flags(np, "sm5502,uarton-gpio",
                                0, &pdata->uarton_gpio_flags);
-        pdata->gpio_sda = of_get_named_gpio_flags(np, "sm5502,sda-gpio",
+        pdata->gpio_sda = of_get_named_gpio_flags(np, "sm5502,gpio-sda",
                                0, &pdata->sda_gpio_flags);
         pdata->gpio_int = of_get_named_gpio_flags(np, "sm5502,irq-gpio",
                 0, &pdata->irq_gpio_flags);
@@ -965,7 +1012,11 @@ static int __devinit sm5502_probe(struct i2c_client *client,
 		pdata->oxp_callback = sm5502_oxp_callback;
 		pdata->mhl_sel = NULL;
 		gpio_tlmm_config(GPIO_CFG(pdata->gpio_int,  0, GPIO_CFG_INPUT,
-			GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+			GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		gpio_tlmm_config(GPIO_CFG(pdata->gpio_scl,  0, GPIO_CFG_INPUT,
+			GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		gpio_tlmm_config(GPIO_CFG(pdata->gpio_sda,  0, GPIO_CFG_INPUT,
+			GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 		gpio_tlmm_config(GPIO_CFG(pdata->gpio_uart_on,  0, GPIO_CFG_INPUT,
 			GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_DISABLE);
 		client->irq = gpio_to_irq(pdata->gpio_int);

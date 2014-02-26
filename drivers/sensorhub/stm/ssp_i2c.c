@@ -312,6 +312,9 @@ int send_instruction(struct ssp_data *data, u8 uInst,
 		iRet = -ENOMEM;
 		return iRet;
 	}
+
+	if(uSensorType == GEOMAGNETIC_SENSOR)
+		uLength += 1;
 	msg->cmd = command;
 	msg->length = uLength + 1;
 	msg->options = AP2HUB_WRITE;
@@ -320,7 +323,9 @@ int send_instruction(struct ssp_data *data, u8 uInst,
 
 	msg->buffer[0] = uSensorType;
 	memcpy(&msg->buffer[1], uSendBuf, uLength);
-
+	if(uSensorType == GEOMAGNETIC_SENSOR) {
+		msg->buffer[10] = MAG_LOG_MODE;
+	}
 	ssp_dbg("[SSP]: %s - Inst = 0x%x, Sensor Type = 0x%x, data = %u\n",
 			__func__, command, uSensorType, msg->buffer[1]);
 

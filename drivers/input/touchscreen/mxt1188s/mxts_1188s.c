@@ -41,7 +41,7 @@ static int mxt_power_onoff(struct mxt_data *data, bool enabled);
 
 /* support 6 touch key */
 #define TOUCH_KEY_D_MENU	0x04
-#define TOUCH_KEY_MENU		0x10
+#define TOUCH_KEY_RECENT		0x10
 #define TOUCH_KEY_D_HOME_1	0x01
 #define TOUCH_KEY_D_HOME_2	0x02
 #define TOUCH_KEY_BACK		0x20
@@ -52,49 +52,33 @@ struct mxt_touchkey mxt_touchkey_data[] = {
 		.value = TOUCH_KEY_D_MENU,
 		.keycode = KEY_DUMMY_MENU,
 		.name = "d_menu",
-		.xnode = 5,
-		.ynode = 43,
-		.deltaobj = 5,
-	},
-	{
-		.value = TOUCH_KEY_MENU,
-		.keycode = KEY_MENU,
-		.name = "menu",
-		.xnode = 4,
-		.ynode = 43,
-		.deltaobj = 4,
-	},
-	{
-		.value = TOUCH_KEY_D_HOME_1,
-		.keycode = KEY_DUMMY_HOME1,
-		.name = "d_home1",
-		.xnode = 3,
-		.ynode = 43,
-		.deltaobj = 3,
-	},
-	{
-		.value = TOUCH_KEY_D_HOME_2,
-		.keycode = KEY_DUMMY_HOME2,
-		.name = "d_home2",
 		.xnode = 2,
 		.ynode = 43,
 		.deltaobj = 2,
 	},
 	{
+		.value = TOUCH_KEY_RECENT,
+		.keycode = KEY_RECENT,
+		.name = "recent",
+		.xnode = 4,
+		.ynode = 43,
+		.deltaobj = 4,
+	},
+	{
 		.value = TOUCH_KEY_BACK,
 		.keycode = KEY_BACK,
 		.name = "back",
-		.xnode = 1,
+		.xnode = 5,
 		.ynode = 43,
-		.deltaobj = 1,
+		.deltaobj = 5,
 	},
 	{
 		.value = TOUCH_KEY_D_BACK,
 		.keycode = KEY_DUMMY_BACK,
 		.name = "d_back",
-		.xnode = 0,
+		.xnode = 3,
 		.ynode = 43,
-		.deltaobj = 0,
+		.deltaobj = 3,
 	},
 };
 #endif
@@ -1093,7 +1077,7 @@ static void mxt_release_all_keys(struct mxt_data *data)
 
 		} else {
 			/* menu key check*/
-			if (data->tsp_keystatus & TOUCH_KEY_MENU) {
+			if (data->tsp_keystatus & TOUCH_KEY_RECENT) {
 				if(data->ignore_menu_key) {
 					dev_info(&data->client->dev,
 							"%s: [TSP_KEY] Ignore menu R! by dummy key\n",
@@ -1103,7 +1087,7 @@ static void mxt_release_all_keys(struct mxt_data *data)
 							"%s: [TSP_KEY] Ignore menu R! by back key\n",
 								 __func__);
 				} else {
-					input_report_key(data->input_dev, KEY_MENU, KEY_RELEASE);
+					input_report_key(data->input_dev, KEY_RECENT, KEY_RELEASE);
 						dev_info(&data->client->dev,
 							"%s: [TSP_KEY] menu R!\n", __func__);
 #if MXT_TKEY_BOOSTER
@@ -1184,8 +1168,8 @@ static void mxt_treat_T15_object(struct mxt_data *data,
 				} else {
 
 			/* menu key check*/
-			if (change_state & TOUCH_KEY_MENU) {
-				key_state = input_message & TOUCH_KEY_MENU;
+			if (change_state & TOUCH_KEY_RECENT) {
+				key_state = input_message & TOUCH_KEY_RECENT;
 
 				if(data->ignore_menu_key) {
 					dev_info(&data->client->dev,
@@ -1202,7 +1186,7 @@ static void mxt_treat_T15_object(struct mxt_data *data,
 						"%s: [TSP_KEY] Ignore menu %s by back key\n",
 								 __func__, key_state != 0 ? "P" : "R");
 				} else {
-					input_report_key(data->input_dev, KEY_MENU, key_state != 0 ? KEY_PRESS : KEY_RELEASE);
+					input_report_key(data->input_dev, KEY_RECENT, key_state != 0 ? KEY_PRESS : KEY_RELEASE);
 					dev_info(&data->client->dev,
 						"%s: [TSP_KEY] menu %s\n",
 								__func__, key_state != 0 ? "P" : "R");
@@ -1267,12 +1251,12 @@ static void mxt_treat_T15_object(struct mxt_data *data,
 			if (change_state & TOUCH_KEY_D_MENU) {
 				key_state = input_message & TOUCH_KEY_D_MENU;
 
-				if((key_state != 0) && !data->ignore_menu_key && !(input_message & TOUCH_KEY_MENU)) {
+				if((key_state != 0) && !data->ignore_menu_key && !(input_message & TOUCH_KEY_RECENT)) {
 					data->ignore_menu_key = true;
 					dev_info(&data->client->dev,
 							"%s: [TSP_KEY] ignore_menu_key Enable\n",
 							__func__);
-				} else if (!key_state && data->ignore_menu_key && !(input_message & TOUCH_KEY_MENU)) {
+				} else if (!key_state && data->ignore_menu_key && !(input_message & TOUCH_KEY_RECENT)) {
 					data->ignore_menu_key = false;
 					dev_info(&data->client->dev,
 							"%s: [TSP_KEY] ignore_menu_key Disable\n",

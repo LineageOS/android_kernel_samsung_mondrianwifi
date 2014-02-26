@@ -79,6 +79,7 @@ enum host_notify_event {
 enum host_notify_data {
 	HNOTIFY_EVENT,
 	HNOTIFY_MODE,
+	HNOTIFY_BOOSTER,
 };
 
 extern int sec_otg_notify(int event);

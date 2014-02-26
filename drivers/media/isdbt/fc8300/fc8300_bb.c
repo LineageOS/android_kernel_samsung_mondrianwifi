@@ -29,7 +29,7 @@
 #include "fci_tun.h"
 #include "fc8300_regs.h"
 
-
+#define SCAN_CHK_PERIOD 1 /* 1 ms */
 
 static enum BROADCAST_TYPE broadcast_type;
 
@@ -114,6 +114,50 @@ static u32 fc8300_get_core_clk(HANDLE handle, DEVICEID devid,
 	clk = 98304;
 #elif (BBM_XTAL_FREQ == 26000)
 	clk = 100750;
+
+	switch (broadcast) {
+	case ISDBT_1SEG:
+	case ISDBT_CATV_1SEG:
+		switch (freq) {
+		case 479143:
+		case 503143:
+		case 521143:
+		case 569143:
+		case 605143:
+		case 653143:
+		case 707143:
+		case 731143:
+		case 755143:
+		case 773143:
+		case 809143:
+			clk = 107250;
+		}
+		break;
+	case ISDBTMM_1SEG:
+	case ISDBTSB_1SEG:
+	case ISDBTSB_3SEG:
+		break;
+	case ISDBT_13SEG:
+	case ISDBT_CATV_13SEG:
+		switch (freq) {
+		case 479143:
+		case 503143:
+		case 521143:
+		case 569143:
+		case 605143:
+		case 653143:
+		case 707143:
+		case 731143:
+		case 755143:
+		case 773143:
+		case 803143:
+		case 809143:
+			clk = 107250;
+		}
+		break;
+	case ISDBTMM_13SEG:
+		break;
+	}
 #elif (BBM_XTAL_FREQ == 27000)
 	clk = 97875;
 #elif (BBM_XTAL_FREQ == 27120)
@@ -158,6 +202,11 @@ static u32 fc8300_get_core_clk(HANDLE handle, DEVICEID devid,
 	switch (broadcast) {
 	case ISDBT_1SEG:
 	case ISDBT_CATV_1SEG:
+		switch (freq) {
+		case 683143:
+			clk = 104000;
+		}
+		break;
 	case ISDBTMM_1SEG:
 	case ISDBTSB_1SEG:
 	case ISDBTSB_3SEG:
@@ -179,6 +228,10 @@ static u32 fc8300_get_core_clk(HANDLE handle, DEVICEID devid,
 	switch (broadcast) {
 	case ISDBT_1SEG:
 	case ISDBT_CATV_1SEG:
+		switch (freq) {
+		case 659143:
+			clk = 111600;
+		}
 		break;
 	case ISDBTMM_1SEG:
 		switch (freq) {
@@ -207,17 +260,18 @@ static u32 fc8300_get_core_clk(HANDLE handle, DEVICEID devid,
 
 	switch (broadcast) {
 	case ISDBT_1SEG:
+	case ISDBT_CATV_1SEG:
 		switch (freq) {
 		case 491143:
 			clk = 102850;
 		}
 		break;
-	case ISDBT_CATV_1SEG:
 	case ISDBTMM_1SEG:
 	case ISDBTSB_1SEG:
 	case ISDBTSB_3SEG:
 		break;
 	case ISDBT_13SEG:
+	case ISDBT_CATV_13SEG:
 		switch (freq) {
 		case 491143:
 		case 587143:
@@ -225,7 +279,6 @@ static u32 fc8300_get_core_clk(HANDLE handle, DEVICEID devid,
 			clk = 102850;
 		}
 		break;
-	case ISDBT_CATV_13SEG:
 	case ISDBTMM_13SEG:
 		break;
 	}
@@ -298,6 +351,7 @@ static s32 fc8300_set_acif_b31_1seg(HANDLE handle, DEVICEID devid, u32 clk)
 {
 #if (BBM_BAND_WIDTH == 6)
 	switch (clk) {
+	case 100750:
 	case 100800:
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_00, 0xffff0000);
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_04, 0x02040200);
@@ -430,6 +484,7 @@ static s32 fc8300_set_acif_b31_1seg(HANDLE handle, DEVICEID devid, u32 clk)
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_08, 0xfdf5f7fd);
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_12, 0x433b270f);
 		break;
+	case 107250:
 	case 107525:
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_00, 0x00ffff00);
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_04, 0x01030301);
@@ -716,6 +771,7 @@ static s32 fc8300_set_acif_1seg(HANDLE handle, DEVICEID devid, u32 clk)
 {
 #if (BBM_BAND_WIDTH == 6)
 	switch (clk) {
+	case 100750:
 	case 100800:
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_00, 0xfeff0001);
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_04, 0xfcfafbfc);
@@ -848,6 +904,7 @@ static s32 fc8300_set_acif_1seg(HANDLE handle, DEVICEID devid, u32 clk)
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_08, 0x130c0500);
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_12, 0x25231f1a);
 		break;
+	case 107250:
 	case 107525:
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_00, 0xfcfeff00);
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_04, 0xfefcfbfb);
@@ -1134,6 +1191,7 @@ static s32 fc8300_set_acif_3seg(HANDLE handle, DEVICEID devid, u32 clk)
 {
 #if (BBM_BAND_WIDTH == 6)
 	switch (clk) {
+	case 100750:
 	case 100800:
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_00, 0x0201ffff);
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_04, 0x00fbfd01);
@@ -1266,6 +1324,7 @@ static s32 fc8300_set_acif_3seg(HANDLE handle, DEVICEID devid, u32 clk)
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_08, 0xeef90708);
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_12, 0x5e4a1df8);
 		break;
+	case 107250:
 	case 107525:
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_00, 0x020200ff);
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_04, 0x04fdfcff);
@@ -1552,6 +1611,7 @@ static s32 fc8300_set_acif_13seg(HANDLE handle, DEVICEID devid, u32 clk)
 {
 #if (BBM_BAND_WIDTH == 6)
 	switch (clk) {
+	case 100750:
 	case 100800:
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_00, 0x040400fd);
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_04, 0x04fbf9fe);
@@ -1696,6 +1756,7 @@ static s32 fc8300_set_acif_13seg(HANDLE handle, DEVICEID devid, u32 clk)
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_08, 0xedf5040b);
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_12, 0x594821fc);
 		break;
+	case 107250:
 	case 107525:
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_00, 0x00040400);
 		bbm_long_write(handle, devid, BBM_ACIF_COEF_04, 0x0800fafb);
@@ -2067,6 +2128,11 @@ static s32 fc8300_set_cal_front_1seg(HANDLE handle, DEVICEID devid, u32 clk)
 		bbm_long_write(handle, devid, BBM_FREQ_COMPEN_VAL0, 0x3b1af);
 		bbm_long_write(handle, devid, BBM_NCO_OFFSET, 0x22a66666);
 		break;
+	case 107250:
+		bbm_word_write(handle, devid, BBM_LOW_IF_VALUE, 0x2b8a);
+		bbm_long_write(handle, devid, BBM_FREQ_COMPEN_VAL0, 0x3a323);
+		bbm_long_write(handle, devid, BBM_NCO_OFFSET, 0x23310000);
+		break;
 	case 107525:
 		bbm_word_write(handle, devid, BBM_LOW_IF_VALUE, 0x2b6d);
 		bbm_long_write(handle, devid, BBM_FREQ_COMPEN_VAL0, 0x3a0c1);
@@ -2408,6 +2474,11 @@ static s32 fc8300_set_cal_front_3seg(HANDLE handle, DEVICEID devid, u32 clk)
 		bbm_word_write(handle, devid, BBM_LOW_IF_VALUE, 0x745d);
 		bbm_long_write(handle, devid, BBM_FREQ_COMPEN_VAL0, 0x3b1af);
 		bbm_long_write(handle, devid, BBM_NCO_OFFSET, 0x11533333);
+		break;
+	case 107250:
+		bbm_word_write(handle, devid, BBM_LOW_IF_VALUE, 0x7293);
+		bbm_long_write(handle, devid, BBM_FREQ_COMPEN_VAL0, 0x3a323);
+		bbm_long_write(handle, devid, BBM_NCO_OFFSET, 0x11988000);
 		break;
 	case 107525:
 		bbm_word_write(handle, devid, BBM_LOW_IF_VALUE, 0x7248);
@@ -3770,7 +3841,7 @@ s32 fc8300_init(HANDLE handle, DEVICEID devid)
 	bbm_byte_write(handle, DIV_BROADCAST, BBM_FUSELOAD, 0x07);
 #endif
 	msWait(1);
-	bbm_byte_write(handle, DIV_MASTER, BBM_FUSELOAD, 0x00);
+	bbm_byte_write(handle, DIV_BROADCAST, BBM_FUSELOAD, 0x00);
 
 	bbm_byte_write(handle, DIV_BROADCAST, BBM_PLL1_ENABLE, 0x01);
 	bbm_byte_write(handle, DIV_BROADCAST, BBM_PLL1_PD, 0x00);
@@ -3823,19 +3894,23 @@ s32 fc8300_init(HANDLE handle, DEVICEID devid)
 
 	bbm_byte_write(handle, DIV_BROADCAST, BBM_ADC_PWRDN, 0x00);
 	bbm_byte_write(handle, DIV_BROADCAST, BBM_ADC_RST, 0x00);
+	bbm_byte_write(handle, DIV_BROADCAST, BBM_ADC_BIAS, 0x06);
 	bbm_byte_write(handle, DIV_BROADCAST, BBM_BB2RF_RFEN, 0x01);
 	bbm_byte_write(handle, DIV_BROADCAST, BBM_RF_RST, 0x00);
 	bbm_byte_write(handle, DIV_BROADCAST, BBM_RF_POWER_SAVE, 0x00);
 	bbm_long_write(handle, DIV_BROADCAST, BBM_MEMORY_RWM0, 0x01111111);
 	bbm_byte_write(handle, DIV_BROADCAST, BBM_IQC_EN, 0x71);
-	bbm_byte_write(handle, DIV_BROADCAST, BBM_PGA_GAIN_MAX, 0x0c);
 	bbm_byte_write(handle, DIV_BROADCAST, BBM_CSF_GAIN_MAX, 0x0a);
 	bbm_byte_write(handle, DIV_BROADCAST, BBM_ADC_CTRL, 0x27);
+	bbm_byte_write(handle, DIV_BROADCAST, BBM_PSAT_ON_REF_1SEG_QPSK, 0x16);
+	bbm_byte_write(handle, DIV_BROADCAST, BBM_PSAT_ON_REF_1SEG_16QAM, 0x16);
 	bbm_byte_write(handle, DIV_BROADCAST, BBM_HOLD_RST_EN, 0x06);
 	bbm_word_write(handle, DIV_BROADCAST, BBM_REF_DELAY_POST, 0x1900);
 	bbm_word_write(handle, DIV_BROADCAST, BBM_REF_AMP, 0x03e0);
 	bbm_word_write(handle, DIV_BROADCAST, BBM_AD_GAIN_PERIOD, 0x003f);
 	bbm_word_write(handle, DIV_BROADCAST, BBM_FD_RD_LATENCY_1SEG, 0x0620);
+	bbm_byte_write(handle, DIV_MASTER, BBM_FD_OUT_MODE, 0x02);
+	bbm_byte_write(handle, DIV_MASTER, BBM_DIV_START_MODE, 0x16);
 
 	bbm_word_write(handle, DIV_BROADCAST, BBM_BUF_TS0_START, TS0_BUF_START);
 	bbm_word_write(handle, DIV_BROADCAST, BBM_BUF_TS0_END, TS0_BUF_END);
@@ -3892,8 +3967,14 @@ s32 fc8300_init(HANDLE handle, DEVICEID devid)
 	bbm_byte_write(handle, DIV_BROADCAST, BBM_INT_POLAR_SEL, 0x00);
 #endif
 
-#ifdef BBM_SPI_50M
+#ifdef BBM_SPI_30M
 	bbm_byte_write(handle, DIV_BROADCAST, BBM_MD_MISO, 0x1f);
+#endif
+
+#ifdef BBM_DESCRAMBLER
+	bbm_byte_write(handle, DIV_BROADCAST, BBM_BCAS_ENABLE, 0x01);
+#else
+	bbm_byte_write(handle, DIV_BROADCAST, BBM_BCAS_ENABLE, 0x00);
 #endif
 
 	bbm_byte_write(handle, DIV_MASTER, BBM_INT_AUTO_CLEAR, 0x01);
@@ -3927,7 +4008,8 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 	u32 cfs_timeout         = 120;
 	u32 tmcc_timeout        = 1050;
 	u32 ts_err_free_timeout = 0;
-	u8  a, b, c, d, run;
+	u32 data                = 0;
+	u8  a, run;
 	u32   i;
 #ifdef BBM_2_DIVERSITY
 	u8 done = 0x03;
@@ -3958,7 +4040,7 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 			break;
 #endif
 
-		msWait(1);
+		msWait(SCAN_CHK_PERIOD);
 	}
 
 	if (i == ifagc_timeout)
@@ -4014,7 +4096,7 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 		if (run == 0)
 			return BBM_NOK;
 
-		msWait(1);
+		msWait(SCAN_CHK_PERIOD);
 	}
 
 	if (i == ofdm_timeout)
@@ -4043,7 +4125,7 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 			break;
 #endif
 
-		msWait(1);
+		msWait(SCAN_CHK_PERIOD);
 	}
 
 	if (i == ffs_lock_timeout)
@@ -4054,9 +4136,9 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 			bbm_byte_read(handle, DIV_MASTER, 0x3025, &a);
 
 			if (a & 0x40) {
-				bbm_byte_read(handle, DIV_MASTER, 0x2023, &b);
+				bbm_byte_read(handle, DIV_MASTER, 0x2023, &a);
 
-				if ((b & 0x01) == 0x00)
+				if ((a & 0x01) == 0x00)
 					break;
 
 				run -= 0x01; /* master done */
@@ -4067,9 +4149,9 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 			bbm_byte_read(handle, DIV_SLAVE0, 0x3025, &a);
 
 			if (a & 0x40) {
-				bbm_byte_read(handle, DIV_SLAVE0, 0x2023, &b);
+				bbm_byte_read(handle, DIV_SLAVE0, 0x2023, &a);
 
-				if ((b & 0x01) == 0x00)
+				if ((a & 0x01) == 0x00)
 					break;
 
 				run -= 0x02; /* slave0 done */
@@ -4081,9 +4163,9 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 			bbm_byte_read(handle, DIV_SLAVE1, 0x3025, &a);
 
 			if (a & 0x40) {
-				bbm_byte_read(handle, DIV_SLAVE1, 0x2023, &b);
+				bbm_byte_read(handle, DIV_SLAVE1, 0x2023, &a);
 
-				if ((b & 0x01) == 0x00)
+				if ((a & 0x01) == 0x00)
 					break;
 
 				run -= 0x04; /* slave1 done */
@@ -4094,9 +4176,9 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 			bbm_byte_read(handle, DIV_SLAVE2, 0x3025, &a);
 
 			if (a & 0x40) {
-				bbm_byte_read(handle, DIV_SLAVE2, 0x2023, &b);
+				bbm_byte_read(handle, DIV_SLAVE2, 0x2023, &a);
 
-				if ((b & 0x01) == 0x00)
+				if ((a & 0x01) == 0x00)
 					break;
 
 				run -= 0x08; /* slave2 done */
@@ -4107,7 +4189,7 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 		if (run == 0)
 			return BBM_NOK;
 
-		msWait(1);
+		msWait(SCAN_CHK_PERIOD);
 	}
 
 	if (i == cfs_timeout)
@@ -4117,16 +4199,14 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 		bbm_byte_read(handle, DIV_MASTER, 0x3026, &a);
 
 		if (a & 0x02) {
-			bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-			bbm_byte_read(handle, DIV_MASTER, 0x4114, &b);
+			bbm_long_read(handle, DIV_MASTER, 0x4113, &data);
 			break;
 		}
 
 		bbm_byte_read(handle, DIV_SLAVE0, 0x3026, &a);
 
 		if (a & 0x02) {
-			bbm_byte_read(handle, DIV_SLAVE0, 0x4113, &a);
-			bbm_byte_read(handle, DIV_SLAVE0, 0x4114, &b);
+			bbm_long_read(handle, DIV_SLAVE0, 0x4113, &data);
 			break;
 		}
 
@@ -4134,111 +4214,68 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 		bbm_byte_read(handle, DIV_SLAVE1, 0x3026, &a);
 
 		if (a & 0x02) {
-			bbm_byte_read(handle, DIV_SLAVE1, 0x4113, &a);
-			bbm_byte_read(handle, DIV_SLAVE1, 0x4114, &b);
+			bbm_long_read(handle, DIV_SLAVE1, 0x4113, &data);
 			break;
 		}
 
 		bbm_byte_read(handle, DIV_SLAVE2, 0x3026, &a);
 
 		if (a & 0x02) {
-			bbm_byte_read(handle, DIV_SLAVE2, 0x4113, &a);
-			bbm_byte_read(handle, DIV_SLAVE2, 0x4114, &b);
+			bbm_long_read(handle, DIV_SLAVE2, 0x4113, &data);
 			break;
 		}
 #endif
 
-		msWait(1);
+		msWait(SCAN_CHK_PERIOD);
 	}
 
 	if (i == tmcc_timeout)
 		return BBM_NOK;
 
-	ts_err_free_timeout = 650;
+	ts_err_free_timeout = 950;
 
 	switch (broadcast_type) {
 	case ISDBT_1SEG:
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-		bbm_byte_read(handle, DIV_MASTER, 0x4114, &b);
-
-		if ((a & 0x08) == 0x00)
+		if ((data & 0x00000008) == 0x00000000)
 			return BBM_NOK;
 
-		if (((0x70 & a) == 0x40) && ((0x1c & b) == 0x18))
-			ts_err_free_timeout = 400;
+		if ((data & 0x00001c70) == 0x00001840)
+			ts_err_free_timeout = 700;
 
 		break;
 	case ISDBTMM_1SEG:
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-		bbm_byte_read(handle, DIV_MASTER, 0x4114, &b);
-
-		if ((a & 0x08) == 0x00)
-			return BBM_NOK;
-
-		if (((0x70 & a) == 0x20) && ((0x1c & b) == 0x18))
-			ts_err_free_timeout = 400;
+		if ((data & 0x00001c70) == 0x00001820)
+			ts_err_free_timeout = 700;
 
 		break;
 	case ISDBTSB_1SEG:
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-
-		if ((a & 0x08) == 0x00)
-			return BBM_NOK;
-
 		break;
 	case ISDBTSB_3SEG:
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-
 		break;
 	case ISDBT_13SEG:
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-		bbm_byte_read(handle, DIV_MASTER, 0x4114, &b);
-		bbm_byte_read(handle, DIV_MASTER, 0x4115, &c);
-		bbm_byte_read(handle, DIV_MASTER, 0x4116, &d);
-
-		if ((a & 0x08) && ((0x70 & a) == 0x40) &&
-				((0x1c & b) == 0x18) &&
-				((0x8e & c) == 0x0c) &&
-				((0x3f & d) == 0x0d))
-			ts_err_free_timeout = 400;
+		if ((data & 0x3f8e1c78) == 0x0d0c1848)
+			ts_err_free_timeout = 700;
 
 		break;
 	case ISDBTMM_13SEG:
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-		bbm_byte_read(handle, DIV_MASTER, 0x4114, &b);
-		bbm_byte_read(handle, DIV_MASTER, 0x4115, &c);
-		bbm_byte_read(handle, DIV_MASTER, 0x4116, &d);
-
-		if ((a & 0x08) && ((0x70 & a) == 0x20) &&
-				((0x1c & b) == 0x18) &&
-				((0x8e & c) == 0x04) &&
-				((0x3f & d) == 0x0f))
-			ts_err_free_timeout = 400;
+		if ((data & 0x3f8e1c78) == 0x0f041828)
+			ts_err_free_timeout = 700;
 
 		break;
 	case ISDBT_CATV_13SEG:
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-		bbm_byte_read(handle, DIV_MASTER, 0x4114, &b);
-		bbm_byte_read(handle, DIV_MASTER, 0x4115, &c);
-		bbm_byte_read(handle, DIV_MASTER, 0x4116, &d);
-
-		if ((a & 0x08) && ((0x70 & a) == 0x40) &&
-				((0x1c & b) == 0x18) &&
-				((0x8e & c) == 0x0c) &&
-				((0x3f & d) == 0x0d))
-			ts_err_free_timeout = 400;
+		if ((data & 0x3f8e1c78) == 0x0d0c1848)
+			ts_err_free_timeout = 700;
 
 		break;
 	case ISDBT_CATV_1SEG:
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-		bbm_byte_read(handle, DIV_MASTER, 0x4114, &b);
-
-		if ((a & 0x08) == 0x00)
+		if ((data & 0x00000008) == 0x00000000)
 			return BBM_NOK;
 
-		if (((0x70 & a) == 0x40) && ((0x1c & b) == 0x18))
-			ts_err_free_timeout = 400;
+		if ((data & 0x00001c70) == 0x00001840)
+			ts_err_free_timeout = 700;
 
+		break;
+	default:
 		break;
 	}
 
@@ -4248,7 +4285,7 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 		if (a)
 			break;
 
-		msWait(1);
+		msWait(SCAN_CHK_PERIOD);
 	}
 
 	if (i == ts_err_free_timeout)
@@ -4265,17 +4302,18 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 	u32 cfs_timeout         = 120;
 	u32 tmcc_timeout        = 1050;
 	u32 ts_err_free_timeout = 0;
-	u8  a, b, c, d;
+	u32 data                = 0;
+	u8  a;
 	u32 i;
 	pr_info("ISDBT fc8300_scan_status \n");
 
 	for (i = 0; i < ifagc_timeout; i++) {
 		bbm_byte_read(handle, DIV_MASTER, 0x3025, &a);
-		pr_debug("ifagc loop: a=0x%x\n",a);
+
 		if (a & 0x01)
 			break;
 
-		msWait(1);
+		msWait(SCAN_CHK_PERIOD);
 	}
 
 	if (i == ifagc_timeout)
@@ -4289,7 +4327,7 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 		if (a & 0x08)
 			break;
 
-		msWait(1);
+		msWait(SCAN_CHK_PERIOD);
 	}
 
 	if (i == ofdm_timeout)
@@ -4306,7 +4344,7 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 		if ((a & 0x11) == 0x11)
 			break;
 
-		msWait(1);
+		msWait(SCAN_CHK_PERIOD);
 	}
 
 	if (i == ffs_lock_timeout)
@@ -4321,7 +4359,7 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 		if (a & 0x40)
 			break;
 
-		msWait(1);
+		msWait(SCAN_CHK_PERIOD);
 	}
 
 	if (i == cfs_timeout)
@@ -4344,7 +4382,7 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 		if (a & 0x02)
 			break;
 
-		msWait(1);
+		msWait(SCAN_CHK_PERIOD);
 	}
 
 	if (i == tmcc_timeout)
@@ -4353,98 +4391,63 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 		return BBM_NOK;
 	}
 
-	ts_err_free_timeout = 650;
+	ts_err_free_timeout = 950;
 
 	switch (broadcast_type) {
 	case ISDBT_1SEG:
+		bbm_word_read(handle, DIV_MASTER, 0x4113, (u16 *) &data);
 			print_log(0,"ISDBT_1SEG\n");
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-		bbm_byte_read(handle, DIV_MASTER, 0x4114, &b);
-		pr_debug( "1seg a=0x%x, b=0x%x\n",a,b);
-		if ((a & 0x08) == 0x00)
-		{
-			print_log(0,"ISDBT BBM_NOK 0x08 \n");
+		if ((data & 0x0008) == 0x0000)
 			return BBM_NOK;
-		}
 
-		if (((0x70 & a) == 0x40) && ((0x1c & b) == 0x18))
-			ts_err_free_timeout = 400;
+		if ((data & 0x1c70) == 0x1840)
+			ts_err_free_timeout = 700;
 
 		break;
 	case ISDBTMM_1SEG:
 		 print_log(0,"ISDBTMM_1SEG\n");
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-		bbm_byte_read(handle, DIV_MASTER, 0x4114, &b);
+		bbm_word_read(handle, DIV_MASTER, 0x4113, (u16 *) &data);
 
-		if ((a & 0x08) == 0x00)
-        {
-			print_log(0,"ISDBT BBM_NOK 0x08 \n");
-			return BBM_NOK;
-			}
+		if ((data & 0x1c70) == 0x1820)
+			ts_err_free_timeout = 700;
 
-		if (((0x70 & a) == 0x20) && ((0x1c & b) == 0x18))
-			ts_err_free_timeout = 400;
 		break;
 	case ISDBTSB_1SEG:
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-
-		if ((a & 0x08) == 0x00)
-			return BBM_NOK;
-
 		break;
 	case ISDBTSB_3SEG:
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-
 			break;
 	case ISDBT_13SEG:
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-		bbm_byte_read(handle, DIV_MASTER, 0x4114, &b);
-		bbm_byte_read(handle, DIV_MASTER, 0x4115, &c);
-		bbm_byte_read(handle, DIV_MASTER, 0x4116, &d);
+		bbm_long_read(handle, DIV_MASTER, 0x4113, &data);
 
-		if ((a & 0x08) && ((0x70 & a) == 0x40) &&
-				((0x1c & b) == 0x18) &&
-				((0x8e & c) == 0x0c) &&
-				((0x3f & d) == 0x0d))
-			ts_err_free_timeout = 400;
+		if ((data & 0x3f8e1c78) == 0x0d0c1848)
+			ts_err_free_timeout = 700;
 
 		break;
 	case ISDBTMM_13SEG:
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-		bbm_byte_read(handle, DIV_MASTER, 0x4114, &b);
-		bbm_byte_read(handle, DIV_MASTER, 0x4115, &c);
-		bbm_byte_read(handle, DIV_MASTER, 0x4116, &d);
+		bbm_long_read(handle, DIV_MASTER, 0x4113, &data);
 
-		if ((a & 0x08) && ((0x70 & a) == 0x20) &&
-				((0x1c & b) == 0x18) &&
-				((0x8e & c) == 0x04) &&
-				((0x3f & d) == 0x0f))
-			ts_err_free_timeout = 400;
+		if ((data & 0x3f8e1c78) == 0x0f041828)
+			ts_err_free_timeout = 700;
 
 		break;
 	case ISDBT_CATV_13SEG:
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-		bbm_byte_read(handle, DIV_MASTER, 0x4114, &b);
-		bbm_byte_read(handle, DIV_MASTER, 0x4115, &c);
-		bbm_byte_read(handle, DIV_MASTER, 0x4116, &d);
+		bbm_long_read(handle, DIV_MASTER, 0x4113, &data);
 
-		if ((a & 0x08) && ((0x70 & a) == 0x40) &&
-				((0x1c & b) == 0x18) &&
-				((0x8e & c) == 0x0c) &&
-				((0x3f & d) == 0x0d))
-			ts_err_free_timeout = 400;
+		if ((data & 0x3f8e1c78) == 0x0d0c1848)
+			ts_err_free_timeout = 700;
 
 		break;
 	case ISDBT_CATV_1SEG:
-		bbm_byte_read(handle, DIV_MASTER, 0x4113, &a);
-		bbm_byte_read(handle, DIV_MASTER, 0x4114, &b);
+		bbm_word_read(handle, DIV_MASTER, 0x4113, (u16 *) &data);
 
-		if ((a & 0x08) == 0x00)
+		if ((data & 0x0008) == 0x0000)
 			return BBM_NOK;
 
-		if (((0x70 & a) == 0x40) && ((0x1c & b) == 0x18))
-			ts_err_free_timeout = 400;
+		if ((data & 0x1c70) == 0x1840)
+			ts_err_free_timeout = 700;
 
+		break;
+	default:
 		break;
 	}
 
@@ -4454,7 +4457,7 @@ s32 fc8300_scan_status(HANDLE handle, DEVICEID devid)
 		if (a)
 			break;
 
-		msWait(1);
+		msWait(SCAN_CHK_PERIOD);
 	}
 
 	if (i == ts_err_free_timeout)
@@ -4646,6 +4649,16 @@ s32 fc8300_set_broadcast_mode(HANDLE handle, DEVICEID devid,
 		break;
 	default:
 		bbm_byte_write(handle, devid, BBM_ECHOC_EN, 0x01);
+		break;
+	}
+
+	switch (broadcast) {
+	case ISDBT_CATV_13SEG:
+	case ISDBT_CATV_1SEG:
+		bbm_byte_write(handle, DIV_BROADCAST, BBM_PGA_GAIN_MAX, 0x00);
+		break;
+	default:
+		bbm_byte_write(handle, DIV_BROADCAST, BBM_PGA_GAIN_MAX, 0x0c);
 		break;
 	}
 

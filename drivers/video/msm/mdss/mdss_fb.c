@@ -98,7 +98,10 @@ static int __mdss_fb_display_thread(void *data);
 static int mdss_fb_pan_idle(struct msm_fb_data_type *mfd);
 static int mdss_fb_send_panel_event(struct msm_fb_data_type *mfd,
 					int event, void *arg);
+
+#if defined (CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
 int get_lcd_attached(void);
+#endif
 
 void mdss_fb_no_update_notify_timer_cb(unsigned long data)
 {
@@ -215,8 +218,6 @@ static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 	   driver backlight level 0 to bl_max with rounding */
 	MDSS_BRIGHT_TO_BL(bl_lvl, value, mfd->panel_info->bl_max,
 				mfd->panel_info->brightness_max);
-
-	pr_info("[BL] %s: bl_lvl = %d\n",__func__,bl_lvl);
 
 	if (!bl_lvl && value)
 		bl_lvl = 1;
@@ -794,20 +795,16 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 	int (*update_ad_input)(struct msm_fb_data_type *mfd);
 	u32 temp = bkl_lvl;
 
-	pr_info("[BL] %s: bkl_lvl = %d\n", __func__, bkl_lvl);
-
 	if (((!mfd->panel_power_on && mfd->dcm_state != DCM_ENTER)
 		|| !mfd->bl_updated) && !IS_CALIB_MODE_BL(mfd)) {
 		mfd->unset_bl_level = bkl_lvl;
-		pr_err("[BL] %s: panel (%d), bl_updated(%d)\n", 
-			__func__, mfd->panel_power_on, mfd->bl_updated);
 		return;
 	} else {
 		mfd->unset_bl_level = 0;
 	}
 
-	pr_info("[BL] %s: unset_bl_level (%d), bl_updated(%d)\n",
-		__func__, mfd->unset_bl_level, mfd->bl_updated);
+	pr_info("[BL] %s: bkl_lvl (%d), bl_updated(%d)\n",
+		__func__, bkl_lvl, mfd->bl_updated);
 
 	pdata = dev_get_platdata(&mfd->pdev->dev);
 
@@ -872,10 +869,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	if (mfd->dcm_state == DCM_ENTER)
 		return -EPERM;
 
-	if (get_lcd_attached() == 0) {
-		pr_err("%s : lcd is not attached..\n",__func__);
-		return -ENODEV;
-	}
+	mfd->blank_mode = blank_mode;
 
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
@@ -1531,7 +1525,12 @@ void mdss_fb_wait_for_fence(struct msm_sync_pt_data *sync_pt_data)
 	int i, ret = 0;
 
 	pr_debug("%s: wait for fences\n", sync_pt_data->fence_name);
-
+#if defined (CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
+	if (get_lcd_attached() == 0) {
+		pr_debug("%s : lcd is not attached..\n",__func__);
+		return;
+	}
+#endif
 	mutex_lock(&sync_pt_data->sync_mutex);
 	/*
 	 * Assuming that acq_fen_cnt is sanitized in bufsync ioctl
@@ -2168,6 +2167,13 @@ static int mdss_fb_handle_buf_sync_ioctl(struct msm_sync_pt_data *sync_pt_data,
 	int rel_fen_fd;
 	int retire_fen_fd;
 	int val;
+
+#if defined (CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
+	if (get_lcd_attached() == 0) {
+		pr_debug("%s : lcd is not attached..\n",__func__);
+		return 0;
+	}
+#endif
 
 	if ((buf_sync->acq_fen_fd_cnt > MDP_MAX_FENCE_FD) ||
 				(sync_pt_data->timeline == NULL))

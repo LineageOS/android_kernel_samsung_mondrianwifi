@@ -131,7 +131,7 @@ static int sx9500_i2c_write(struct sx9500_p *data, u8 reg_addr, u8 buf)
 	if (ret < 0)
 		pr_err("[SX9500]: %s - i2c write error %d\n", __func__, ret);
 
-	return 0;
+	return ret;
 }
 
 static int sx9500_i2c_read(struct sx9500_p *data, u8 reg_addr, u8 *buf)
@@ -979,19 +979,19 @@ static void sx9500_irq_work_func(struct work_struct *work)
 	struct sx9500_p *data = container_of((struct delayed_work *)work,
 		struct sx9500_p, irq_work);
 
-	if (sx9500_get_nirq_state(data) == 0)
-		sx9500_process_interrupt(data);
-	else
-		pr_err("[SX9500]: %s - nirq read high %d\n",
-			__func__, sx9500_get_nirq_state(data));
+	sx9500_process_interrupt(data);
 }
 
 static irqreturn_t sx9500_interrupt_thread(int irq, void *pdata)
 {
 	struct sx9500_p *data = pdata;
 
-	wake_lock_timeout(&data->grip_wake_lock, 3 * HZ);
-	schedule_delayed_work(&data->irq_work, msecs_to_jiffies(100));
+	if (sx9500_get_nirq_state(data) == 1) {
+		pr_err("[SX9500]: %s - nirq read high\n", __func__);
+	} else {
+		wake_lock_timeout(&data->grip_wake_lock, 3 * HZ);
+		schedule_delayed_work(&data->irq_work, msecs_to_jiffies(100));
+	}
 
 	return IRQ_HANDLED;
 }
@@ -1060,17 +1060,6 @@ static int sx9500_setup_pin(struct sx9500_p *data)
 
 	data->irq = gpio_to_irq(data->gpioNirq);
 
-	/* initailize interrupt reporting */
-	ret = request_threaded_irq(data->irq, NULL, sx9500_interrupt_thread,
-			IRQF_TRIGGER_FALLING , "sx9500_irq", data);
-	if (ret < 0) {
-		pr_err("[SX9500]: %s - failed to set request_threaded_irq %d"
-			" as returning (%d)\n", __func__, data->irq, ret);
-		gpio_free(data->gpioNirq);
-		return ret;
-	}
-
-	disable_irq(data->irq);
 	return 0;
 }
 
@@ -1255,12 +1244,30 @@ static int sx9500_probe(struct i2c_client *client,
 	INIT_DELAYED_WORK(&data->irq_work, sx9500_irq_work_func);
 	mutex_init(&data->mode_mutex);
 
+	/* initailize interrupt reporting */
+	ret = request_threaded_irq(data->irq, NULL, sx9500_interrupt_thread,
+			IRQF_TRIGGER_FALLING , "sx9500_irq", data);
+	if (ret < 0) {
+		pr_err("[SX9500]: %s - failed to set request_threaded_irq %d"
+			" as returning (%d)\n", __func__, data->irq, ret);
+		goto exit_request_threaded_irq;
+	}
+
+	disable_irq(data->irq);
+
 	schedule_delayed_work(&data->init_work, msecs_to_jiffies(300));
 
 	pr_info("[SX9500]: %s - Probe done!\n", __func__);
 
 	return 0;
 
+exit_request_threaded_irq:
+	mutex_destroy(&data->mode_mutex);
+	sensors_unregister(data->factory_device, sensor_attrs);
+	sensors_remove_symlink(&data->input->dev.kobj, data->input->name);
+	wake_lock_destroy(&data->grip_wake_lock);
+	sysfs_remove_group(&data->input->dev.kobj, &sx9500_attribute_group);
+	input_unregister_device(data->input);
 exit_input_init:
 exit_chip_reset:
 	free_irq(data->irq, data);

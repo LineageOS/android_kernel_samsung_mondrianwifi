@@ -1636,8 +1636,10 @@ static __devinit int max77803_charger_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	pdata->charger_data = kzalloc(sizeof(sec_battery_platform_data_t), GFP_KERNEL);
-	if (!pdata->charger_data)
-		return -ENOMEM;
+	if (!pdata->charger_data) {
+		ret = -ENOMEM;
+		goto err_free;
+	}
 
 	charger->max77803 = iodev;
 	charger->pdata = pdata->charger_data;

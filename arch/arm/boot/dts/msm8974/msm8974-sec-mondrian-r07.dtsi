@@ -45,7 +45,6 @@
 		qcom,mdss-pref-prim-intf = "dsi";
 		mdss_fb0: qcom,mdss_fb_primary {
 			qcom,memory-reservation-type = "EBI1";
-			qcom,memory-reservation-size = <0x1F40000>;
 			qcom,memblock-reserve = <0x03200000 0x01F00000>;
 			qcom,mdss-fb-split = <800 800>;
 		};
@@ -186,7 +185,7 @@
 			battery,input_current_limit = <1900 460 460 1900 460 900 1000 460 460 1000 650 1900 1900 460 1300 300 700 1300 300 1000 1900 460 460>;
 			battery,fast_charging_current = <2100 0 460 2100 460 1200 1000 460 0 1200 750 2100 2100 0 1300 300 700 1300 300 1000 2100 0 0>;
 			battery,full_check_current_1st = <350 0 350 350 350 350 350 350 0 350 350 350 350 0 350 350 350 350 350 350 350 0 0>;
-			battery,full_check_current_2nd = <2400 0 2400 2400 2400 2400 2400 2400 0 2400 2400 2400 2400 0 2400 2400 2400 2400 2400 2400 2400 0 0>;
+			battery,full_check_current_2nd = <1200 0 1200 1200 1200 1200 1200 1200 0 1200 1200 1200 1200 0 1200 1200 1200 1200 1200 1200 1200 0 0>;
 		};
 	};
 
@@ -330,6 +329,9 @@
 	/* BLSP#9 */
 	i2c@f9965000 {
 		status = "okay";
+		qcom,scl-gpio = <&msmgpio 52 0>;
+		qcom,sda-gpio = <&msmgpio 51 0>;
+
 		sec-fuelgauge@36 {
 			compatible = "sec-fuelgauge,i2c";
 			reg = <0x36>;
@@ -338,7 +340,7 @@
 			fuelgauge,capacity_max_margin = <50>;
 			fuelgauge,capacity_min = <0>;
 			fuelgauge,capacity_calculation_type = <7>;
-			fuelgauge,fuel_alert_soc = <2>;
+			fuelgauge,fuel_alert_soc = <1>;
 			fuelgauge,jig_gpio = <&msmgpio 76 0x00>;
 		};
 	};
@@ -420,20 +422,20 @@
 
 	earjack {
 		compatible = "sec_jack";
-		qcom,earjack-read-vadc = <&pm8941_vadc>;		
+		qcom,earjack-read-vadc = <&pm8941_vadc>;
 		qcom,earjack-detect-gpio = <&pm8941_gpios 22 0>;
 		qcom,earjack-micbias-gpio = <&pm8941_gpios 34 0>;
 		qcom,earjack-sendend-gpio = <&msmgpio 77 0>;
 		qcom,earjack-fsa_en-gpio = <&msmgpio 8 1>;
 		qcom,send-end-active-high;
 
-		det-zones-list = <&det_zones 3 10000 10 0>,
-						 <&det_zones 639 10000 10 0>,
+		det-zones-list = <&det_zones 0 10000 10 0>,
+						 <&det_zones 900 10000 10 0>,
 						 <&det_zones 2400 10000 10 1>,
 						 <&det_zones 9999 10000 10 1>;
-		but-zones-list = <&but_zones 0 0 227>,
-						 <&but_zones 1 228 310>,
-						 <&but_zones 2 311 500>;
+		but-zones-list = <&but_zones 0 0 155>,
+						 <&but_zones 1 156 310>,
+						 <&but_zones 2 311 800>;
 		mpp-channel-scaling = <4 1 3>;
 	};
 
@@ -658,9 +660,9 @@
 
 &pm8941_l10 {
 /* TSP 1.8V IO regulator */
-	regulator-min-microvolt = <1800000>;
-	regulator-max-microvolt = <1800000>;
-	qcom,init-voltage = <1800000>;
+	regulator-min-microvolt = <1850000>;
+	regulator-max-microvolt = <1850000>;
+	qcom,init-voltage = <1850000>;
 };
 
 &pm8941_chg {

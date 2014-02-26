@@ -607,6 +607,14 @@ config LEDS_MAX77804K
 	  Now camera_class is exceptioned
 	  by sanghoon.lee.
 
+config LEDS_MAX77828
+	bool "LED support for the MAX77828"
+	depends on LEDS_CLASS
+	depends on MFD_MAX77828
+	default n
+	help
+	  This option enables support for the LEDs
+ 
 comment "iptables trigger is under Netfilter config (LED target)"
 	depends on LEDS_TRIGGERS
 

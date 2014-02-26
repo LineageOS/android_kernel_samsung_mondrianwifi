@@ -3,19 +3,18 @@
 #include <linux/moduleparam.h>
 #include <linux/platform_device.h>
 #include <linux/input.h>
-#include <linux/input-polldev.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
 #include <linux/ioctl.h>
-#include <linux/sensors_core.h>
-
+#include "sensors_core.h"
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 #endif
 #include <linux/alps_compass_io.h>
+#include <linux/input-polldev.h>
 
 #define EVENT_TYPE_ACCEL_X          ABS_X
 #define EVENT_TYPE_ACCEL_Y          ABS_Y

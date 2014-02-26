@@ -176,6 +176,10 @@ static irqreturn_t max77888_irq_thread(int irq, void *data)
 	int ret;
 	int i;
 
+	/* INTMASK1  3:ADC1K 0:ADC */
+	/* INTMASK2  4:VBVolt 0:Chgtype */
+	max77888_write_reg(max77888->muic, MAX77888_MUIC_REG_INTMASK1, 0x09);
+	max77888_write_reg(max77888->muic, MAX77888_MUIC_REG_INTMASK2, 0x11);
 clear_retry:
 	ret = max77888_read_reg(max77888->i2c,
 			MAX77888_PMIC_REG_INTSRC, &irq_src);

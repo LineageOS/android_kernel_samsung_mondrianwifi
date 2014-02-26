@@ -2212,7 +2212,7 @@ static bool synaptics_skip_firmware_update(struct synaptics_rmi4_data *rmi4_data
 	}
 #else
 	if ((rmi4_data->ic_revision_of_bin == rmi4_data->ic_revision_of_ic)
-#ifdef CONFIG_SEC_H_PROJECT /*hlte temp 0423 force firm update*/
+#if defined(CONFIG_SEC_H_PROJECT)/*hlte temp 0423 force firm update*/
 		&& (rmi4_data->fw_version_of_bin == rmi4_data->fw_version_of_ic)) {
 #else
 		&& (rmi4_data->fw_version_of_bin <= rmi4_data->fw_version_of_ic)) {

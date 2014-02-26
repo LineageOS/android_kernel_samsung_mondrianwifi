@@ -33,7 +33,7 @@ int sysctl_nr_open_min = BITS_PER_LONG;
 int sysctl_nr_open_max = 1024 * 1024; /* raised later */
 
 #ifdef CONFIG_SEC_FILE_LEAK_DEBUG
-extern void	sec_debug_EMFILE_error_proc(void);
+extern void	sec_debug_EMFILE_error_proc(unsigned long files_addr);
 #endif
 
 /*
@@ -222,7 +222,7 @@ static int expand_fdtable(struct files_struct *files, int nr)
 	if (unlikely(new_fdt->max_fds <= nr)) {
 
 #ifdef CONFIG_SEC_FILE_LEAK_DEBUG
-		sec_debug_EMFILE_error_proc();
+		sec_debug_EMFILE_error_proc((unsigned long)files);
 #endif
 		__free_fdtable(new_fdt);
 		return -EMFILE;
@@ -266,7 +266,7 @@ int expand_files(struct files_struct *files, int nr)
 	if (nr >= rlimit(RLIMIT_NOFILE)) {
 
 #ifdef CONFIG_SEC_FILE_LEAK_DEBUG
-		sec_debug_EMFILE_error_proc();
+		sec_debug_EMFILE_error_proc((unsigned long)files);
 #endif
 		return -EMFILE;
 	}
@@ -279,7 +279,7 @@ int expand_files(struct files_struct *files, int nr)
 	if (nr >= sysctl_nr_open) {
 
 #ifdef CONFIG_SEC_FILE_LEAK_DEBUG
-		sec_debug_EMFILE_error_proc();
+		sec_debug_EMFILE_error_proc((unsigned long)files);
 #endif
 		return -EMFILE;
 	}
@@ -353,7 +353,7 @@ struct files_struct *dup_fd(struct files_struct *oldf, int *errorp)
 		if (unlikely(new_fdt->max_fds < open_files)) {
 
 #ifdef CONFIG_SEC_FILE_LEAK_DEBUG
-			sec_debug_EMFILE_error_proc();
+			sec_debug_EMFILE_error_proc((unsigned long)oldf);
 #endif
 			__free_fdtable(new_fdt);
 			*errorp = -EMFILE;

@@ -33,8 +33,8 @@ char B934_checksum[] = { 0x1F, 0x93, 0x7E, 0xDE, 0xAD, };	/*ver 0x076*/
 /* LT03 (Checksum : 9C088EDC ) */
 char B930_checksum[] = { 0x1F, 0xDC, 0x8E, 0x08, 0x9C, };	/*ver  0x0260*/
 #else
-/* VIENNA */
-char B930_checksum[] = { 0x1F, 0xEB, 0x40, 0x69, 0x2E, };	/*boot ver: 0x92 , ver 0x20A*/
+/* VIENNA (Checksum : 25497A76) */
+char B930_checksum[] = { 0x1F, 0x76, 0x7A, 0x49, 0x25, };	/*boot ver: 0x92 , ver 0x330*/
 char B930_boot91_checksum[] = { 0x1F, 0x00, 0xBC, 0x33, 0xDF, };	/*boot ver: 0x91 , ver 0x200*/
 #endif
 
@@ -51,7 +51,7 @@ void wacom_i2c_set_firm_data(unsigned char *Binary_new)
 /*Return digitizer type according to board rev*/
 int wacom_i2c_get_digitizer_type(void)
 {
-#ifdef CONFIG_SEC_H_PROJECT
+#if defined(CONFIG_SEC_H_PROJECT)
 	if (system_rev >= WACOM_FW_UPDATE_REVISION)
 		return EPEN_DTYPE_B968;
 	else

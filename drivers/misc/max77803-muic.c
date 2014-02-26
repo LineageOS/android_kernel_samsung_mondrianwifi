@@ -137,7 +137,7 @@ struct max77803_muic_info {
 	struct delayed_work	usb_work;
 	struct delayed_work	dock_usb_work;
 	struct delayed_work	mhl_work;
-#if defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	struct delayed_work	usb_connection_work;
 	int			speaker_check_count;
 #endif
@@ -928,7 +928,7 @@ int max77803_muic_get_charging_type(void)
 		return CABLE_TYPE_NONE_MUIC;
 }
 
-#if defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 extern int speaker_status;
 
 void max77803_muic_usb_connection_work(struct work_struct *work)
@@ -1252,7 +1252,7 @@ static int max77803_muic_attach_usb_type(struct max77803_muic_info *info,
 			usb3803_set_mode(USB_3803_MODE_HUB);
 #endif				/* CONFIG_USBHUB_USB3803 */
 
-#if defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 			max77803_muic_schedule_usb_connection(info);
 #else
 		mdata->usb_cb(USB_CABLE_ATTACHED);
@@ -1654,7 +1654,8 @@ void max77803_otg_control(struct max77803_muic_info *info, int enable)
 	|| defined(CONFIG_MACH_HLTELGT) || defined(CONFIG_MACH_FLTESKT) \
 	|| defined(CONFIG_MACH_FLTEKTT) || defined(CONFIG_MACH_FLTELGT) \
 	|| defined(CONFIG_MACH_H3GDUOS_CTC) || defined(CONFIG_MACH_LT03SKT) \
-	|| defined(CONFIG_MACH_LT03KTT) || defined(CONFIG_MACH_LT03LGT)
+	|| defined(CONFIG_MACH_LT03KTT) || defined(CONFIG_MACH_LT03LGT)\
+	|| defined(CONFIG_MACH_FRESCOLTESKT)||defined(CONFIG_MACH_FRESCOLTEKTT)||defined(CONFIG_MACH_FRESCOLTELGT)
 		/* [MAX77804] Workaround to get rid of reading dummy(0x00) */
 		/* disable charger detection again */
 		max77803_read_reg(info->max77803->muic,
@@ -2310,7 +2311,7 @@ static int max77803_muic_handle_detach(struct max77803_muic_info *info, int irq)
 		}
 
 		if (mdata->usb_cb && info->is_usb_ready) {
-#if defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 			max77803_muic_cancel_usb_connection(info);
 #endif
 			mdata->usb_cb(USB_CABLE_DETACHED);
@@ -2984,7 +2985,7 @@ static int __devinit max77803_muic_probe(struct platform_device *pdev)
 	info->old_keycode = 0;
 	info->keycode = 0;
 #endif
-#if defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	info->speaker_check_count = 0;
 #endif
 	gInfo = info;
@@ -3125,7 +3126,7 @@ static int __devinit max77803_muic_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&info->mhl_work, max77803_muic_mhl_detect);
 	schedule_delayed_work(&info->mhl_work, msecs_to_jiffies(25000));
 
-#if defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 	INIT_DELAYED_WORK(&info->usb_connection_work, max77803_muic_usb_connection_work);
 #endif
 
@@ -3179,7 +3180,7 @@ static int __devexit max77803_muic_remove(struct platform_device *pdev)
 		cancel_delayed_work(&info->usb_work);
 		cancel_delayed_work(&info->dock_usb_work);
 		cancel_delayed_work(&info->mhl_work);
-#if defined(CONFIG_SEC_H_PROJECT)
+#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)
 		cancel_delayed_work(&info->usb_connection_work);
 #endif
 		free_irq(info->irq_adc, info);

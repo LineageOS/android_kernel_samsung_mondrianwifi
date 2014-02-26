@@ -63,6 +63,7 @@
 static struct sec_mhl_cable support_cable_list[] = {
 	{ .cable_type = EXTCON_MHL, },
 	{ .cable_type = EXTCON_MHL_VB, },
+	{ .cable_type = EXTCON_SMARTDOCK, },
 };
 #endif
 
@@ -3416,6 +3417,7 @@ static void sii8240_extcon_work(struct work_struct *work)
 static int sii8240_extcon_notifier(struct notifier_block *self,
 		unsigned long event, void *ptr)
 {
+	struct sii8240_data *sii8240 = dev_get_drvdata(sii8240_mhldev);
 	struct sec_mhl_cable *cable =
 		container_of(self, struct sec_mhl_cable, nb);
 	pr_info("%s: '%s' is %s\n", extcon_cable_name[cable->cable_type],
@@ -3423,9 +3425,14 @@ static int sii8240_extcon_notifier(struct notifier_block *self,
 
 	if (cable->cable_type == EXTCON_MHL) {
 		cable->cable_state = event;
+		sii8240->pdata->is_smartdock = false;
 		schedule_work(&cable->work);
 	} else if (cable->cable_type == EXTCON_MHL_VB) {
 		/*Here, just notify vbus status to mhl driver.*/
+	} else if (cable->cable_type == EXTCON_SMARTDOCK) {
+		cable->cable_state = event;
+		sii8240->pdata->is_smartdock = true;
+		schedule_work(&cable->work);
 	}
 	return NOTIFY_DONE;
 }

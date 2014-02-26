@@ -43,12 +43,14 @@ Copyright (C) 2012, Samsung Electronics. All rights reserved.
 /* octa ldi */
 #define EVT0_K_fhd_REVB 0x00
 #define EVT0_K_fhd_REVE 0x01
+#define EVT0_K_fhd_REVF 0x02
 #define EVT0_K_fhd_REVB_ID2 0x04
 
 #define EVT0_K_wqhd_REVB 0x00
 #define EVT0_K_wqhd_REVC 0x01
 #define EVT0_K_wqhd_REVD 0x02
 #define EVT0_K_wqhd_REVE 0x03
+#define EVT0_K_wqhd_REVF 0x04
 
 /*
 *	From 4.8 inch model use AID function

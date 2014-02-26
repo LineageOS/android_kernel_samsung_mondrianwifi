@@ -73,7 +73,6 @@ static void __iomem *virt_mmss_gp0_base;
 #define HWIO_UPDATE_VAL_SHFT	0
 #define HWIO_ROOT_EN_VAL_BMSK	0x2
 #define HWIO_ROOT_EN_VAL_SHFT	1
-#define GPIO_GP0 33
 #define MMSS_GP0_BASE 0xFD8C3420
 #define MMSS_GP0_SIZE  0x28
 
@@ -121,10 +120,7 @@ static void __iomem *virt_mmss_gp0_base;
 void mdss_dsi_panel_bklt_pwm( int level)
 {
 	virt_mmss_gp0_base = ioremap(MMSS_GP0_BASE,MMSS_GP0_SIZE);
-	
-	gpio_tlmm_config(GPIO_CFG(GPIO_GP0,3, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN,
-					GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-	gpio_set_value(GPIO_GP0,1);
+
 	/* Put the MND counter in reset mode for programming */
 	HWIO_OUTM(GP0_CFG_RCGR, HWIO_GP_SRC_SEL_VAL_BMSK, 
 				0 << HWIO_GP_SRC_SEL_VAL_SHFT); //SRC_SEL = 000(cxo)

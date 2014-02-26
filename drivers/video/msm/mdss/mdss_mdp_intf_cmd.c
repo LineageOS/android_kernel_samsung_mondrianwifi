@@ -12,6 +12,8 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/bootmem.h>
+#include <linux/memblock.h>
 
 #include "mdss_mdp.h"
 #include "mdss_panel.h"
@@ -264,7 +266,7 @@ int	dynamic_fps_use_te_ctrl_value;
 #endif
 #if defined(CONFIG_LCD_HMT)
 int skip_te_enable = 0;
-static unsigned int te_count = 0;
+static unsigned int skip_te = 0;
 #endif
 static void mdss_mdp_cmd_readptr_done(void *arg)
 {
@@ -290,15 +292,13 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 	}
 
 #if defined(CONFIG_LCD_HMT)
-	if(skip_te_enable) {
-		if(te_count % 2 == 1) {
-			pr_debug("%s : Accept TE Signal \n",__func__);
-			te_count++;
-		} else {
+	if (skip_te_enable) {
+		if (skip_te) {
 			pr_debug("%s : Skip TE Signal \n",__func__);
-			te_count++;
-			goto end;
+			skip_te = 0;
+			return;
 		}
+		skip_te = 1;
 	}
 #endif
 
@@ -330,12 +330,6 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 	}
 
 	spin_unlock(&ctx->clk_lock);
-
-#if defined(CONFIG_LCD_HMT)
-end:
-	pr_debug("%s : TE = %d \n",__func__, te_count);
-#endif
-
 }
 
 static void mdss_mdp_cmd_underflow_recovery(void *data)
@@ -514,6 +508,13 @@ int mdss_mdp_cmd_reconfigure_splash_done(struct mdss_mdp_ctl *ctl, bool handoff)
 	mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_CLK_CTRL, (void *)0);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 
+	if (!sec_debug_is_enabled()) {
+		struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(ctl->mfd);
+		memblock_free(mdp5_data->splash_mem_addr, mdp5_data->splash_mem_size);
+		free_bootmem_late(mdp5_data->splash_mem_addr,
+				 mdp5_data->splash_mem_size);
+	}
+
 	return ret;
 }
 
@@ -619,16 +620,16 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 		return -ENODEV;
 	}
 
+	if (get_lcd_attached() == 0) {
+		pr_err("%s : lcd is not attached..\n",__func__);
+		return -ENODEV;
+	}
+
 	pr_debug("%s:+\n", __func__);
 
 	if (ctx->panel_on == 0) {
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_UNBLANK, NULL);
 		WARN(rc, "intf %d unblank error (%d)\n", ctl->intf_num, rc);
-
-		if (get_lcd_attached() == 0) {
-			pr_err("%s : lcd is not attached..\n",__func__);
-			return 0;
-		}
 
 		ctx->panel_on++;
 

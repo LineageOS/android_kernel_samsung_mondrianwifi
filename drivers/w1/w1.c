@@ -452,7 +452,7 @@ static ssize_t w1_master_attribute_store_add(struct device *dev,
 						const char *buf, size_t count)
 {
 	struct w1_master *md = dev_to_w1_master(dev);
-	struct w1_reg_num rn;
+	struct w1_reg_num rn = {0, };
 	struct w1_slave *sl;
 	ssize_t result = count;
 
@@ -490,7 +490,7 @@ static ssize_t w1_master_attribute_store_remove(struct device *dev,
 						const char *buf, size_t count)
 {
 	struct w1_master *md = dev_to_w1_master(dev);
-	struct w1_reg_num rn;
+	struct w1_reg_num rn = {0, };
 	struct w1_slave *sl;
 	ssize_t result = count;
 

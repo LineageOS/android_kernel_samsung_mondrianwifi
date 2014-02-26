@@ -65,7 +65,52 @@ struct cpufreq_work_struct {
 
 static DEFINE_PER_CPU(struct cpufreq_work_struct, cpufreq_work);
 static struct workqueue_struct *msm_cpufreq_wq;
+#ifdef CONFIG_SEC_DVFS
+static unsigned int upper_limit_freq;
+static unsigned int lower_limit_freq;
+static unsigned int cpuinfo_max_freq;
+static unsigned int cpuinfo_min_freq;
 
+unsigned int get_min_lock(void)
+{
+	return lower_limit_freq;
+}
+
+unsigned int get_max_lock(void)
+{
+	return upper_limit_freq;
+}
+
+void set_min_lock(int freq)
+{
+	if (freq <= MIN_FREQ_LIMIT)
+		lower_limit_freq = 0;
+	else if (freq > MAX_FREQ_LIMIT)
+		lower_limit_freq = 0;
+	else
+		lower_limit_freq = freq;
+}
+
+void set_max_lock(int freq)
+{
+	if (freq < MIN_FREQ_LIMIT)
+		upper_limit_freq = 0;
+	else if (freq >= MAX_FREQ_LIMIT)
+		upper_limit_freq = 0;
+	else
+		upper_limit_freq = freq;
+}
+
+int get_max_freq(void)
+{
+	return cpuinfo_max_freq;
+}
+
+int get_min_freq(void)
+{
+	return cpuinfo_min_freq;
+}
+#endif
 struct cpufreq_suspend_t {
 	struct mutex suspend_mutex;
 	int device_suspended;
@@ -107,6 +152,17 @@ static void update_l2_bw(int *also_cpu)
 out:
 	mutex_unlock(&l2bw_lock);
 }
+#if defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT) || defined(CONFIG_SEC_VICTOR_PROJECT)|| defined(CONFIG_SEC_BERLUTI_PROJECT)|| defined(CONFIG_SEC_FRESCONEOLTE_PROJECT) || defined(CONFIG_SEC_AFYON_PROJECT) || defined(CONFIG_SEC_S3VE_PROJECT)
+struct cpu_freq {
+	uint32_t max;
+	uint32_t min;
+	uint32_t allowed_max;
+	uint32_t allowed_min;
+	uint32_t limits_init;
+};
+
+static DEFINE_PER_CPU(struct cpu_freq, cpu_freq_info);
+#endif
 
 static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq,
 			unsigned int index)
@@ -116,7 +172,41 @@ static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq,
 	int saved_sched_rt_prio = -EINVAL;
 	struct cpufreq_freqs freqs;
 	struct sched_param param = { .sched_priority = MAX_RT_PRIO-1 };
+#if defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT) || defined(CONFIG_SEC_VICTOR_PROJECT) || defined(CONFIG_SEC_BERLUTI_PROJECT)|| defined(CONFIG_SEC_FRESCONEOLTE_PROJECT) || defined(CONFIG_SEC_AFYON_PROJECT) || defined(CONFIG_SEC_S3VE_PROJECT)
+	struct cpu_freq *limit = &per_cpu(cpu_freq_info, policy->cpu);
+		if (limit->limits_init) {
+		if (new_freq > limit->allowed_max) {
+			new_freq = limit->allowed_max;
+			pr_debug("max: limiting freq to %d\n", new_freq);
+		}
 
+		if (new_freq < limit->allowed_min) {
+			new_freq = limit->allowed_min;
+			pr_debug("min: limiting freq to %d\n", new_freq);
+		}
+	}
+#ifdef CONFIG_SEC_DVFS
+	if (lower_limit_freq || upper_limit_freq) {
+		unsigned int t_freq = new_freq;
+
+		if (lower_limit_freq && new_freq < lower_limit_freq)
+			t_freq = lower_limit_freq;
+
+		if (upper_limit_freq && new_freq > upper_limit_freq)
+			t_freq = upper_limit_freq;
+
+		new_freq = t_freq;
+
+		if (new_freq < policy->min)
+			new_freq = policy->min;
+		if (new_freq > policy->max)
+			new_freq = policy->max;
+
+		if (new_freq == policy->cur)
+			return 0;
+	}
+#endif
+#endif
 	freqs.old = policy->cur;
 	freqs.new = new_freq;
 	freqs.cpu = policy->cpu;
@@ -284,6 +374,14 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 #ifdef CONFIG_MSM_CPU_FREQ_SET_MIN_MAX
 	policy->min = CONFIG_MSM_CPU_FREQ_MIN;
 	policy->max = CONFIG_MSM_CPU_FREQ_MAX;
+#endif
+#ifdef CONFIG_SEC_DVFS
+	cpuinfo_max_freq = policy->cpuinfo.max_freq;
+	cpuinfo_min_freq = policy->cpuinfo.min_freq;
+	/*For debugging
+	pr_info("cpufreq: cpuinfo_max_freq: %d\n", cpuinfo_max_freq);
+	pr_info("cpufreq: cpuinfo_min_freq: %d\n", cpuinfo_min_freq);
+	*/
 #endif
 
 	if (is_clk)

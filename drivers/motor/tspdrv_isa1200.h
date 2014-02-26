@@ -81,8 +81,15 @@ typedef struct {
 #define VIBRATION_OFF           0
 
 #define GP_CLK_M_DEFAULT			2
-#define GP_CLK_N_DEFAULT			93
-#define GP_CLK_D_DEFAULT			47	/* 50% duty cycle */
+
+#if defined CONFIG_MACH_MATISSE3G_OPEN || defined CONFIG_SEC_MATISSELTE_COMMON
+#define GP_CLK_N_DEFAULT			99
+#define GP_CLK_D_DEFAULT			44	/* 50% duty cycle */
+#else
+#define GP_CLK_N_DEFAULT                       93
+#define GP_CLK_D_DEFAULT                       47      /* 50% duty cycle */
+#endif
+
 #define IMM_PWM_MULTIPLIER		    93	/* Must be integer */
 /*
  * ** Global variables for LRA PWM M,N and D values.

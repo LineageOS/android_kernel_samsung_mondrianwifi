@@ -1,7 +1,7 @@
 /*
  * BCMSDH Function Driver for the native SDIO/MMC driver in the Linux Kernel
  *
- * Copyright (C) 1999-2013, Broadcom Corporation
+ * Copyright (C) 1999-2014, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_sdmmc.c 436745 2013-11-15 03:11:23Z $
+ * $Id: bcmsdh_sdmmc.c 449144 2014-01-16 09:22:02Z $
  */
 #include <typedefs.h>
 
@@ -171,7 +171,7 @@ sdioh_attach(osl_t *osh, struct sdio_func *func)
 	err_ret = sdio_set_block_size(sd->func[1], 64);
 	sdio_release_host(sd->func[1]);
 	if (err_ret) {
-		sd_err(("bcmsdh_sdmmc: Failed to set F1 blocksize\n"));
+		sd_err(("bcmsdh_sdmmc: Failed to set F1 blocksize(%d)\n", err_ret));
 		goto fail;
 	}
 
@@ -180,7 +180,8 @@ sdioh_attach(osl_t *osh, struct sdio_func *func)
 	err_ret = sdio_set_block_size(sd->func[2], sd_f2_blocksize);
 	sdio_release_host(sd->func[2]);
 	if (err_ret) {
-		sd_err(("bcmsdh_sdmmc: Failed to set F2 blocksize to %d\n", sd_f2_blocksize));
+		sd_err(("bcmsdh_sdmmc: Failed to set F2 blocksize to %d(%d)\n",
+			sd_f2_blocksize, err_ret));
 		goto fail;
 	}
 
@@ -530,8 +531,8 @@ sdioh_iovar_op(sdioh_info_t *si, const char *name,
 		sdio_claim_host(si->func[func]);
 		bcmerror = sdio_set_block_size(si->func[func], blksize);
 		if (bcmerror)
-			sd_err(("%s: Failed to set F%d blocksize to %d\n",
-				__FUNCTION__, func, blksize));
+			sd_err(("%s: Failed to set F%d blocksize to %d(%d)\n",
+				__FUNCTION__, func, blksize, bcmerror));
 		sdio_release_host(si->func[func]);
 #endif /* CUSTOMER_HW4 && USE_DYNAMIC_F2_BLKSIZE */
 		break;
@@ -1333,56 +1334,58 @@ sdioh_start(sdioh_info_t *sd, int stage)
 		sdio access will come in way
 	*/
 	if (sd->func[0]) {
-			if (stage == 0) {
-		/* Since the power to the chip is killed, we will have
-			re enumerate the device again. Set the block size
-			and enable the fucntion 1 for in preparation for
-			downloading the code
-		*/
-		/* sdio_reset_comm() - has been fixed in latest kernel/msm.git for Linux
-		   2.6.27. The implementation prior to that is buggy, and needs broadcom's
-		   patch for it
-		*/
-		if ((ret = sdio_reset_comm(sd->func[0]->card))) {
-			sd_err(("%s Failed, error = %d\n", __FUNCTION__, ret));
-			return ret;
-		}
-		else {
-			sd->num_funcs = 2;
-			sd->sd_blockmode = TRUE;
-			sd->use_client_ints = TRUE;
-			sd->client_block_size[0] = 64;
+		if (stage == 0) {
+			/* Since the power to the chip is killed, we will have
+				re enumerate the device again. Set the block size
+				and enable the fucntion 1 for in preparation for
+				downloading the code
+			*/
+			/* sdio_reset_comm() - has been fixed in latest kernel/msm.git for Linux
+			   2.6.27. The implementation prior to that is buggy, and needs broadcom's
+			   patch for it
+			*/
+			if ((ret = sdio_reset_comm(sd->func[0]->card))) {
+				sd_err(("%s Failed, error = %d\n", __FUNCTION__, ret));
+				return ret;
+			}
+			else {
+				sd->num_funcs = 2;
+				sd->sd_blockmode = TRUE;
+				sd->use_client_ints = TRUE;
+				sd->client_block_size[0] = 64;
 
-			if (sd->func[1]) {
-				/* Claim host controller */
-				sdio_claim_host(sd->func[1]);
+				if (sd->func[1]) {
+					/* Claim host controller */
+					sdio_claim_host(sd->func[1]);
 
-				sd->client_block_size[1] = 64;
-				if (sdio_set_block_size(sd->func[1], 64)) {
-					sd_err(("bcmsdh_sdmmc: Failed to set F1 blocksize\n"));
+					sd->client_block_size[1] = 64;
+				ret = sdio_set_block_size(sd->func[1], 64);
+				if (ret) {
+					sd_err(("bcmsdh_sdmmc: Failed to set F1 "
+						"blocksize(%d)\n", ret));
+					}
+
+					/* Release host controller F1 */
+					sdio_release_host(sd->func[1]);
 				}
 
-				/* Release host controller F1 */
-				sdio_release_host(sd->func[1]);
-			}
+				if (sd->func[2]) {
+					/* Claim host controller F2 */
+					sdio_claim_host(sd->func[2]);
 
-			if (sd->func[2]) {
-				/* Claim host controller F2 */
-				sdio_claim_host(sd->func[2]);
-
-				sd->client_block_size[2] = sd_f2_blocksize;
-				if (sdio_set_block_size(sd->func[2],
-					sd_f2_blocksize)) {
+					sd->client_block_size[2] = sd_f2_blocksize;
+				ret = sdio_set_block_size(sd->func[2], sd_f2_blocksize);
+				if (ret) {
 					sd_err(("bcmsdh_sdmmc: Failed to set F2 "
-						"blocksize to %d\n", sd_f2_blocksize));
+						"blocksize to %d(%d)\n", sd_f2_blocksize, ret));
+					}
+
+					/* Release host controller F2 */
+					sdio_release_host(sd->func[2]);
 				}
 
-				/* Release host controller F2 */
-				sdio_release_host(sd->func[2]);
-			}
-
-			sdioh_sdmmc_card_enablefuncs(sd);
-			}
+				sdioh_sdmmc_card_enablefuncs(sd);
+				}
 		} else {
 #if !defined(OOB_INTR_ONLY)
 			sdio_claim_host(sd->func[0]);

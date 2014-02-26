@@ -100,6 +100,9 @@ struct sii8240_platform_data {
 	struct platform_device *hdmi_pdev;
 	struct msm_hdmi_mhl_ops *hdmi_mhl_ops;
 #endif
+#ifdef CONFIG_EXTCON
+	bool is_smartdock;
+#endif
 };
 extern int system_rev;
 int acc_register_notifier(struct notifier_block *nb);
