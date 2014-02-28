@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -217,35 +217,28 @@ void mdss_dsi_disable_irq_nosync(struct mdss_dsi_ctrl_pdata *ctrl, u32 term)
 	}
 	spin_unlock(&ctrl->irq_lock);
 }
-
-void mdss_dsi_video_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl)
+void mdss_dsi_cmd_test_pattern(struct mdss_panel_data *pdata)
 {
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	int i;
 
-	MIPI_OUTP((ctrl->ctrl_base) + 0x015c, 0x021);
-	MIPI_OUTP((ctrl->ctrl_base) + 0x0164, 0xff0000); /* red */
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x015c, 0x201);
+	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x016c, 0xff0000); /* red */
 	i = 0;
 	while (i++ < 50) {
-		MIPI_OUTP((ctrl->ctrl_base) + 0x0180, 0x1);
+		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0184, 0x1);
 		/* Add sleep to get ~50 fps frame rate*/
 		msleep(20);
 	}
-	MIPI_OUTP((ctrl->ctrl_base) + 0x015c, 0x0);
-}
-
-void mdss_dsi_cmd_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl)
-{
-	int i;
-
-	MIPI_OUTP((ctrl->ctrl_base) + 0x015c, 0x201);
-	MIPI_OUTP((ctrl->ctrl_base) + 0x016c, 0xff0000); /* red */
-	i = 0;
-	while (i++ < 50) {
-		MIPI_OUTP((ctrl->ctrl_base) + 0x0184, 0x1);
-		/* Add sleep to get ~50 fps frame rate*/
-		msleep(20);
-	}
-	MIPI_OUTP((ctrl->ctrl_base) + 0x015c, 0x0);
+	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x015c, 0x0);
 }
 
 void mdss_dsi_host_init(struct mipi_panel_info *pinfo,
@@ -1377,56 +1370,39 @@ void mdss_dsi_cmd_mdp_busy(struct mdss_dsi_ctrl_pdata *ctrl)
 				__func__, current->pid);
 }
 
-int mdss_dsi_cmdlist_tx(struct mdss_dsi_ctrl_pdata *ctrl,
+void mdss_dsi_cmdlist_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 				struct dcs_cmd_req *req)
 {
-	int ret, ret_val = -EINVAL;
+	int ret;
 
 	ret = mdss_dsi_cmds_tx(ctrl, req->cmds, req->cmds_cnt);
 
-	if (!IS_ERR_VALUE(ret))
-		ret_val = 0;
-
 	if (req->cb)
 		req->cb(ret);
-
-	return ret_val;
 }
 
-int mdss_dsi_cmdlist_rx(struct mdss_dsi_ctrl_pdata *ctrl,
+void mdss_dsi_cmdlist_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 				struct dcs_cmd_req *req)
 {
 	struct dsi_buf *rp;
-	int len = 0, ret = -EINVAL;
+	int len = 0;
 
 	if (req->rbuf) {
 		rp = &ctrl->rx_buf;
 		len = mdss_dsi_cmds_rx(ctrl, req->cmds, req->rlen);
 		memcpy(req->rbuf, rp->data, rp->len);
-		/*
-		 * For dual DSI cases, early return of controller - 0
-		 * is valid. Hence, for those cases the return value
-		 * is zero even though we don't send any commands.
-		 *
-		 */
-		if ((ctrl->shared_pdata.broadcast_enable &&
-			ctrl->ndx == DSI_CTRL_0) || (len != 0))
-			ret = 0;
 	} else {
 		pr_err("%s: No rx buffer provided\n", __func__);
 	}
 
 	if (req->cb)
 		req->cb(len);
-
-	return ret;
 }
 
 void mdss_mdp_clk_ctrl(int enable, int isr);
 void mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 {
 	struct dcs_cmd_req *req;
-	int ret = -EINVAL;
 
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL) || defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)\
 	|| defined(CONFIG_FB_MSM_MIPI_SAMSUNG_YOUM_CMD_FULL_HD_PT_PANEL)
@@ -1466,7 +1442,7 @@ void mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	else if (req->flags & CMD_REQ_SINGLE_TX)
 		mdss_dsi_cmds_single_tx(ctrl,req->cmds,req->cmds_cnt);
 	else
-		ret = mdss_dsi_cmdlist_tx(ctrl, req);
+		mdss_dsi_cmdlist_tx(ctrl, req);
 
 	mdss_dsi_clk_ctrl(ctrl, 0);
 	mdss_bus_bandwidth_ctrl(0);
@@ -1574,8 +1550,6 @@ void mdss_dsi_ack_err_status(struct mdss_dsi_ctrl_pdata *ctrl)
 
 	if (status) {
 		MIPI_OUTP(base + 0x0068, status);
-		/* Writing of an extra 0 needed to clear error bits */
-		MIPI_OUTP(base + 0x0068, 0);
 		pr_err("%s: status=%x\n", __func__, status);
 	}
 }
