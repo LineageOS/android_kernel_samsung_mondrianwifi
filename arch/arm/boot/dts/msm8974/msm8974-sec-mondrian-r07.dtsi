@@ -292,6 +292,7 @@
 			gp2a030a,irq_gpio = <&msmgpio 74 0x0>;
 			gp2a030a-vcc-supply = <&pm8941_l18>;
 			gp2a030a-lvs1-supply = <&pm8941_lvs1>;
+			gp2a030a,con_gpio = <&pm8941_mpps 5 0x0>;
 			qcom,gp2a030a-vcc-voltage-level = <2850000 2850000>;
 			qcom,gp2a030a-vcc-always-on;
 		};
