@@ -10,8 +10,6 @@
  * published by the Free Software Foundation.
  */
 
-#define DEBUG
-
 #include <linux/battery/sec_fuelgauge.h>
 
 #ifdef CONFIG_FUELGAUGE_MAX17050_VOLTAGE_TRACKING
