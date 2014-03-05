@@ -41,7 +41,7 @@ struct msm_vib {
 
 static void set_vibrator(int motor_en, int on)
 {
-	pr_info("[VIB] %s, on=%d\n",__func__, on);
+	pr_debug("[VIB] %s, on=%d\n",__func__, on);
 
 	gpio_set_value(motor_en, on);
 }
@@ -55,15 +55,15 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 	hrtimer_cancel(&vib->vib_timer);
 
 	if (value == 0) {
-		pr_info("[VIB] OFF\n");
+		pr_debug("[VIB] OFF\n");
 		vib->state = 0;
 	}
 	else {
-		pr_info("[VIB] ON, Duration : %d msec\n" , value);
+		pr_debug("[VIB] ON, Duration : %d msec\n" , value);
 		vib->state = 1;
 
 		if (value == 0x7fffffff){
-			pr_info("[VIB] No Use Timer %d \n", value);
+			pr_debug("[VIB] No Use Timer %d \n", value);
 		}
 		else	{
 			value = (value > vib->timeout ?
@@ -114,7 +114,7 @@ static int msm_vibrator_suspend(struct device *dev)
 {
 	struct msm_vib *vib = dev_get_drvdata(dev);
 
-	pr_info("[VIB] %s\n",__func__);
+	pr_debug("[VIB] %s\n",__func__);
 
 	hrtimer_cancel(&vib->vib_timer);
 	cancel_work_sync(&vib->work);
@@ -132,7 +132,7 @@ static int msm_vibrator_probe(struct platform_device *pdev)
 	struct msm_vib *vib;
 	int rc = 0;
 
-	pr_info("[VIB] %s\n",__func__);
+	pr_debug("[VIB] %s\n",__func__);
 
 	vib = devm_kzalloc(&pdev->dev, sizeof(*vib), GFP_KERNEL);
 	if (!vib)	{
