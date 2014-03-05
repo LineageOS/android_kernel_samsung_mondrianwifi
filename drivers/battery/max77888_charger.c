@@ -569,7 +569,7 @@ static int max77888_get_charger_state(struct max77888_charger_data *charger)
 	max77888_read_reg(charger->max77888->i2c,
 		MAX77888_CHG_REG_CHG_DTLS_01, &reg_data);
 	reg_data = ((reg_data & MAX77888_CHG_DTLS) >> MAX77888_CHG_DTLS_SHIFT);
-	pr_info("%s: CHG_DTLS : 0x%2x\n", __func__, reg_data);
+	pr_debug("%s: CHG_DTLS : 0x%2x\n", __func__, reg_data);
 
 	switch (reg_data) {
 	case 0x0:
@@ -610,7 +610,7 @@ static int max77888_get_health_state(struct max77888_charger_data *charger)
 		MAX77888_CHG_REG_CHG_DTLS_01, &reg_data);
 	reg_data = ((reg_data & MAX77888_BAT_DTLS) >> MAX77888_BAT_DTLS_SHIFT);
 
-	pr_info("%s: reg_data(0x%x)\n", __func__, reg_data);
+	pr_debug("%s: reg_data(0x%x)\n", __func__, reg_data);
 	switch (reg_data) {
 	case 0x00:
 		pr_info("%s: No battery and the charger is suspended\n",
@@ -681,7 +681,7 @@ static int max77888_get_health_state(struct max77888_charger_data *charger)
 					__func__, chg_cnfg_09, chg_cnfg_12);
 		}
 
-		pr_info("%s: vbus_state : 0x%d, chg_dtls : 0x%d\n", __func__, vbus_state, chg_dtls);
+		pr_debug("%s: vbus_state : 0x%d, chg_dtls : 0x%d\n", __func__, vbus_state, chg_dtls);
 		/*  OVP is higher priority */
 		if (vbus_state == 0x02) { /*  CHGIN_OVLO */
 			pr_info("%s: vbus ovp\n", __func__);
