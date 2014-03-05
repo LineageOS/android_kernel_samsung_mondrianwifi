@@ -1678,11 +1678,11 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 			if (!rmi4_data->finger[finger].state) {
 #if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
-				dev_info(&rmi4_data->i2c_client->dev,
+				dev_dbg(&rmi4_data->i2c_client->dev,
 						"[%d][P] 0x%02x, x = %d, y = %d, wx = %d, wy = %d |[%d]\n",
 						finger, finger_status, x, y, wx, wy, fingers_to_process);
 #else
-				dev_info(&rmi4_data->i2c_client->dev,
+				dev_dbg(&rmi4_data->i2c_client->dev,
 						"[%d][P] 0x%02x\n",
 						finger, finger_status);
 #endif
@@ -1700,11 +1700,11 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 		if (rmi4_data->finger[finger].state && (!finger_status)) {
 #if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
-			dev_info(&rmi4_data->i2c_client->dev, "[%d][R] 0x%02x M[%d], Ver[%02X%02X][%X/%d]\n",
+			dev_dbg(&rmi4_data->i2c_client->dev, "[%d][R] 0x%02x M[%d], Ver[%02X%02X][%X/%d]\n",
 					finger, finger_status, rmi4_data->finger[finger].mcount,
 					rmi4_data->ic_revision_of_ic, rmi4_data->fw_version_of_ic, rmi4_data->lcd_id, system_rev);
 #else
-			dev_info(&rmi4_data->i2c_client->dev, "[%d][R] 0x%02x M[%d], Ver[%02X%02X][%X/%d]\n",
+			dev_dbg(&rmi4_data->i2c_client->dev, "[%d][R] 0x%02x M[%d], Ver[%02X%02X][%X/%d]\n",
 					finger, finger_status, rmi4_data->finger[finger].mcount,
 					rmi4_data->ic_revision_of_ic, rmi4_data->fw_version_of_ic, rmi4_data->lcd_id, system_rev);
 #endif
@@ -1796,7 +1796,7 @@ static void synaptics_rmi4_f1a_report(struct synaptics_rmi4_data *rmi4_data,
 		else
 			current_status[button] = status;
 
-		dev_info(&rmi4_data->i2c_client->dev,
+		dev_dbg(&rmi4_data->i2c_client->dev,
 				"%s: Button %d (code %d) ->%d\n",
 				__func__, button,
 				f1a->button_map[button],
@@ -1982,7 +1982,7 @@ static int synaptics_rmi4_f51_side_btns(struct synaptics_rmi4_data *rmi4_data,
 					break;
 			}
 
-			dev_info(&rmi4_data->i2c_client->dev,
+			dev_dbg(&rmi4_data->i2c_client->dev,
 					"%s: SIDE_KEY #%d %s[%X], CAM[%X]\n",
 					__func__, button, status ? "PRESS" : "RELEASE",
 					rmi4_data->sidekey_data,
@@ -2054,7 +2054,7 @@ static void synaptics_rmi4_f51_report(struct synaptics_rmi4_data *rmi4_data,
 
 	if (data->proximity_data[0] == 0x00) {
 		if (rmi4_data->f51_finger_is_hover) {
-			dev_info (&rmi4_data->i2c_client->dev,
+			dev_dbg (&rmi4_data->i2c_client->dev,
 				"%s: Hover finger[OUT]\n", __func__);
 			rmi4_data->f51_finger_is_hover = false;
 		}
@@ -2083,7 +2083,7 @@ static void synaptics_rmi4_f51_report(struct synaptics_rmi4_data *rmi4_data,
 					rmi4_data->hand_grip, 1);
 
 			input_sync(rmi4_data->input_dev);
-			dev_info(&rmi4_data->i2c_client->dev, "%s: (%d) %s Hand grip.(old = %s)\n",
+			dev_dbg(&rmi4_data->i2c_client->dev, "%s: (%d) %s Hand grip.(old = %s)\n",
 					__func__, data->profile_handedness_status,
 					rmi4_data->hand_grip == SW_RIGHT_HAND ? "RIGHT" :
 					rmi4_data->hand_grip == SW_LEFT_HAND ? "LEFT" : "BOTH",
@@ -2127,10 +2127,10 @@ static void synaptics_rmi4_f51_report(struct synaptics_rmi4_data *rmi4_data,
 
 		if (!rmi4_data->f51_finger_is_hover) {
 #if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
-			dev_info (&rmi4_data->i2c_client->dev,
+			dev_dbg (&rmi4_data->i2c_client->dev,
 				"Hover finger[IN]: x = %d, y = %d, z = %d\n", x, y, z);
 #else
-			dev_info (&rmi4_data->i2c_client->dev,
+			dev_dbg (&rmi4_data->i2c_client->dev,
 				"Hover finger[IN]\n");
 #endif
 			rmi4_data->f51_finger_is_hover = true;
@@ -2216,7 +2216,7 @@ static void synaptics_rmi4_report_touch(struct synaptics_rmi4_data *rmi4_data,
 			break;
 #endif
 		default:
-			dev_info(&rmi4_data->i2c_client->dev,
+			dev_dbg(&rmi4_data->i2c_client->dev,
 					"%s: fn_number : %d\n",
 					__func__, fhandler->fn_number);
 			break;
@@ -4918,9 +4918,9 @@ int synaptics_tkey_led_vdd_on
 				pr_err("enable l17 failed, rc=%d\n", ret);
 				return ret;
 			}
-			dev_info(dev, "keyled 3.1V on is finished.\n");
+			dev_dbg(dev, "keyled 3.1V on is finished.\n");
 		} else
-			dev_info(dev, "keyled 3.1V is already on.\n");
+			dev_dbg(dev, "keyled 3.1V is already on.\n");
 	} else {
 		if (regulator_is_enabled(reg_l17)) {
 			ret = regulator_disable(reg_l17);
@@ -4928,9 +4928,9 @@ int synaptics_tkey_led_vdd_on
 				pr_err("disable l17 failed, rc=%d\n", ret);
 				return ret;
 			}
-			dev_info(dev, "keyled 3.1V off is finished.\n");
+			dev_dbg(dev, "keyled 3.1V off is finished.\n");
 		} else
-			dev_info(dev, "keyled 3.1V is already off.\n");
+			dev_dbg(dev, "keyled 3.1V is already off.\n");
 	}
 
 	return 0;
