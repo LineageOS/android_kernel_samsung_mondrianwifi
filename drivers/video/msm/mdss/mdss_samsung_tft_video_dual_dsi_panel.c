@@ -255,11 +255,11 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		pr_info("%s : get_panel_power_state off", __func__);
 		return;
 	}
-	pr_info("%s : bl_level = %d\n", __func__, bl_level);
+	pr_debug("%s : bl_level = %d\n", __func__, bl_level);
 
 	bl_level = (DOWN_COEF_VALUE * bl_level) / left_back_up_data->bklt_max;
 
-	pr_info("%s : Actual bl_level = %d\n", __func__, bl_level);
+	pr_debug("%s : Actual bl_level = %d\n", __func__, bl_level);
 
 	switch (left_back_up_data->bklt_ctrl) {
 	case BL_WLED:

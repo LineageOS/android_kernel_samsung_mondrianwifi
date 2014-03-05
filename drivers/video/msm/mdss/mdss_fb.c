@@ -738,7 +738,7 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 		mfd->unset_bl_level = 0;
 	}
 
-	pr_info("[BL] %s: bkl_lvl (%d), bl_updated(%d)\n",
+	pr_debug("[BL] %s: bkl_lvl (%d), bl_updated(%d)\n",
 		__func__, bkl_lvl, mfd->bl_updated);
 
 	pdata = dev_get_platdata(&mfd->pdev->dev);
