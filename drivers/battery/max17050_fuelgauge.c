@@ -100,7 +100,7 @@ static bool max17050_check_status(struct i2c_client *client)
 	if (max17050_read_reg(client, MAX17050_REG_STATUS, data) < 0)
 		return ret;
 
-	dev_info(&client->dev, "%s: status_reg(%02x%02x)\n",
+	dev_dbg(&client->dev, "%s: status_reg(%02x%02x)\n",
 		__func__, data[1], data[0]);
 
 	/* minimum SOC threshold exceeded. */
@@ -647,23 +647,23 @@ static void fg_test_print(struct i2c_client *client)
 	temp2 = temp / 1000000;
 	average_vcell += (temp2 << 4);
 
-	dev_info(&client->dev, "%s: AVG_VCELL(%d), data(0x%04x)\n", __func__,
+	dev_dbg(&client->dev, "%s: AVG_VCELL(%d), data(0x%04x)\n", __func__,
 		average_vcell, (data[1]<<8) | data[0]);
 
 	reg_data = fg_read_register(client, FULLCAP_REG);
-	dev_info(&client->dev, "%s: FULLCAP(%d), data(0x%04x)\n", __func__,
+	dev_dbg(&client->dev, "%s: FULLCAP(%d), data(0x%04x)\n", __func__,
 		reg_data/2, reg_data);
 
 	reg_data = fg_read_register(client, REMCAP_REP_REG);
-	dev_info(&client->dev, "%s: REMCAP_REP(%d), data(0x%04x)\n", __func__,
+	dev_dbg(&client->dev, "%s: REMCAP_REP(%d), data(0x%04x)\n", __func__,
 		reg_data/2, reg_data);
 
 	reg_data = fg_read_register(client, REMCAP_MIX_REG);
-	dev_info(&client->dev, "%s: REMCAP_MIX(%d), data(0x%04x)\n", __func__,
+	dev_dbg(&client->dev, "%s: REMCAP_MIX(%d), data(0x%04x)\n", __func__,
 		reg_data/2, reg_data);
 
 	reg_data = fg_read_register(client, REMCAP_AV_REG);
-	dev_info(&client->dev, "%s: REMCAP_AV(%d), data(0x%04x)\n", __func__,
+	dev_dbg(&client->dev, "%s: REMCAP_AV(%d), data(0x%04x)\n", __func__,
 		reg_data/2, reg_data);
 }
 
@@ -699,7 +699,7 @@ static void fg_periodic_read(struct i2c_client *client)
 			i = 13;
 	}
 
-	dev_info(&client->dev, "%s", str);
+	dev_dbg(&client->dev, "%s", str);
 periodic_error:
 	kfree(str);
 }
@@ -748,7 +748,7 @@ static int fg_read_vcell(struct i2c_client *client)
 	vcell += (temp2 << 4);
 
 	if (!(fuelgauge->info.pr_cnt % PRINT_COUNT)) {
-		dev_info(&client->dev, "%s: VCELL(%d), data(0x%04x)\n",
+		dev_dbg(&client->dev, "%s: VCELL(%d), data(0x%04x)\n",
 			__func__, vcell, (data[1]<<8) | data[0]);
 		fg_read_soc(client);
 	}
@@ -956,7 +956,7 @@ static int fg_read_temp(struct i2c_client *client)
 		temper = 20000;
 
 	if (!(fuelgauge->info.pr_cnt % PRINT_COUNT))
-		dev_info(&client->dev, "%s: TEMPERATURE(%d), data(0x%04x)\n",
+		dev_dbg(&client->dev, "%s: TEMPERATURE(%d), data(0x%04x)\n",
 			__func__, temper, (data[1]<<8) | data[0]);
 
 	return temper/100;
@@ -1165,7 +1165,7 @@ static int fg_read_current(struct i2c_client *client, int unit)
 
 	if (!(fuelgauge->info.pr_cnt++ % PRINT_COUNT)) {
 		fg_test_print(client);
-		dev_info(&client->dev, "%s: CURRENT(%dmA), AVG_CURRENT(%dmA)\n",
+		dev_dbg(&client->dev, "%s: CURRENT(%dmA), AVG_CURRENT(%dmA)\n",
 			__func__, i_current, avg_current);
 		fuelgauge->info.pr_cnt = 1;
 		/* Read max17050's all registers every 5 minute. */
@@ -1411,7 +1411,7 @@ static int fg_check_status_reg(struct i2c_client *client)
 			__func__);
 		return -1;
 	}
-	dev_info(&client->dev, "%s: addr(0x00), data(0x%04x)\n", __func__,
+	dev_dbg(&client->dev, "%s: addr(0x00), data(0x%04x)\n", __func__,
 		(status_data[1]<<8) | status_data[0]);
 
 	if (status_data[1] & (0x1 << 2))
