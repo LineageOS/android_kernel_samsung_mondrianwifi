@@ -47,6 +47,7 @@
 /*Start : Qualcomm Local Patch - 20131226 */
 #define HAL_BUFFERFLAG_YUV_601_709_CSC_CLAMP   0x10000000
 /*End : Qualcomm Local Patch - 20131226 */
+#define HAL_BUFFERFLAG_MBAFF            0x08000000
 #define HAL_BUFFERFLAG_DROP_FRAME       0x20000000
 
 

@@ -711,6 +711,7 @@ struct v4l2_buffer {
 /*Start : Qualcomm Local Patch - 20131226 */
 #define V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP	0x20000000
 /*End : Qualcomm Local Patch - 20131226 */
+#define V4L2_MSM_BUF_FLAG_MBAFF         0x800000
 
 /*
  *	O V E R L A Y   P R E V I E W
