@@ -53,12 +53,14 @@ ifeq ($(CONFIG_SEC_MONDRIAN_PROJECT),y)
 	dtb-$(CONFIG_SEC_MONDRIAN_PROJECT)	+= msm8974-sec-mondrianlte-r07.dtb
 	dtb-$(CONFIG_SEC_MONDRIAN_PROJECT)	+= msm8974-sec-mondrianlte-r08.dtb
 	dtb-$(CONFIG_SEC_MONDRIAN_PROJECT)	+= msm8974-sec-mondrianlte-r12.dtb
-    else ifeq ($(CONFIG_MACH_MONDRIAN_WIFI),y)
+    endif
+    ifeq ($(CONFIG_MACH_MONDRIAN_WIFI),y)
 	dtb-$(CONFIG_SEC_MONDRIAN_PROJECT)	+= apq8074-sec-mondrianwifi-r00.dtb
 	dtb-$(CONFIG_SEC_MONDRIAN_PROJECT)	+= apq8074-sec-mondrianwifi-r07.dtb
 	dtb-$(CONFIG_SEC_MONDRIAN_PROJECT)	+= apq8074-sec-mondrianwifi-r08.dtb
 	dtb-$(CONFIG_SEC_MONDRIAN_PROJECT)	+= apq8074-sec-mondrianwifi-r12.dtb
-    else ifeq ($(CONFIG_MACH_MONDRIAN_3G),y)
+    endif
+    ifeq ($(CONFIG_MACH_MONDRIAN_3G),y)
 	dtb-$(CONFIG_SEC_MONDRIAN_PROJECT)	+= msm8974-sec-mondrian3g-r08.dtb
 	dtb-$(CONFIG_SEC_MONDRIAN_PROJECT)	+= msm8974-sec-mondrian3g-r12.dtb
     endif
