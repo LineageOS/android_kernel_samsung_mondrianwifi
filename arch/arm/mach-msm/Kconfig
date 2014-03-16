@@ -1489,6 +1489,7 @@ config MACH_MONDRIAN
 	default n
 	bool "Samsung model MONDRIAN"
 	select SEC_MONDRIAN_PROJECT
+	select MUIC_RESET_PIN_ENABLE
 	help
 	  Support for Samsung MONDRIAN device.
 
@@ -1521,6 +1522,12 @@ config MACH_MONDRIANWIFI_EUR
 	bool "Samsung model MONDRIANWIFI_EUR"
 	help
 	  Support for Samsung MONDRIANWIFI_EUR device.
+
+config MACH_MONDRIAN_3G
+	default n
+	bool "Samsung model MONDRIAN3G_EUR"
+	help
+	  Support for Samsung MONDRIAN3G_EUR device.
 
 config SEC_VIENNA_PROJECT
 	default n
@@ -3970,4 +3977,10 @@ config EXTEND_SERIAL_NUM_16
 	bool "serial number is 16 digit"
 	default n
 
+config MUIC_RESET_PIN_ENABLE
+        bool "Sudden mUIC reset issue W/A"
+        default n
+        help 
+                This request is from H/W team
+		In case of mUIC voltage drop, mUIC will be reset
 endif

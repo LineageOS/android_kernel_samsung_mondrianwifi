@@ -346,6 +346,10 @@ struct max77888_dev {
 	int irq;
 	int irq_base;
 	int irq_gpio;
+#ifdef CONFIG_MUIC_RESET_PIN_ENABLE
+	int irq_reset;
+	int irq_reset_gpio;
+#endif
 	bool wakeup;
 	struct mutex irqlock;
 	int irq_masks_cur[MAX77888_IRQ_GROUP_NR];

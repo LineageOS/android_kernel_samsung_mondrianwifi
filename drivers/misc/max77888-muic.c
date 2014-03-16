@@ -367,6 +367,35 @@ static int max77888_muic_get_usb_path_pass2
 }
 #endif
 
+#ifdef CONFIG_MUIC_RESET_PIN_ENABLE
+void max77888_muic_regdump(void) {
+	u8 r_value[MAX77888_MUIC_REG_END];
+	int ret;
+
+	ret = max77888_bulk_read(gInfo->muic, MAX77888_MUIC_REG_ID, ARRAY_SIZE(r_value)-1, r_value);
+	max77888_read_reg(gInfo->muic, MAX77888_MUIC_REG_CTRL4, &r_value[ARRAY_SIZE(r_value)-1]);
+
+	pr_info("%s:MUIC REG DUMP\n", __func__);
+	pr_info("%s:READ MUIC REG ID : %02x", __func__, r_value[0]);
+	pr_info("%s:READ MUIC REG INT1 : %02x", __func__, r_value[1]);
+	pr_info("%s:READ MUIC REG INT2 : %02x", __func__, r_value[2]);
+	pr_info("%s:READ MUIC REG INT3 : %02x", __func__, r_value[3]);
+	pr_info("%s:READ MUIC REG STATUS1 : %02x", __func__, r_value[4]);
+	pr_info("%s:READ MUIC REG STATUS2 : %02x", __func__, r_value[5]);
+	pr_info("%s:READ MUIC REG STATUS3 : %02x", __func__, r_value[6]);
+	pr_info("%s:READ MUIC REG INTMASK1 : %02x", __func__, r_value[7]);
+	pr_info("%s:READ MUIC REG INTMASK2 : %02x", __func__, r_value[8]);
+	pr_info("%s:READ MUIC REG INTMASK3 : %02x", __func__, r_value[9]);
+	pr_info("%s:READ MUIC REG CDETCTRL1 : %02x", __func__, r_value[10]);
+	pr_info("%s:READ MUIC REG CDETCTRL2 : %02x", __func__, r_value[11]);
+	pr_info("%s:READ MUIC REG CTRL1 : %02x", __func__, r_value[12]);
+	pr_info("%s:READ MUIC REG CTRL2 : %02x", __func__, r_value[13]);
+	pr_info("%s:READ MUIC REG CTRL3  : %02x", __func__, r_value[14]);
+	pr_info("%s:READ MUIC REG CTRL4 : %02x", __func__, r_value[ARRAY_SIZE(r_value)-1]);
+}
+EXPORT_SYMBOL_GPL(max77888_muic_regdump);
+#endif
+
 static int max77888_muic_set_uart_path_pass2
 	(struct max77888_muic_info *info, int path)
 {

@@ -382,11 +382,11 @@ static int inv_init_config(struct iio_dev *indio_dev)
 	reg = &st->reg;
 
 	result = inv_i2c_single_write(st, reg->gyro_config,
-		INV_FSR_500DPS << GYRO_CONFIG_FSR_SHIFT);
+		INV_FSR_2000DPS << GYRO_CONFIG_FSR_SHIFT);
 	if (result)
 		return result;
 
-	st->chip_config.fsr = INV_FSR_500DPS;
+	st->chip_config.fsr = INV_FSR_2000DPS;
 
 	result = inv_i2c_single_write(st, reg->lpf, INV_FILTER_42HZ);
 	if (result)

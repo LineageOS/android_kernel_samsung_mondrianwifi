@@ -1677,6 +1677,11 @@ static int regulatory_hint_core(const char *alpha2)
 	request->alpha2[1] = alpha2[1];
 	request->initiator = NL80211_REGDOM_SET_BY_CORE;
 
+#ifdef CONFIG_WCNSS_CORE
+  /* FIXME workaround */
+  request->processed = true;
+#endif
+
 	queue_regulatory_request(request);
 
 	return 0;
