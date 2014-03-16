@@ -64,6 +64,27 @@ static inline u32 mdss_mdp_get_pclk_rate(struct mdss_mdp_ctl *ctl)
 		pinfo->clk_rate;
 }
 
+//Qualcomm patch modification   
+static inline u32 mdss_mdp_clk_fudge_factor(struct mdss_mdp_mixer *mixer, 
+ u32 rate) 
+{ 
+     struct mdss_panel_info *pinfo = &mixer->ctl->panel_data->panel_info; 
+ 
+     rate = MDSS_MDP_CLK_FUDGE_FACTOR(rate); 
+ 
+     /* 
+        * If the panel is video mode and its back porch period is 
+        * small, the workaround of increasing mdp clk is needed to 
+        * avoid underrun. 
+        */ 
+     if (mixer->ctl->is_video_mode && pinfo && 
+         (pinfo->lcdc.v_back_porch < MDP_MIN_VBP)) 
+            rate = MDSS_MDP_CLK_FUDGE_FACTOR(rate); 
+ 
+     return rate; 
+} 
+
+//above Qualcomm patch modification
 static u32 __mdss_mdp_ctrl_perf_ovrd_helper(struct mdss_mdp_mixer *mixer,
 		u32 *npipe)
 {
@@ -183,7 +204,7 @@ static int mdss_mdp_ctl_perf_commit(struct mdss_data_type *mdata, u32 flags)
 		mdss_mdp_bus_scale_set_quota(bus_ab_quota, bus_ib_quota);
 	}
 	if (flags & MDSS_MDP_PERF_UPDATE_CLK) {
-		clk_rate = MDSS_MDP_CLK_FUDGE_FACTOR(clk_rate);
+		//clk_rate = MDSS_MDP_CLK_FUDGE_FACTOR(clk_rate);
 		pr_debug("update clk rate = %lu HZ\n", clk_rate);
 		mdss_mdp_set_clk_rate(clk_rate);
 	}
@@ -259,8 +280,22 @@ int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 		perf->ib_quota = (quota / pipe->dst.h) * v_total;
 	}
 	perf->ab_quota = quota;
+	rate = mdss_mdp_clk_fudge_factor(mixer, rate); //Qualcomm patch modify   
 	perf->mdp_clk_rate = rate;
 
+        //Qualcomm patch modify    
+        pr_debug("src(w,h)(%d,%d) dst(w,h)(%d,%d) v_total=%d v_deci=%d fps=%d\n", 
+              pipe->src.w, pipe->src.h, pipe->dst.w, pipe->dst.h, v_total, 
+              pipe->vert_deci, fps); 
+	//above Qualcomm patch modify   
+	/* Incase of more than 10x Upscale, Increasing BW & MDP Clk */
+	if ( ((pipe->dst.h / pipe->src.h) > 10) ||
+		((pipe->dst.w / pipe->src.w) > 10) ) {
+			pr_debug("*** Exceptional case : more than 10x Upscale!!!\n");
+			perf->ib_quota = perf->ib_quota * 10;
+			perf->ab_quota = perf->ab_quota * 10;
+			perf->mdp_clk_rate = perf->mdp_clk_rate * 2;
+	}
 	pr_debug("mixer=%d pnum=%d clk_rate=%u bus ab=%u ib=%u\n",
 		 mixer->num, pipe->num, rate, perf->ab_quota, perf->ib_quota);
 
@@ -294,10 +329,12 @@ static void mdss_mdp_perf_mixer_update(struct mdss_mdp_mixer *mixer,
 			v_total = mixer->height;
 		}
 		*clk_rate = mixer->width * v_total * fps;
-		if ((pinfo && pinfo->lcdc.v_back_porch < MDP_MIN_VBP)
-				&& (pinfo->type == MIPI_VIDEO_PANEL))
-			*clk_rate = MDSS_MDP_CLK_FUDGE_FACTOR(*clk_rate);
-
+		//Qualcomm patch modification     
+		//if ((pinfo && pinfo->lcdc.v_back_porch < MDP_MIN_VBP)
+		//		&& (pinfo->type == MIPI_VIDEO_PANEL))
+		//	*clk_rate = MDSS_MDP_CLK_FUDGE_FACTOR(*clk_rate);
+               *clk_rate = mdss_mdp_clk_fudge_factor(mixer, *clk_rate);
+		//above Qualcomm patch modify      
 		if (!pinfo) {
 			/* perf for bus writeback */
 			*bus_ab_quota = fps * mixer->width * mixer->height * 3;
