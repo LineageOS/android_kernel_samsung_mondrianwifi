@@ -1312,7 +1312,6 @@ static int mdss_mdp_overlay_queue(struct msm_fb_data_type *mfd,
 		pr_warn("Unexpected buffer queue to a solid fill pipe\n");
 
 	flags = (pipe->flags & MDP_SECURE_OVERLAY_SESSION);
-	flags |= (pipe->flags & MDP_SECURE_DISPLAY_OVERLAY_SESSION);
 
 	src_data = &pipe->back_buf;
 	if (src_data->num_planes) {
