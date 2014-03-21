@@ -2594,7 +2594,6 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 	int rc;
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_mdp_ctl *ctl = NULL;
-	struct mdss_panel_info *pinfo = mfd->panel_info;
 
 	if (!mfd)
 		return -ENODEV;
@@ -2616,8 +2615,7 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 
 	if (!mfd->panel_info->cont_splash_enabled &&
 		(mfd->panel_info->type != DTV_PANEL) &&
-		(mfd->panel_info->type != WRITEBACK_PANEL) &&
-		!(pinfo->alpm_event && pinfo->alpm_event(CHECK_PREVIOUS_STATUS))) {
+		(mfd->panel_info->type != WRITEBACK_PANEL)) {
 		rc = mdss_mdp_overlay_start(mfd);
 		if (!IS_ERR_VALUE(rc))
 			rc = mdss_mdp_overlay_kickoff(mfd, NULL);
@@ -2643,15 +2641,12 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_mdp_mixer *mixer;
 	int need_cleanup;
-	struct mdss_panel_info *pinfo;
 
 	if (!mfd)
 		return -ENODEV;
 
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
-
-	pinfo = mfd->panel_info;
 
 	mdp5_data = mfd_to_mdp5_data(mfd);
 
@@ -2678,13 +2673,8 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 	mutex_unlock(&mfd->lock);
 
 	if (need_cleanup) {
-		if (pinfo->alpm_event && pinfo->alpm_event(CHECK_CURRENT_STATUS)) {
-			pr_debug("[ALPM_DEBUG] %s, Skip cleanup pipes on fb%d\n",\
-				 __func__, mfd->index);
-		} else {
-			pr_debug("cleaning up pipes on fb%d\n", mfd->index);
-			mdss_mdp_overlay_kickoff(mfd, NULL);
-		}
+		pr_debug("cleaning up pipes on fb%d\n", mfd->index);
+		mdss_mdp_overlay_kickoff(mfd, NULL);
 	}
 
 	rc = mdss_mdp_ctl_stop(mdp5_data->ctl);

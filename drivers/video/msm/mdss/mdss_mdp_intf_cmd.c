@@ -695,11 +695,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
 	if (need_wait) {
-		if (pinfo->alpm_event)
-			timeout_status = wait_for_completion_timeout(&ctx->stop_comp,\
-							STOP_TIMEOUT_FOR_ALPM);
-		else
-			timeout_status = wait_for_completion_timeout(&ctx->stop_comp,\
+		timeout_status = wait_for_completion_timeout(&ctx->stop_comp,\
 							STOP_TIMEOUT);
 		if (timeout_status <= 0) {
 			WARN(1, "stop cmd time out\n");
