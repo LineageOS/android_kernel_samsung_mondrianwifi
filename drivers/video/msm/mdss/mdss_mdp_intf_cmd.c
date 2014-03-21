@@ -72,7 +72,6 @@ struct mdss_mdp_cmd_ctx {
 
 struct mdss_mdp_cmd_ctx mdss_mdp_cmd_ctx_list[MAX_SESSIONS];
 extern char board_rev;
-int get_lcd_attached(void);
 
 static inline u32 mdss_mdp_cmd_line_count(struct mdss_mdp_ctl *ctl)
 {
@@ -252,7 +251,7 @@ static inline void mdss_mdp_cmd_clk_off(struct mdss_mdp_cmd_ctx *ctx)
 		set_clk_off = 1;
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
-	if ((ctx->clk_enabled && set_clk_off) || (get_lcd_attached() == 0)) {
+	if (ctx->clk_enabled && set_clk_off) {
 		ctx->clk_enabled = 0;
 		mdss_mdp_hist_intr_setup(&mdata->hist_intr, MDSS_IRQ_SUSPEND);
 		mdss_mdp_ctl_intf_event
@@ -615,11 +614,6 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 		return -ENODEV;
 	}
 
-	if (get_lcd_attached() == 0) {
-		pr_err("%s : lcd is not attached..\n",__func__);
-		return -ENODEV;
-	}
-
 	pr_debug("%s:+\n", __func__);
 
 	if (ctx->panel_on == 0) {
@@ -680,11 +674,6 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	u8 timeout_status = 0;
 
 	pr_debug("%s:+\n", __func__);
-
-	if (get_lcd_attached() == 0) {
-		pr_err("%s : lcd is not attached..\n",__func__);
-		return 0;
-	}
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
 	if (!ctx) {

@@ -34,17 +34,11 @@ int contsplash_lkstat = 0;
 unsigned int gv_manufacture_id;
 extern unsigned int system_rev;
 
-int get_lcd_attached(void);
-
 #if defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL) || \
 	defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL) || \
 	defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
-int get_samsung_lcd_attached(void);
 int get_lcd_panel_res(void);
 extern char board_rev;
-#elif defined (CONFIG_FB_MSM8x26_MDSS_CHECK_LCD_CONNECTION)
-
-int get_samsung_lcd_attached(void);
 #endif
 
 #if defined (CONFIG_FB_MSM_MDSS_DSI_DBG)
@@ -573,17 +567,6 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	}
 
 	pdata->panel_info.panel_power_on = 1;
-#if !defined(CONFIG_FB_MSM8x26_MDSS_CHECK_LCD_CONNECTION) && \
-	!defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
-	if (get_lcd_attached() == 0) {
-		pr_err("%s : lcd is not attached..\n",__func__);
-
-		mdss_dsi_panel_power_on(pdata, 0);
-		pdata->panel_info.panel_power_on = 0;
-
-		return -ENODEV;
-	}
-#endif
 
 	ret = mdss_dsi_bus_clk_start(ctrl_pdata);
 	if (ret) {
@@ -1184,13 +1167,6 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		pr_err("DSI driver only supports device tree probe\n");
 		return -ENOTSUPP;
 	}
-#if !defined(CONFIG_FB_MSM8x26_MDSS_CHECK_LCD_CONNECTION) && \
-	!defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
-	if (get_lcd_attached() == 0) {
-		pr_err("%s : lcd is not attached..\n",__func__);
-		return -ENODEV;
-	}
-#endif
 
 	ctrl_pdata = platform_get_drvdata(pdev);
 	if (!ctrl_pdata) {
@@ -1583,15 +1559,6 @@ int dsi_panel_device_register(struct device_node *pan_node,
 
 	pr_err("%s:%d, Disp_en_gpio (%d)",__func__, __LINE__,ctrl_pdata->disp_en_gpio );
 
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
-	if (get_lcd_attached() == 0) {
-		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
-			pr_info("%s : Set Low LCD Enable GPIO \n", __func__);
-			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
-		}
-	}
-#endif
-
 	if (!gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
 		pr_err("%s:%d, Disp_en gpio not specified\n",
 						__func__, __LINE__);
@@ -1856,19 +1823,6 @@ static void __exit mdss_dsi_driver_cleanup(void)
 	platform_driver_unregister(&mdss_dsi_ctrl_driver);
 }
 module_exit(mdss_dsi_driver_cleanup);
-
-int get_lcd_attached(void)
-{
-#if defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL) || \
-	defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL) || \
-	defined (CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL) || \
-	defined (CONFIG_FB_MSM8x26_MDSS_CHECK_LCD_CONNECTION)
-	return get_samsung_lcd_attached();
-#else
-	return 1;
-#endif
-}
-EXPORT_SYMBOL(get_lcd_attached);
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("DSI controller driver");

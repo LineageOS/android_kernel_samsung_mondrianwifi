@@ -92,9 +92,7 @@ static int backlight_i2c_write(struct i2c_client *client,
 	}
 	return err;
 }
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
-int get_lcd_attached(void);
-#endif
+
 static void backlight_request_gpio(struct lp8556_backlight_platform_data *pdata)
 {
 	int ret;
@@ -109,16 +107,6 @@ static void backlight_request_gpio(struct lp8556_backlight_platform_data *pdata)
 	}
 	/* gpio_tlmm_config(GPIO_CFG(pdata->gpio_scl, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1); */
 	/* gpio_tlmm_config(GPIO_CFG(pdata->gpio_sda, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1); */
-
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
-	if (get_lcd_attached() == 0) {
-		if (gpio_is_valid(pdata->gpio_backlight_en)) {
-			pr_info("%s : Set Low Backlight Enable GPIO \n", __func__);
-			gpio_set_value(pdata->gpio_backlight_en, 0);
-		}
-	}
-#endif
-
 }
 
 static int lp8556_backlight_parse_dt(struct device *dev,
