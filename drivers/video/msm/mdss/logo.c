@@ -250,12 +250,6 @@ static int  samsung_mdss_allocate_framebuffer(struct fb_info *info){
 	msm_iommu_map_contig_buffer(phys, mfd->mdp.fb_mem_get_iommu_domain(), 0, size, SZ_4K, 0,
 					    &mfd->iova);
 
-#if 0
-	//Copy  screen
-	if(contsplash_lkstat == 1)
-		ret =  samsung_copy_bootloader_screen(virt);
-#endif
-
 	return 1;
 }
 

@@ -30,16 +30,8 @@
 #include "mdss_debug.h"
 
 static unsigned char *mdss_dsi_base;
-int contsplash_lkstat = 0;
 unsigned int gv_manufacture_id;
 extern unsigned int system_rev;
-
-#if defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL) || \
-	defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL) || \
-	defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WQXGA_PT_PANEL)
-int get_lcd_panel_res(void);
-extern char board_rev;
-#endif
 
 #if defined (CONFIG_FB_MSM_MDSS_DSI_DBG)
 void xlog(const char *name, u32 data0, u32 data1, u32 data2, u32 data3, u32 data4, u32 data5);
@@ -49,7 +41,6 @@ static int mdss_dsi_regulator_init(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-	struct dsi_drv_cm_data *dsi_drv = NULL;
 
 	if (!pdev) {
 		pr_err("%s: invalid input\n", __func__);
@@ -62,8 +53,6 @@ static int mdss_dsi_regulator_init(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	dsi_drv = &(ctrl_pdata->shared_pdata);
-
 	pr_info("%s: vregn(%d)\n", __func__,
 		ctrl_pdata->power_data.num_vreg);
 
@@ -72,23 +61,6 @@ static int mdss_dsi_regulator_init(struct platform_device *pdev)
 		ret = msm_dss_config_vreg(&pdev->dev,
 			ctrl_pdata->power_data.vreg_config,
 			ctrl_pdata->power_data.num_vreg, 1);
-
-#ifdef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL
-#if defined (CONFIG_MACH_KACTIVELTE_ATT)
-		if (board_rev >= 0) { /* VDDR3 (I/O) VCC_1.8V_LCD VREG_LVS4*/
-#else
-		if (board_rev >= 2) { /* VDDR3 (I/O) VCC_1.8V_LCD VREG_LVS4*/
-#endif			
-			dsi_drv->iovdd_vreg = devm_regulator_get(&pdev->dev, "iovdd");
-			if (IS_ERR(dsi_drv->iovdd_vreg)) {
-				pr_err("%s: could not get iovddreg, rc=%ld\n",
-					__func__, PTR_ERR(dsi_drv->iovdd_vreg));
-				return PTR_ERR(dsi_drv->iovdd_vreg);
-			} else {
-				pr_info("%s: vdd3 - VREG_LVS4 (i/o) init.. \n", __func__);
-			}
-		}
-#endif
 	}
 
 	return ret;
@@ -153,32 +125,13 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 				__func__, ret);
 					return ret;
 		}
-			if (ctrl_pdata->panel_extra_power){
-				ret = ctrl_pdata->panel_extra_power(pdata,1);
-
-				if (ret) {
-					pr_err("%s: Failed to enable extra power.rc=%d\n",
-						__func__, ret);
-					return ret;
-				}
-			}
 		}
          /*panel reset function moved on lp11 state */
 	} else {
 
-	ctrl_pdata->panel_reset(pdata, 0);
+	mdss_dsi_panel_reset(pdata, 0);
 
 		if (ctrl_pdata->power_data.num_vreg > 0) {
-
-			if (ctrl_pdata->panel_extra_power){
-				  ret = ctrl_pdata->panel_extra_power(pdata,0);
-
-				if (ret) {
-					pr_err("%s: Failed to disable extra power.rc=%d\n",
-						__func__, ret);
-							return ret;
-				}
-			}
 
 		ret = msm_dss_enable_vreg(
 			ctrl_pdata->power_data.vreg_config,
@@ -660,7 +613,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	msleep(20);
 	/* LP11 */
 
-	ctrl_pdata->panel_reset(pdata, 1);
+	mdss_dsi_panel_reset(pdata, 1);
 
 	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, tmp);
 
@@ -810,7 +763,7 @@ int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 	}
 	// LP11
 
-	ctrl_pdata->panel_reset(pdata, 1);
+	mdss_dsi_panel_reset(pdata, 1);
 
 	if (mipi->force_clk_lane_hs) {
 		u32 tmp;
@@ -1088,13 +1041,6 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 		/* no panel cfg chg, parse dt */
 		pr_info("%s:%d: no cmd line cfg present\n",
 			 __func__, __LINE__);
-#ifdef CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL
-		if (get_lcd_panel_res() == 0x0){  /*wqhd*/
-			dsi_pan_node = of_parse_phandle(
-				pdev->dev.of_node,
-				"qcom,dsi-pref-prim-pan-dual", 0);
-		} else
-#endif
 		{
 			dsi_pan_node = of_parse_phandle(
 				pdev->dev.of_node,
@@ -1712,11 +1658,6 @@ int dsi_panel_device_register(struct device_node *pan_node,
 
 	ctrl_pdata->panel_data.event_handler = mdss_dsi_event_handler;
 	ctrl_pdata->check_status = mdss_dsi_bta_status_check;
-/* It needs for bl setting from mdss_fb to panel file */
-/*	ctrl_pdata->panel_data.set_backlight = ctrl_pdata->bl_fnc;
-	ctrl_pdata->panel_data.panel_reset_fn = ctrl_pdata->panel_reset;
-	ctrl_pdata->panel_data.panel_extra_power = ctrl_pdata->panel_extra_power;
-*/
 #if !defined(CONFIG_FB_MSM_MDSS_TC_DSI2LVDS_WXGA_PANEL)
 	if (ctrl_pdata->bklt_ctrl == BL_PWM)
 		mdss_dsi_panel_pwm_cfg(ctrl_pdata);

@@ -912,8 +912,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
-	ctrl_pdata->panel_reset = mdss_dsi_panel_reset;
-	ctrl_pdata->bl_fnc= mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->registered = mdss_dsi_panel_registered;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->bklt_ctrl = ctrl_pdata->panel_data.panel_info.bklt_ctrl;
