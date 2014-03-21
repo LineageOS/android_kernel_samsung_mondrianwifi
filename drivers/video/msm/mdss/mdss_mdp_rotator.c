@@ -694,9 +694,6 @@ int mdss_mdp_rotator_release_all(void)
 int mdss_mdp_rotator_play(struct msm_fb_data_type *mfd,
 			    struct msmfb_overlay_data *req)
 {
-#if defined(CONFIG_FB_MSM_CMD_MODE)
-	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd); 
-#endif
 	struct mdss_mdp_rotator_session *rot;
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 	int ret;
