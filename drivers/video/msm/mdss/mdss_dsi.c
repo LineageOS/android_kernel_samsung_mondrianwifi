@@ -70,22 +70,12 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 {
 	int ret = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-	struct mdss_panel_info *pinfo = &pdata->panel_info;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
 	}
 
-	if (pinfo->alpm_event) {
-		if (enable && pinfo->alpm_event(CHECK_PREVIOUS_STATUS))
-			return 0;
-		else if (!enable && pinfo->alpm_event(CHECK_CURRENT_STATUS))
-			return 0;
-
-		pr_debug("[ALPM_DEBUG]%s, LDO control, enable : %d\n",
-					__func__, enable);
-	}
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
@@ -322,41 +312,6 @@ novreg:
 	return rc;
 }
 
-#define ULPS_REQUEST_BITS 0x001f
-#define ULPS_EXIT_BITS	 0x1f00
-#define ULPS_LANE_STATUS_BITS 0x1f00
-#define CTRL_OFFSET 0xAC
-#define STATUS_OFFSET 0xA8
-static int mipi_ulps_mode(struct mdss_dsi_ctrl_pdata *ctrl_pdata,int enter)
-{
-	uint32_t dsi0LaneCtrlReg = MIPI_INP(ctrl_pdata->ctrl_base + CTRL_OFFSET);
-	uint32_t dsi0LaneStatusReg = MIPI_INP(ctrl_pdata->ctrl_base + STATUS_OFFSET);
-
-	pr_debug("[ALPM_DEBUG] mipi_ulps_mode++: dsi0LaneStatusReg 0x%x\n", dsi0LaneStatusReg);
-
-	if(enter) //enter into the mode
-	{
-		MIPI_OUTP(ctrl_pdata->ctrl_base + CTRL_OFFSET, dsi0LaneCtrlReg | ULPS_REQUEST_BITS);
-		usleep(1000);
-		pr_debug("[ALPM_DEBUG] entering into the ulps mode\n");
-	}
-	else //exit from the mode
-	{
-		MIPI_OUTP(ctrl_pdata->ctrl_base + CTRL_OFFSET, dsi0LaneCtrlReg | ULPS_EXIT_BITS);
-
-		pr_debug("[ALPM_DEBUG] exiting from the ulps mode\n");
-		usleep(2000);
-
-		//Exit/ request bits clear (requirement)
-		dsi0LaneCtrlReg = MIPI_INP(ctrl_pdata->ctrl_base + CTRL_OFFSET);
-		dsi0LaneCtrlReg &= ~ULPS_REQUEST_BITS;
-		MIPI_OUTP(ctrl_pdata->ctrl_base + CTRL_OFFSET, dsi0LaneCtrlReg);
-		dsi0LaneCtrlReg &= ~ULPS_EXIT_BITS;
-		MIPI_OUTP(ctrl_pdata->ctrl_base + CTRL_OFFSET, dsi0LaneCtrlReg);
-	}
-	return true;
-}
-
 static int mdss_dsi_get_panel_cfg(char *panel_cfg)
 {
 	int rc;
@@ -385,7 +340,6 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	int ret = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *panel_info = NULL;
-	struct mdss_panel_info *pinfo = &pdata->panel_info;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -405,9 +359,6 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	panel_info = &ctrl_pdata->panel_data.panel_info;
 	pr_info("%s+: ctrl=%p ndx=%d\n", __func__,
 				ctrl_pdata, ctrl_pdata->ndx);
-
-	if (pinfo->alpm_event && pinfo->alpm_event(CHECK_CURRENT_STATUS))
-		mipi_ulps_mode(ctrl_pdata, 1);
 
 	if((pdata->panel_info.type == MIPI_CMD_PANEL) && (ctrl_pdata->ndx == DSI_CTRL_0)) {
 		ret = gpio_tlmm_config(GPIO_CFG(
@@ -485,9 +436,6 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 				__func__, ctrl_pdata, ctrl_pdata->ndx);
 
 	pinfo = &pdata->panel_info;
-
-	if (pinfo->alpm_event && pinfo->alpm_event(CHECK_PREVIOUS_STATUS))
-			mipi_ulps_mode(ctrl_pdata, 0);
 
 	if((pdata->panel_info.type == MIPI_CMD_PANEL) && (ctrl_pdata->ndx == DSI_CTRL_0)) {
 		ret = gpio_tlmm_config(GPIO_CFG(
