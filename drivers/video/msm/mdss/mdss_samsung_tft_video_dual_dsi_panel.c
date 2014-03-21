@@ -44,8 +44,6 @@ static char board_rev;
 static int lcd_attached = 1;
 static int lcd_id = 0;
 
-int get_lcd_attached(void);
-
 int get_panel_power_state(void)
 {
 	return panel_power_state;
@@ -143,12 +141,6 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 {
 	struct dcs_cmd_req cmdreq;
 
-	if (get_lcd_attached() == 0)
-	{
-		printk("%s: get_lcd_attached(0)!\n",__func__);
-		return ;
-	}
-
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = pcmds->cmds;
 	cmdreq.cmds_cnt = pcmds->cmd_cnt;
@@ -168,12 +160,6 @@ static struct dsi_cmd_desc backlight_cmd = {
 static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 {
 	struct dcs_cmd_req cmdreq;
-
-	if (get_lcd_attached() == 0)
-	{
-		printk("%s: get_lcd_attached(0)!\n",__func__);
-		return ;
-	}
 
 	pr_debug("%s: level=%d\n", __func__, level);
 
@@ -924,10 +910,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 		ctrl_pdata->panel_data.panel_info.cont_splash_enabled = 1;
 	}
 
-	if (get_lcd_attached() == 0) {
-		ctrl_pdata->panel_data.panel_info.cont_splash_enabled = 0;
-	}
-
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
 	ctrl_pdata->panel_reset = mdss_dsi_panel_reset;
@@ -988,12 +970,6 @@ static int atoi(const char *name)
 		}
 	}
 }
-
-int get_samsung_lcd_attached(void)
-{
-	return lcd_attached;
-}
-EXPORT_SYMBOL(get_samsung_lcd_attached);
 
 static int __init mdss_panel_current_hw_rev(char *rev)
 {
