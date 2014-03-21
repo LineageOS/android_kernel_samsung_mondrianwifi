@@ -87,30 +87,6 @@ struct mdp_csc_cfg mdp_csc_convert[MDSS_MDP_MAX_CSC] = {
 	},
 };
 
-#if defined(CONFIG_MDNIE_TFT_MSM8X26)
-struct mdp_pcc_cfg_data pcc_reverse = {
-	.block = MDP_LOGICAL_BLOCK_DISP_0,
-	.ops = MDP_PP_OPS_WRITE | MDP_PP_OPS_ENABLE,
-	.r = { 0x00007ff8, 0xffff8000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-			0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
-	.g = { 0x00007ff8, 0x00000000, 0xffff8000, 0x00000000, 0x00000000, 0x00000000,
-			0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
-	.b = { 0x00007ff8, 0x00000000, 0x00000000, 0xffff8000, 0x00000000, 0x00000000,
-			0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
-};
-
-struct mdp_pcc_cfg_data pcc_normal = {
-	.block = MDP_LOGICAL_BLOCK_DISP_0,
-	.ops = MDP_PP_OPS_WRITE | MDP_PP_OPS_DISABLE,
-	.r = { 0x00000000, 0x00008000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-			0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
-	.g = { 0x00000000, 0x00000000, 0x00008000, 0x00000000, 0x00000000, 0x00000000,
-			0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
-	.b = { 0x00000000, 0x00000000, 0x00000000, 0x00008000, 0x00000000, 0x00000000,
-			0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
-};
-#endif
-
 #define CSC_MV_OFF	0x0
 #define CSC_BV_OFF	0x2C
 #define CSC_LV_OFF	0x14
@@ -4424,34 +4400,6 @@ int mdss_mdp_calib_mode(struct msm_fb_data_type *mfd,
 	mutex_unlock(&mdss_pp_mutex);
 	return 0;
 }
-
-#if defined(CONFIG_MDNIE_TFT_MSM8X26)
-void mdss_negative_color(int is_negative_on)
-{
-	u32 copyback;
-	int i;
-	struct mdss_mdp_ctl *ctl;
-	struct mdss_mdp_ctl *ctl_d = NULL;
-	struct mdss_data_type *mdata;
-
-	mdata = mdss_mdp_get_mdata();
-	for (i = 0; i < mdata->nctl; i++) {
-		ctl = mdata->ctl_off + i;
-		if ((ctl->power_on) && (ctl->mfd) && (ctl->mfd->index == 0)) {
-			ctl_d = ctl;
-			break;
-		}
-	}
-	if (ctl_d) {
-		if(is_negative_on)
-			mdss_mdp_pcc_config(&pcc_reverse, &copyback);
-		else
-			mdss_mdp_pcc_config(&pcc_normal, &copyback);
-	} else {
-		pr_info("%s:ctl_d is NULL ", __func__);
-	}
-}
-#endif
 
 int mdss_mdp_calib_config_buffer(struct mdp_calib_config_buffer *cfg,
 						u32 *copyback)
