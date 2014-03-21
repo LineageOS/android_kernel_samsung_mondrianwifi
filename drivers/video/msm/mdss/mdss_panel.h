@@ -353,8 +353,6 @@ struct mdss_panel_data {
 	struct mdss_panel_info panel_info;
 	void (*set_backlight) (struct mdss_panel_data *pdata, u32 bl_level);
 	unsigned char *mmss_cc_base;
-	//void (*panel_reset_fn)(struct mdss_panel_data *pdata, int enable);
-	//int (*panel_extra_power)(struct mdss_panel_data *pdata, int enable);
 
 	/**
 	 * event_handler() - callback handler for MDP core events

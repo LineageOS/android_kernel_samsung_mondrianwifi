@@ -254,12 +254,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*partial_update_fnc) (struct mdss_panel_data *pdata);
 	int (*check_status) (struct mdss_dsi_ctrl_pdata *pdata);
 	int (*registered) (struct mdss_panel_data *pdata);
-	int (*dimming_init) (struct mdss_panel_data *pdata);
 	int (*event_handler) (int e);
-	int (*panel_blank) (struct mdss_panel_data *pdata, int blank);
-	void (*panel_reset) (struct mdss_panel_data *pdata, int enable);
-	int (*panel_extra_power) (struct mdss_panel_data *pdata, int enable);
-	void (*bl_fnc) (struct mdss_panel_data *pdata, u32 level);
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 	struct mdss_panel_data panel_data;
 	unsigned char *ctrl_base;
