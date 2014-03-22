@@ -2465,30 +2465,6 @@ mdss_notfound:
 }
 EXPORT_SYMBOL(mdss_register_panel);
 
-int mdss_panel_force_update(struct mdss_panel_data *pdata)
-{
-	struct msm_fb_data_type *mfd = NULL;
-	int i;
-
-	if (!pdata)
-		return -ENODEV;
-
-	for (i = 0; i < fbi_list_index; i++) {
-		mfd = fbi_list[i]->par;
-
-		if (mfd->panel_info == &pdata->panel_info)
-			break;
-	}
-
-	if (i == fbi_list_index || !mfd)
-		return -ENOENT;
-
-	mdss_fb_pan_display_ex(mfd->fbi, &mfd->msm_fb_backup.disp_commit);
-
-	return 0;
-}
-EXPORT_SYMBOL(mdss_panel_force_update);
-
 int mdss_fb_register_mdp_instance(struct msm_mdp_interface *mdp)
 {
 	if (mdp_instance) {
