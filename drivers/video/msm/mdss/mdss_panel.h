@@ -474,7 +474,6 @@ int mdss_panel_get_boot_cfg(void);
  */
 bool mdss_is_ready(void);
 
-int mdss_panel_force_update(struct mdss_panel_data *pdata);
 int load_565rle_image(char *filename);
 int load_samsung_boot_logo(void);
 #endif /* MDSS_PANEL_H */
