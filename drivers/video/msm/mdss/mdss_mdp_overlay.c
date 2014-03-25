@@ -3230,6 +3230,7 @@ void mdss_dbg_tick_save(int op_name)
  */
 void mdss_mdp_underrun_dump_info(void)
 {
+#ifdef DEBUG
 	struct mdss_mdp_pipe *pipe;
 
 	pr_info(" ============ dump_start ===========\n");
@@ -3246,5 +3247,6 @@ void mdss_mdp_underrun_dump_info(void)
 		}
 	mdss_mdp_underrun_clk_info();
 	pr_info(" ============ dump_end =========== \n");
+#endif
 }
 
