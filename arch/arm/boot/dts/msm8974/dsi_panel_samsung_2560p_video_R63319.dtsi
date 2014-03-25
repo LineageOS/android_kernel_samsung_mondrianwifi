@@ -11,6 +11,11 @@
  */
 
 &mdss_mdp {
+	/* Override fudge factors */
+	qcom,mdss-ab-factor = <2 1>;
+	qcom,mdss-ib-factor = <3 2>;
+	qcom,mdss-clk-factor = <5 4>;
+
 	dsi_dual_2560p_vid_right: qcom,mdss_dsi_samsung_dual_2560p_video_right {
 		qcom,mdss-dsi-panel-name = "samsung tft 2560p video mode R63319 right panel";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
