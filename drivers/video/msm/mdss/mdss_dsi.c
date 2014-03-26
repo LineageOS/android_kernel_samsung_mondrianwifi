@@ -51,8 +51,6 @@ int get_samsung_lcd_attached(void);
 void xlog(const char *name, u32 data0, u32 data1, u32 data2, u32 data3, u32 data4, u32 data5);
 #endif
 
-extern struct mdss_panel_data *cmds_panel_data;
-
 static int mdss_dsi_regulator_init(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -127,8 +125,6 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 
 	pr_info("%s: enable=%d vregn(%d)\n", __func__,
 		enable, ctrl_pdata->power_data.num_vreg);
-
-	cmds_panel_data = pdata;
 
 	if (enable) {
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_FULL_HD_PT_PANEL) \
