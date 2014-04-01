@@ -655,10 +655,23 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		pinfo->bklt_ctrl = UNKNOWN_CTRL;
 	}
 
+	/* New properties */
+
+	rc = of_property_read_u32(np, "qcom,mdss-brightness-max-level", &tmp);
+	pinfo->brightness_max = (!rc ? tmp : MDSS_MAX_BL_BRIGHTNESS);
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-bl-min-level", &tmp);
+	pinfo->bl_min = (!rc ? tmp : 0);
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-bl-max-level", &tmp);
+	pinfo->bl_max = (!rc ? tmp : 255);
+
+	/* Allow old property to override it */
+
 	rc = of_property_read_u32_array(np,
 		"qcom,mdss-pan-bl-levels", res, 2);
-	pinfo->bl_min = (!rc ? res[0] : 0);
-	pinfo->bl_max = (!rc ? res[1] : 255);
+	if (!rc) {
+		pinfo->bl_min = res[0];
+		pinfo->bl_max = res[1];
+	}
 	ctrl_pdata->bklt_max = pinfo->bl_max;
 
 	rc = of_property_read_u32(np, "qcom,mdss-pan-dsi-mode", &tmp);
