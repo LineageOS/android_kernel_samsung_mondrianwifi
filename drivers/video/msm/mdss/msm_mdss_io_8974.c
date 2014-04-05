@@ -490,69 +490,12 @@ extern struct mdss_dsi_ctrl_pdata *right_ctrl_pdata;
 
 extern struct mutex dual_clk_lock;
 
-#if 0
 int mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 {
 	int rc = 0;
 
 //	mutex_lock(&ctrl->mutex);
 	mutex_lock(&dual_clk_lock);
-
-	if (enable) {
-		if (ctrl->ndx == DSI_CTRL_1 &&
-			ctrl->shared_pdata.broadcast_enable) {
-			if(left_ctrl->clk_cnt==0){
-				mdss_dsi_enable_clks(left_ctrl);
-				left_ctrl->clk_cnt++;
-			}
-		}
-		if (ctrl->clk_cnt == 0) {
-			rc = mdss_dsi_enable_clks(ctrl);
-			if (rc)		
-			goto error;
-		}
-		ctrl->clk_cnt++;
-	} else {
-		if (ctrl->clk_cnt) {
-			ctrl->clk_cnt--;
-			if (ctrl->clk_cnt == 0) {
-				if (ctrl->ndx == DSI_CTRL_1 &&
-					ctrl->shared_pdata.broadcast_enable) {					
-					if(left_ctrl->clk_cnt){
-						left_ctrl->clk_cnt--;
-						if(!left_ctrl->clk_cnt){
-							mdss_dsi_clk_disable(left_ctrl);
-							mdss_dsi_clk_unprepare(left_ctrl);
-							mdss_dsi_disable_bus_clocks(left_ctrl);							
-						}
-					}									
-				}			
-				mdss_dsi_clk_disable(ctrl);
-				mdss_dsi_clk_unprepare(ctrl);
-				mdss_dsi_disable_bus_clocks(ctrl);
-			}
-		}
-	}
-
-error:
-	//mutex_unlock(&ctrl->mutex);	
-	mutex_unlock(&dual_clk_lock);
-	return rc;
-}
-#else
-int mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
-{
-	int rc = 0;
-
-//	mutex_lock(&ctrl->mutex);
-	mutex_lock(&dual_clk_lock);
-
-#if defined(CONFIG_FB_MSM_MDSS_DSI_DBG)
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OCTA_CMD_WQHD_PT_PANEL)
-	if (ctrl->shared_pdata.broadcast_enable)
-		xlog(__func__, ctrl->ndx, enable, ctrl->clk_cnt, left_ctrl->clk_cnt, left_ctrl->clk_cnt_by_dsi1, right_ctrl_pdata->clk_cnt); 
-#endif
-#endif
 
 	if (enable) {
 		if (ctrl->ndx == DSI_CTRL_1 &&
@@ -634,8 +577,6 @@ error:
 	return rc;
 }
 
-
-#endif
 
 void mdss_dsi_phy_sw_reset(unsigned char *ctrl_base)
 {
