@@ -301,14 +301,6 @@ static int mdss_dsi_clk_prepare(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int rc = 0;
 
-#ifdef DSI_CLK_DEBUG
-	printk("[QCT_TEST] ++ [dsi %d][prepare] %d %d %d\n",
-		ctrl_pdata->ndx,
-		ctrl_pdata->esc_clk->prepare_count,
-		ctrl_pdata->byte_clk->prepare_count,
-		ctrl_pdata->pixel_clk->prepare_count); 
-#endif
-
 	rc = clk_prepare(ctrl_pdata->esc_clk);
 	if (rc) {
 		pr_err("%s: Failed to prepare dsi esc clk\n", __func__);
@@ -327,14 +319,6 @@ static int mdss_dsi_clk_prepare(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		goto pixel_clk_err;
 	}
 
-#ifdef DSI_CLK_DEBUG
-	printk("[QCT_TEST] -- [dsi %d][prepare] %d %d %d\n",
-			ctrl_pdata->ndx,
-			ctrl_pdata->esc_clk->prepare_count,
-			ctrl_pdata->byte_clk->prepare_count,
-			ctrl_pdata->pixel_clk->prepare_count); 
-#endif
-
 	return rc;
 
 pixel_clk_err:
@@ -352,26 +336,9 @@ static void mdss_dsi_clk_unprepare(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		return;
 	}
 
-#ifdef DSI_CLK_DEBUG
-	printk("[QCT_TEST] ++ [dsi %d][unprepare] %d %d %d\n",
-		ctrl_pdata->ndx,
-		ctrl_pdata->esc_clk->prepare_count,
-		ctrl_pdata->byte_clk->prepare_count,
-		ctrl_pdata->pixel_clk->prepare_count);
-#endif
-
 	clk_unprepare(ctrl_pdata->pixel_clk);
 	clk_unprepare(ctrl_pdata->byte_clk);
 	clk_unprepare(ctrl_pdata->esc_clk);
-
-#ifdef DSI_CLK_DEBUG
-	printk("[QCT_TEST] -- [dsi %d][unprepare] %d %d %d\n",
-		ctrl_pdata->ndx,
-		ctrl_pdata->esc_clk->prepare_count,
-		ctrl_pdata->byte_clk->prepare_count,
-		ctrl_pdata->pixel_clk->prepare_count);
-#endif
-
 }
 
 static int mdss_dsi_clk_set_rate(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
@@ -532,10 +499,6 @@ int mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 	mutex_lock(&dual_clk_lock);
 
 	if (enable) {
-#ifdef DSI_CLK_DEBUG
-		pr_err("[QCT_TEST] enable ++ : %d , (%d) (%d) \n",
-				ctrl->ndx, left_ctrl->clk_cnt, right_ctrl_pdata->clk_cnt);
-#endif
 		if (ctrl->ndx == DSI_CTRL_1 &&
 			ctrl->shared_pdata.broadcast_enable) {
 			if(left_ctrl->clk_cnt==0){
@@ -549,15 +512,7 @@ int mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 			goto error;
 		}
 		ctrl->clk_cnt++;
-#ifdef DSI_CLK_DEBUG
-		pr_err("[QCT_TEST] enable -- : %d , (%d) (%d)\n",
-				ctrl->ndx, left_ctrl->clk_cnt, right_ctrl_pdata->clk_cnt); 
-#endif
 	} else {
-#ifdef DSI_CLK_DEBUG
-		pr_err("[QCT_TEST] disable ++ : %d , (%d) (%d)\n",
-				ctrl->ndx, left_ctrl->clk_cnt, right_ctrl_pdata->clk_cnt); 
-#endif
 		if (ctrl->clk_cnt) {
 			ctrl->clk_cnt--;
 			if (ctrl->clk_cnt == 0) {
@@ -577,22 +532,7 @@ int mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 				mdss_dsi_disable_bus_clocks(ctrl);
 			}
 		}
-#ifdef DSI_CLK_DEBUG
-		pr_err("[QCT_TEST] disable -- : %d , (%d) (%d)\n",
-				ctrl->ndx, left_ctrl->clk_cnt, right_ctrl_pdata->clk_cnt); 
-#endif
 	}
-#ifdef XXX
-	if (ctrl->shared_pdata.broadcast_enable) {
-		pr_err("%s: ctrl ndx=%d enabled=%d clk_cnt=%d\n",
-			__func__, left_ctrl->ndx, enable, left_ctrl->clk_cnt);
-		pr_err("%s: DSI%d Byte rcnt=%d pcnt=%d\n", 
-			__func__, left_ctrl->ndx,(int)left_ctrl->byte_clk->count, (int)left_ctrl->byte_clk->prepare_count);
-	}
-	pr_err("%s: ctrl ndx=%d enabled=%d clk_cnt=%d\n",
-			__func__, ctrl->ndx, enable, ctrl->clk_cnt);
-	pr_err("%s: DSI%d Byte rcnt=%d pcnt=%d\n", __func__, ctrl->ndx,(int)ctrl->byte_clk->count, (int)ctrl->byte_clk->prepare_count);
-#endif
 
 error:
 	//mutex_unlock(&ctrl->mutex);	
@@ -615,11 +555,6 @@ int mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 #endif
 
 	if (enable) {
-#ifdef DSI_CLK_DEBUG
-	if (ctrl->shared_pdata.broadcast_enable)
-		pr_err("[QCT_TEST] enable ++ : %d , (%d) (%d) , by(%d)\n",
-				ctrl->ndx, left_ctrl->clk_cnt, right_ctrl_pdata->clk_cnt,left_ctrl->clk_cnt_by_dsi1);
-#endif
 		if (ctrl->ndx == DSI_CTRL_1 &&
 			ctrl->shared_pdata.broadcast_enable) {
 			if (left_ctrl->clk_cnt == 0 && left_ctrl->clk_cnt_by_dsi1 == 0) {
@@ -650,19 +585,7 @@ int mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 		}
 
 		ctrl->clk_cnt++;
-
-#ifdef DSI_CLK_DEBUG
-	if (ctrl->shared_pdata.broadcast_enable)
-		pr_err("[QCT_TEST] enable -- : %d , (%d) (%d) , by(%d)\n",
-				ctrl->ndx, left_ctrl->clk_cnt, right_ctrl_pdata->clk_cnt,left_ctrl->clk_cnt_by_dsi1); 
-#endif
 	} else {
-#ifdef DSI_CLK_DEBUG
-	if (ctrl->shared_pdata.broadcast_enable)
-		pr_err("[QCT_TEST] disable ++ : %d , (%d) (%d) , by(%d)\n",
-				ctrl->ndx, left_ctrl->clk_cnt, right_ctrl_pdata->clk_cnt,left_ctrl->clk_cnt_by_dsi1); 
-#endif
-
 		if (ctrl->ndx == DSI_CTRL_1 &&
 			ctrl->shared_pdata.broadcast_enable) {
 			
@@ -703,23 +626,7 @@ int mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 			}
 		}
 
-#ifdef DSI_CLK_DEBUG
-	if (ctrl->shared_pdata.broadcast_enable)
-		pr_err("[QCT_TEST] disable -- : %d , (%d) (%d) , by(%d)\n",
-				ctrl->ndx, left_ctrl->clk_cnt, right_ctrl_pdata->clk_cnt,left_ctrl->clk_cnt_by_dsi1); 
-#endif
 	}
-#ifdef XXX
-	if (ctrl->shared_pdata.broadcast_enable) {
-		pr_err("%s: ctrl ndx=%d enabled=%d clk_cnt=%d\n",
-			__func__, left_ctrl->ndx, enable, left_ctrl->clk_cnt);
-		pr_err("%s: DSI%d Byte rcnt=%d pcnt=%d\n", 
-			__func__, left_ctrl->ndx,(int)left_ctrl->byte_clk->count, (int)left_ctrl->byte_clk->prepare_count);
-	}
-	pr_err("%s: ctrl ndx=%d enabled=%d clk_cnt=%d\n",
-			__func__, ctrl->ndx, enable, ctrl->clk_cnt);
-	pr_err("%s: DSI%d Byte rcnt=%d pcnt=%d\n", __func__, ctrl->ndx,(int)ctrl->byte_clk->count, (int)ctrl->byte_clk->prepare_count);
-#endif
 
 error:
 	//mutex_unlock(&ctrl->mutex);	
