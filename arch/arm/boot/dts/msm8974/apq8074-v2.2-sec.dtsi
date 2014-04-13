@@ -17,14 +17,25 @@
  */
 
 /include/ "msm8974-v2.2-sec.dtsi"
+/include/ "apq8074-v2.2-ion.dtsi"
 
 / {
         memory {
+		/* Samsung added this memory hole but it's not clear to me
+		 * what it is used for.  Carve it out for whatever magic needs it */
+		other_mem {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+                        reg = <0x6c00000 0x900000>;
+			label = "other_mem";
+		};
+
                 alt_peripheral_mem: peripheral_region@a700000 {
 			linux,reserve-contiguous-region;
 			linux,reserve-region;
 			linux,remove-completely;
-                        reg = <0x0a700000 0x3300000>;
+                        reg = <0x0a100000 0x6100000>;
 			label = "peripheral_mem";
 		};
 
@@ -32,16 +43,11 @@
 			linux,reserve-contiguous-region;
 			linux,reserve-region;
 			linux,remove-completely;
-                        reg = <0x0dc00000 0x1e00000>;
+                        reg = <0xf500000 0x500000>;
 			label = "adsp_venus_mem";
 
 		};
-
         };
-};
-
-&peripheral_mem {
-	status = "disabled";
 };
 
 &soc {
@@ -62,14 +68,7 @@
 				<55 512 3936000 393600>,
 				<55 512 3936000 393600>;
 	};
-
-	memory_hole: : qcom,msm-mem-hole {
-		compatible = "qcom,msm-mem-hole";
-		qcom,memblock-remove = <0x6c00000 0x900000
-					0xa100000 0x6100000>; /* Address and size of the hole */
-	};
 };
-
 
 &qseecom {
 	status = "disabled";
