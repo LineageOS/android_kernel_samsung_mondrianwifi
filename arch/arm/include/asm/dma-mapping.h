@@ -125,10 +125,7 @@ static inline void dma_coherent_pre_ops(void)
 #if COHERENT_IS_NORMAL == 1
 	dmb();
 #else
-	if (arch_is_coherent())
-		dmb();
-	else
-		barrier();
+	barrier();
 #endif
 }
 /*
@@ -142,10 +139,7 @@ static inline void dma_coherent_post_ops(void)
 #if COHERENT_IS_NORMAL == 1
 	dmb();
 #else
-	if (arch_is_coherent())
-		dmb();
-	else
-		barrier();
+	barrier();
 #endif
 }
 
@@ -360,8 +354,7 @@ static inline void dma_cache_pre_ops(void *virtual_addr,
 
 	BUG_ON(!valid_dma_direction(dir));
 
-	if (!arch_is_coherent())
-		___dma_single_cpu_to_dev(virtual_addr, size, dir);
+	___dma_single_cpu_to_dev(virtual_addr, size, dir);
 }
 
 /**
@@ -383,8 +376,7 @@ static inline void dma_cache_post_ops(void *virtual_addr,
 
 	BUG_ON(!valid_dma_direction(dir));
 
-	if (arch_has_speculative_dfetch() && !arch_is_coherent()
-	 && dir != DMA_TO_DEVICE)
+	if (arch_has_speculative_dfetch() && dir != DMA_TO_DEVICE)
 		/*
 		 * Treat DMA_BIDIRECTIONAL and DMA_FROM_DEVICE
 		 * identically: invalidate
