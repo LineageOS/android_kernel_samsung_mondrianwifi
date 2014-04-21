@@ -636,7 +636,7 @@ ifeq ($(findstring opensource, $(WLAN_ROOT)), opensource)
 CDEFINES += -DWLAN_OPEN_SOURCE
 endif
 
-ifeq ($(CONFIG_ENABLE_LINUX_REG), y)
+ifeq ($(CONFIG_CONFIG_ENABLE_LINUX_REG), y)
 CDEFINES += -DCONFIG_ENABLE_LINUX_REG
 endif
 
