@@ -75,3 +75,6 @@ obj-$(CONFIG_WCNSS_CORE)	+= wcnss/
 
 obj-$(CONFIG_LGUIWLAN)	+= mwlan_aarp/
 obj-$(CONFIG_LGUIWLAN)	+= ipsecdrvtl/
+
+obj-$(CONFIG_PRIMA_WLAN)       += prima/
+obj-$(CONFIG_PRONTO_WLAN)      += prima/
