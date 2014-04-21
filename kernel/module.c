@@ -2749,12 +2749,6 @@ static struct module *setup_load_info(struct load_info *info)
 	return mod;
 }
 
-/* This is the current magic used for vendor blobs, recognize it to
- * avoid having to allow just any version to load.
- */
-
-#define SM_T320_MAGIC "3.4.0-SM-T320_NA_XAR_T320UEU1ANAG_NA27R1_OFFICIAL SMP preempt mod_unload modversions ARMv7 "
-
 static int check_modinfo(struct module *mod, struct load_info *info)
 {
 	const char *modmagic = get_modinfo(info, "vermagic");
@@ -2765,11 +2759,9 @@ static int check_modinfo(struct module *mod, struct load_info *info)
 		err = try_to_force_load(mod, "bad vermagic");
 		if (err)
 			return err;
-	} else if (!same_magic(modmagic, vermagic, info->index.vers) &&
-		   !same_magic(modmagic, SM_T320_MAGIC, info->index.vers))
-	{
-		printk(KERN_ERR "%s: version magic '%s' should be '%s' or '%s'\n",
-		       mod->name, modmagic, vermagic, SM_T320_MAGIC);
+	} else if (!same_magic(modmagic, vermagic, info->index.vers)) {
+		printk(KERN_ERR "%s: version magic '%s' should be '%s'\n",
+		       mod->name, modmagic, vermagic);
 		return -ENOEXEC;
 	}
 
