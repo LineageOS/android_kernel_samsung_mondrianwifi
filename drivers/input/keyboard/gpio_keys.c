@@ -581,7 +581,6 @@ fail:
 }
 
 #ifdef CONFIG_SENSORS_HALL
-#ifdef CONFIG_SEC_FACTORY
 static void flip_cover_work(struct work_struct *work)
 {
 	struct gpio_keys_drvdata *ddata =
@@ -594,33 +593,15 @@ static void flip_cover_work(struct work_struct *work)
 	comp_val[1] = gpio_get_value(ddata->gpio_flip_cover);
 
 	if (comp_val[0] == comp_val[1]) {
-		ddata->flip_cover = gpio_get_value(ddata->gpio_flip_cover);
-		printk(KERN_DEBUG "[keys] %s : %d\n",
-			__func__, ddata->flip_cover);
+		ddata->flip_cover = comp_val[0];
+		printk(KERN_DEBUG "[keys] %s : %d\n", __func__, ddata->flip_cover);
 
-		input_report_switch(ddata->input,
-			SW_FLIP, ddata->flip_cover);
+		input_report_switch(ddata->input, SW_LID, !ddata->flip_cover);
 		input_sync(ddata->input);
 	} else {
 		printk(KERN_DEBUG "%s : Value is not same!\n", __func__);
 	}
 }
-#else // CONFIG_SEC_FACTORY
-static void flip_cover_work(struct work_struct *work)
-{
-	struct gpio_keys_drvdata *ddata =
-		container_of(work, struct gpio_keys_drvdata,
-				flip_cover_dwork.work);
-
-	ddata->flip_cover = gpio_get_value(ddata->gpio_flip_cover);
-	printk(KERN_DEBUG "[keys] %s : %d\n",
-		__func__, ddata->flip_cover);
-
-	input_report_switch(ddata->input,
-		SW_FLIP, ddata->flip_cover);
-	input_sync(ddata->input);
-}
-#endif // CONFIG_SEC_FACTORY
 
 static irqreturn_t flip_cover_detect(int irq, void *dev_id)
 {
@@ -629,7 +610,7 @@ static irqreturn_t flip_cover_detect(int irq, void *dev_id)
 
 	flip_status = gpio_get_value(ddata->gpio_flip_cover);
 
-	printk(KERN_DEBUG "[keys] %s flip_satatus : %d\n",
+	printk(KERN_DEBUG "[keys] %s flip_status : %d\n",
 		__func__, flip_status);
 
 	cancel_delayed_work_sync(&ddata->flip_cover_dwork);
@@ -957,7 +938,7 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 #ifdef CONFIG_SENSORS_HALL
 	if(ddata->gpio_flip_cover != 0) {
 		input->evbit[0] |= BIT_MASK(EV_SW);
-		input_set_capability(input, EV_SW, SW_FLIP);
+		input_set_capability(input, EV_SW, SW_LID);
 	}
 #endif
 	input->open = gpio_keys_open;
