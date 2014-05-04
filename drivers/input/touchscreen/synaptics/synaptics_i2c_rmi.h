@@ -766,7 +766,9 @@ struct synaptics_rmi4_f51_handle {
 	unsigned short general_control2_addr;
 	unsigned short edge_swipe_data_addr;
 	unsigned short side_button_data_addr;
+#ifdef EDGE_SWIPE
 	struct synaptics_rmi4_surface surface_data;
+#endif
 //	struct synaptics_rmi4_data *rmi4_data;
 };
 #endif

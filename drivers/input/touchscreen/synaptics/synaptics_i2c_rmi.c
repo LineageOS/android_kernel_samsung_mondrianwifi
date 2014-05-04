@@ -3409,7 +3409,7 @@ static int synaptics_rmi4_f51_init(struct synaptics_rmi4_data *rmi4_data,
 
 	if (query.features & HAS_EDGE_SWIPE) {
 		rmi4_data->f51_handle->edge_swipe_data_addr = fhandler->full_addr.data_base + data_addr_offset;
-#ifndef USE_F51_OFFSET_CALCULATE
+#if !defined(USE_F51_OFFSET_CALCULATE) && defined(EDGE_SWIPE)
 		rmi4_data->f51_handle->edge_swipe_data_addr = fhandler->full_addr.data_base + EDGE_SWIPE_DATA_OFFSET;
 #endif
 		rmi4_data->has_edge_swipe = true;
