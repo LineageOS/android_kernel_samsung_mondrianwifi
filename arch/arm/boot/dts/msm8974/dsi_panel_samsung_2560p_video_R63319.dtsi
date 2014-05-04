@@ -29,7 +29,7 @@
 		qcom,mdss-pan-dest = "display_1";
 		qcom,mdss-pan-broadcast-mode = <1>;
 		qcom,mdss-pan-porch-values = <64 20 150 8 4 12>;  /* <HBP> <HPW> <HFP> <VBP> <VPW> <VFP> */
-		qcom,mdss-pan-underflow-clr = <0xff>;
+		qcom,mdss-pan-underflow-clr = <0x00>;
 		qcom,mdss-pan-bl-ctrl = "UNKNOWN_CTRL";
 
 		qcom,mdss-pan-dsi-mode = <0>; /* VIDEO = 0, CMD = 1*/
@@ -129,7 +129,7 @@
 		qcom,mdss-pan-dest = "display_2";
 		qcom,mdss-pan-broadcast-mode = <1>;
 		qcom,mdss-pan-porch-values = <64 20 150 8 4 12>;  /* <HBP> <HPW> <HFP> <VBP> <VPW> <VFP> */
-		qcom,mdss-pan-underflow-clr = <0xff>;
+		qcom,mdss-pan-underflow-clr = <0x00>;
 
 		qcom,mdss-pan-bl-ctrl = "bl_ctrl_dcs";
 		qcom,mdss-pan-bl-levels = <1 255>;
