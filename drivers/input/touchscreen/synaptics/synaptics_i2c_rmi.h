@@ -36,7 +36,7 @@
  */
 
 /* feature define */
-#define TSP_BOOSTER	/* DVFS feature : TOUCH BOOSTER */
+// #define TSP_BOOSTER	/* DVFS feature : TOUCH BOOSTER */
 #define	USE_OPEN_CLOSE
 #define REPORT_2D_W
 #define REDUCE_I2C_DATA_LENGTH
