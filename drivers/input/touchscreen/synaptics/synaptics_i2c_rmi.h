@@ -45,8 +45,8 @@
 #define TOUCHKEY_ENABLE
 #define USE_RECENT_TOUCHKEY
 #define PROXIMITY
-#define EDGE_SWIPE
-#define TKEY_BOOSTER
+//#define EDGE_SWIPE
+//#define TKEY_BOOSTER
 #define SYNAPTICS_DEVICE_NAME	"T320"
 
 #elif defined(CONFIG_SEC_K_PROJECT)
