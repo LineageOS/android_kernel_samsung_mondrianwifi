@@ -75,6 +75,13 @@
 #define POLARITY_LOW 0
 #define POLARITY_HIGH 1
 
+enum msm_hs_clk_states_e {
+	MSM_HS_CLK_PORT_OFF,     /* port not in use */
+	MSM_HS_CLK_OFF,          /* clock disabled */
+	MSM_HS_CLK_REQUEST_OFF,  /* disable after TX and RX flushed */
+	MSM_HS_CLK_ON,           /* clock enabled */
+};
+
 struct bluesleep_info {
 	unsigned host_wake;
 	unsigned ext_wake;
@@ -87,15 +94,18 @@ struct bluesleep_info {
 
 /* work function */
 static void bluesleep_sleep_work(struct work_struct *work);
+static void bluesleep_uart_awake_work(struct work_struct *work);
 
 /* work queue */
 DECLARE_DELAYED_WORK(sleep_workqueue, bluesleep_sleep_work);
+DECLARE_DELAYED_WORK(uart_awake_workqueue, bluesleep_uart_awake_work);
 
 /* Macros for handling sleep work */
 #define bluesleep_rx_busy()     schedule_delayed_work(&sleep_workqueue, 0)
 #define bluesleep_tx_busy()     schedule_delayed_work(&sleep_workqueue, 0)
 #define bluesleep_rx_idle()     schedule_delayed_work(&sleep_workqueue, 0)
 #define bluesleep_tx_idle()     schedule_delayed_work(&sleep_workqueue, 0)
+#define bluesleep_uart_work()     schedule_delayed_work(&uart_awake_workqueue, 0)
 
 /* 10 second timeout */
 #define TX_TIMER_INTERVAL  3
@@ -137,8 +147,38 @@ struct proc_dir_entry *bluetooth_dir, *sleep_dir;
 /*
  * Local functions
  */
+
+static int bluesleep_get_uart_state(void)
+{
+	int state = 0;
+
+	state = msm_hs_get_clock_state(bsi->uport);
+	return state;
+}
+
+static void bluesleep_uart_awake_work(struct work_struct *work)
+{
+	int clk_state;
+
+	if (!bsi->uport) {
+		BT_DBG("hsuart_power called. But uport is null");
+		return;
+	}
+
+	clk_state = bluesleep_get_uart_state();
+	if (clk_state == MSM_HS_CLK_OFF) {
+		BT_DBG("bluesleep_uart_awake_work : hsuart_power on");
+		msm_hs_request_clock_on(bsi->uport);
+		msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
+	}else if(clk_state == MSM_HS_CLK_REQUEST_OFF){
+		bluesleep_uart_work();
+	}
+}
+
 static void hsuart_power(int on)
 {
+	int clk_state;
+
 	if (test_bit(BT_SUSPEND, &flags) && !on) {
 		BT_DBG("hsuart_power OFF- it's suspend state. so return.");
 		return;
@@ -150,9 +190,15 @@ static void hsuart_power(int on)
 	}
 
 	if (on) {
-		BT_DBG("hsuart_power on");
-		msm_hs_request_clock_on(bsi->uport);
-		msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
+		clk_state = bluesleep_get_uart_state();
+		if(clk_state == MSM_HS_CLK_REQUEST_OFF) {
+			BT_DBG("hsuart_power wait");
+			bluesleep_uart_work();
+		} else {
+			BT_DBG("hsuart_power on");
+			msm_hs_request_clock_on(bsi->uport);
+			msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
+		}
 	} else {
 		BT_DBG("hsuart_power off");
 		msm_hs_set_mctrl(bsi->uport, 0);
