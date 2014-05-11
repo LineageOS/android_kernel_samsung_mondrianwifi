@@ -49,8 +49,17 @@ config QCOM_VOWIFI_11R
 	bool "Enable Fast Transition (11r) feature"
 	default n
 
+
 config CONFIG_ENABLE_LINUX_REG
 	bool "Enable linux regulatory feature"
+
+config QCOM_CCX
+	bool "Enable CCX"
+	default n
+
+config QCOM_CCX_UPLOAD
+	depends on QCOM_CCX
+	bool "Enable CCX_UPLOAD"
 	default n
 
 endif # PRIMA_WLAN || PRONTO_WLAN
