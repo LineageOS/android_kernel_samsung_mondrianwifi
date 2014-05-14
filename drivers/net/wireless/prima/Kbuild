@@ -45,6 +45,10 @@ ifeq ($(KERNEL_BUILD), 0)
 
 endif
 
+# To enable CCX upload, dependent config
+# CONFIG_QCOM_CCX must be enabled.
+CONFIG_QCOM_CCX_UPLOAD := n
+
 # Feature flags which are not (currently) configurable via Kconfig
 
 #Whether to build debug version
@@ -632,7 +636,7 @@ ifeq ($(findstring opensource, $(WLAN_ROOT)), opensource)
 CDEFINES += -DWLAN_OPEN_SOURCE
 endif
 
-ifeq ($(CONFIG_CONFIG_ENABLE_LINUX_REG), y)
+ifeq ($(CONFIG_ENABLE_LINUX_REG), y)
 CDEFINES += -DCONFIG_ENABLE_LINUX_REG
 endif
 
