@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -67,6 +67,9 @@
 #include "rrmApi.h"
 #endif
 
+#ifdef FEATURE_WLAN_CCX
+#include <limCcxparserApi.h>
+#endif
 #include "wlan_qct_wda.h"
 #ifdef WLAN_FEATURE_11W
 #include "dot11fdefs.h"
@@ -632,7 +635,7 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
 #ifdef WLAN_FEATURE_11AC
     if(psessionEntry->vhtCapability)
     {
-        limLog( pMac, LOG1, FL("Populate VHT IE in Probe Response"));
+        limLog( pMac, LOGW, FL("Populate VHT IE in Probe Response"));
         PopulateDot11fVHTCaps( pMac, &pFrm->VHTCaps );
         PopulateDot11fVHTOperation( pMac, &pFrm->VHTOperation );
         // we do not support multi users yet
@@ -905,8 +908,7 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
         if (total_noaLen > (SIR_MAX_NOA_ATTR_LEN + SIR_P2P_IE_HEADER_LEN))
         {
             limLog(pMac, LOGE,
-                  FL("Not able to insert NoA because of length constraint."
-                                        "Total Length is :%d"),total_noaLen);
+                  FL("Not able to insert NoA because of length constraint"));
             vos_mem_free(addIE);
             vos_mem_free(pFrm);
             palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
@@ -1232,7 +1234,6 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
 
     if(NULL == psessionEntry)
     {
-        limLog( pMac, LOGE, FL("psessionEntry is NULL"));
         return;
     }
 
@@ -1334,7 +1335,7 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
         if( pSta->mlmStaContext.vhtCapability && 
             psessionEntry->vhtCapability )
         {
-            limLog( pMac, LOG1, FL("Populate VHT IEs in Assoc Response"));
+            limLog( pMac, LOGW, FL("Populate VHT IEs in Assoc Response"));
             PopulateDot11fVHTCaps( pMac, &frm.VHTCaps );
             PopulateDot11fVHTOperation( pMac, &frm.VHTOperation);
             PopulateDot11fExtCap( pMac, &frm.ExtCap);
@@ -1386,8 +1387,7 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
         if (wlan_cfgGetInt(pMac, WNI_CFG_ASSOC_RSP_ADDNIE_FLAG, 
                     &addnIEPresent) != eSIR_SUCCESS)
         {
-            limLog(pMac, LOGP, FL("Unable to get "
-                                  "WNI_CFG_ASSOC_RSP_ADDNIE_FLAG"));
+            limLog(pMac, LOGP, FL("Unable to get WNI_CFG_ASSOC_RSP_ADDNIE_FLAG"));
             return;
         }
 
@@ -1397,8 +1397,7 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
             if (wlan_cfgGetStrLen(pMac, WNI_CFG_ASSOC_RSP_ADDNIE_DATA,
                         &addnIELen) != eSIR_SUCCESS)
             {
-                limLog(pMac, LOGP, FL("Unable to get "
-                           "WNI_CFG_ASSOC_RSP_ADDNIE_DATA length"));
+                limLog(pMac, LOGP, FL("Unable to get WNI_CFG_ASSOC_RSP_ADDNIE_DATA length"));
                 return;
             }
 
@@ -1453,8 +1452,8 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
                                        nPayload, &nPayload );
     if ( DOT11F_FAILED( nStatus ) )
     {
-        limLog( pMac, LOGE, FL("Failed to pack an Association Response"
-                               " (0x%08x)."), nStatus );
+        limLog( pMac, LOGE, FL("Failed to pack an Association Response (0x%08x)."),
+                nStatus );
         palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
                     ( void* ) pFrame, ( void* ) pPacket );
         return;                 // allocated!
@@ -1992,14 +1991,17 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
 
     if(NULL == psessionEntry)
     {
-        limLog(pMac, LOGE, FL("psessionEntry is NULL") );
         return;
     }
 
+    if(NULL == psessionEntry->pLimJoinReq)
+    {
+        return;
+    }
+    
     /* check this early to avoid unncessary operation */
     if(NULL == psessionEntry->pLimJoinReq)
     {
-        limLog(pMac, LOGE, FL("psessionEntry->pLimJoinReq is NULL") );
         return;
     }
     nAddIELen = psessionEntry->pLimJoinReq->addIEAssoc.length; 
@@ -2008,7 +2010,7 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
     pFrm = vos_mem_malloc(sizeof(tDot11fAssocRequest));
     if ( NULL == pFrm )
     {
-        limLog(pMac, LOGE, FL("Unable to allocate memory") );
+        limLog(pMac, LOGE, FL("Unable to allocate memory in limSendAssocReqMgmtFrame") );
         return;
     }
 
@@ -2153,8 +2155,7 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
 
         if( (psessionEntry->pLimJoinReq != NULL) && (!psessionEntry->pLimJoinReq->bssDescription.aniIndicator))
         {
-                limLog( pMac, LOG1, FL("Sending Assoc Req to Non-TQ AP,"
-                                        " Turning off Greenfield"));
+                limLog( pMac, LOG1, FL("Sending Assoc Req to Non-TQ AP, Turning off Greenfield"));
             pFrm->HTCaps.greenField = WNI_CFG_GREENFIELD_CAPABILITY_DISABLE;
         }
 #endif
@@ -2191,6 +2192,12 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
 #endif
 
 #ifdef FEATURE_WLAN_CCX
+    /* CCX Version IE will be included in association request
+       when CCX is enabled on DUT through ini */
+    if (psessionEntry->pLimJoinReq->isCCXFeatureIniEnabled)
+    {
+        PopulateDot11fCCXVersion(&pFrm->CCXVersion);
+    }
     /* For CCX Associations fill the CCX IEs */
     if (psessionEntry->isCCXconnection &&
         psessionEntry->pLimJoinReq->isCCXFeatureIniEnabled)
@@ -2198,7 +2205,6 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
 #ifndef FEATURE_DISABLE_RM
         PopulateDot11fCCXRadMgmtCap(&pFrm->CCXRadMgmtCap);
 #endif
-        PopulateDot11fCCXVersion(&pFrm->CCXVersion);
     }
 #endif
 
@@ -2264,13 +2270,13 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
     }
 
 
-    // That done, pack the Assoc Request:
+    // That done, pack the Probe Request:
     nStatus = dot11fPackAssocRequest( pMac, pFrm, pFrame +
             sizeof(tSirMacMgmtHdr),
             nPayload, &nPayload );
     if ( DOT11F_FAILED( nStatus ) )
     {
-        limLog( pMac, LOGE, FL("Failed to pack a Assoc Request (0x%0"
+        limLog( pMac, LOGE, FL("Failed to pack a Probe Response (0x%0"
                     "8x)."),
                 nStatus );
         palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
@@ -2280,8 +2286,8 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
     }
     else if ( DOT11F_WARNED( nStatus ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while packing a Assoc"
-                               "Request (0x%08x)."), nStatus );
+        limLog( pMac, LOGW, FL("There were warnings while packing a P"
+                    "robe Response (0x%08x).") );
     }
 
     PELOG1(limLog( pMac, LOG1, FL("*** Sending Association Request length %d"
@@ -2306,8 +2312,7 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
     psessionEntry->assocReq = vos_mem_malloc(nPayload);
     if ( NULL == psessionEntry->assocReq )
     {
-        PELOGE(limLog(pMac, LOGE, FL("Unable to allocate memory to store "
-                                     "assoc request"));)
+        PELOGE(limLog(pMac, LOGE, FL("Unable to allocate memory to store assoc request"));)
     }
     else
     {
@@ -2328,6 +2333,7 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
     {
         txFlag |= HAL_USE_PEER_STA_REQUESTED_MASK;
     }
+
     halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) (sizeof(tSirMacMgmtHdr) + nPayload),
             HAL_TXRX_FRM_802_11_MGMT,
             ANI_TXDIR_TODS,
@@ -2344,7 +2350,6 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
 
     // Free up buffer allocated for mlmAssocReq
     vos_mem_free(pMlmAssocReq);
-    pMlmAssocReq = NULL;
     vos_mem_free(pFrm);
     return;
 } // End limSendAssocReqMgmtFrame
@@ -2523,6 +2528,12 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
     }
 
 #ifdef FEATURE_WLAN_CCX
+    /* CCX Version IE will be included in reassociation request
+       when CCX is enabled on DUT through ini */
+    if (psessionEntry->pLimReAssocReq->isCCXFeatureIniEnabled)
+    {
+        PopulateDot11fCCXVersion(&frm.CCXVersion);
+    }
     // For CCX Associations fill the CCX IEs
     if (psessionEntry->isCCXconnection &&
         psessionEntry->pLimReAssocReq->isCCXFeatureIniEnabled)
@@ -2530,7 +2541,6 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
 #ifndef FEATURE_DISABLE_RM
         PopulateDot11fCCXRadMgmtCap(&frm.CCXRadMgmtCap);
 #endif
-        PopulateDot11fCCXVersion(&frm.CCXVersion);
     }
 #endif //FEATURE_WLAN_CCX
 #endif //FEATURE_WLAN_CCX || FEATURE_WLAN_LFR
@@ -2589,16 +2599,6 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
        )
     {
         PopulateMDIE( pMac, &frm.MobilityDomain, psessionEntry->pLimReAssocReq->bssDescription.mdie);
-    }
-#endif
-
-#ifdef WLAN_FEATURE_11AC
-    if ( psessionEntry->vhtCapability &&
-             psessionEntry->vhtCapabilityPresentInBeacon)
-    {
-        limLog( pMac, LOG1, FL("Populate VHT IEs in Re-Assoc Request"));
-        PopulateDot11fVHTCaps( pMac, &frm.VHTCaps );
-        PopulateDot11fExtCap( pMac, &frm.ExtCap);
     }
 #endif
 
@@ -3009,7 +3009,7 @@ limSendReassocReqMgmtFrame(tpAniSirGlobal     pMac,
     if ( psessionEntry->vhtCapability &&
              psessionEntry->vhtCapabilityPresentInBeacon)
     {
-        limLog( pMac, LOG1, FL("Populate VHT IEs in Re-Assoc Request"));
+        limLog( pMac, LOGW, FL("Populate VHT IEs in Re-Assoc Request"));
         PopulateDot11fVHTCaps( pMac, &frm.VHTCaps );
         PopulateDot11fExtCap( pMac, &frm.ExtCap);
     }
@@ -3184,16 +3184,9 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
 
     if(NULL == psessionEntry)
     {
-        limLog(pMac, LOGE, FL("Error: psession Entry is NULL"));
         return;
     }
-
-    limLog(pMac, LOG1,
-           FL("Sending Auth seq# %d status %d (%d) to "MAC_ADDRESS_STR),
-           pAuthFrameBody->authTransactionSeqNumber,
-           pAuthFrameBody->authStatusCode,
-           (pAuthFrameBody->authStatusCode == eSIR_MAC_SUCCESS_STATUS),
-            MAC_ADDR_ARRAY(peerMacAddr));
+      
     if (wepBit == LIM_WEP_IN_FC)
     {
         /// Auth frame3 to be sent with encrypted framebody
@@ -3236,8 +3229,7 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
                 }
                 else
                 {
-                    limLog(pMac, LOG3, FL("Auth frame, Does not contain "
-                                          "FTIES!!!"));
+                    limLog(pMac, LOG3, FL("Auth frame, Does not contain FTIES!!!"));
                     frameLen += (2+SIR_MDIE_SIZE);
                 }
             }
@@ -3328,8 +3320,6 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
     if (limPopulateMacHeader(pMac, pFrame, SIR_MAC_MGMT_FRAME,
                       SIR_MAC_MGMT_AUTH, peerMacAddr,psessionEntry->selfMacAddr) != eSIR_SUCCESS)
     {
-        limLog(pMac, LOGE, FL("call to limPopulateMacHeader failed for "
-                              "AUTH frame"));
         palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, ( void* ) pFrame, ( void* ) pPacket );
         return;
     }
@@ -3353,11 +3343,11 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
         vos_mem_copy(pBody, (tANI_U8 *) pAuthFrameBody, bodyLen);
 
         PELOG1(limLog(pMac, LOG1,
-           FL("*** Sending Auth seq# 3 status %d (%d) to"MAC_ADDRESS_STR),
+           FL("*** Sending Auth seq# 3 status %d (%d) to"),
            pAuthFrameBody->authStatusCode,
-           (pAuthFrameBody->authStatusCode == eSIR_MAC_SUCCESS_STATUS),
-           MAC_ADDR_ARRAY(pMacHdr->da));)
+           (pAuthFrameBody->authStatusCode == eSIR_MAC_SUCCESS_STATUS));
 
+        limPrintMacAddr(pMac, pMacHdr->da, LOG1);)
     }
     else
     {
@@ -3414,11 +3404,12 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
 #endif
 
         PELOG1(limLog(pMac, LOG1,
-           FL("*** Sending Auth seq# %d status %d (%d) to "MAC_ADDRESS_STR),
+           FL("*** Sending Auth seq# %d status %d (%d) to "),
            pAuthFrameBody->authTransactionSeqNumber,
            pAuthFrameBody->authStatusCode,
-           (pAuthFrameBody->authStatusCode == eSIR_MAC_SUCCESS_STATUS),
-           MAC_ADDR_ARRAY(pMacHdr->da));)
+           (pAuthFrameBody->authStatusCode == eSIR_MAC_SUCCESS_STATUS));
+
+        limPrintMacAddr(pMac, pMacHdr->da, LOG1);)
     }
     PELOG2(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG2, pFrame, frameLen);)
 
@@ -3747,11 +3738,9 @@ limSendDisassocMgmtFrame(tpAniSirGlobal pMac,
                                "isassociation (0x%08x).") );
     }
 
-    limLog( pMac, LOG1, FL("***Sessionid %d Sending Disassociation frame with "
-          "reason %u and waitForAck %d to "MAC_ADDRESS_STR" ,From "
-          MAC_ADDRESS_STR), psessionEntry->peSessionId, nReason, waitForAck,
-          MAC_ADDR_ARRAY(pMacHdr->da),
-          MAC_ADDR_ARRAY(psessionEntry->selfMacAddr));
+    PELOG1(limLog( pMac, LOG1, FL("*** Sending Disassociation frame with rea"
+                           "son %d to"), nReason );
+    limPrintMacAddr( pMac, pMacHdr->da, LOG1 );)
 
     if( ( SIR_BAND_5_GHZ == limGetRFBand(psessionEntry->currentOperChannel))
        || ( psessionEntry->pePersona == VOS_P2P_CLIENT_MODE ) ||
@@ -3928,11 +3917,10 @@ limSendDeauthMgmtFrame(tpAniSirGlobal pMac,
         limLog( pMac, LOGW, FL("There were warnings while packing a D"
                                "e-Authentication (0x%08x).") );
     }
-     limLog( pMac, LOG1, FL("***Sessionid %d Sending Deauth frame with "
-          "reason %u and waitForAck %d to "MAC_ADDRESS_STR" ,From "
-          MAC_ADDRESS_STR), psessionEntry->peSessionId, nReason, waitForAck,
-          MAC_ADDR_ARRAY(pMacHdr->da),
-          MAC_ADDR_ARRAY(psessionEntry->selfMacAddr));
+
+    PELOG1(limLog( pMac, LOG1, FL("*** Sending De-Authentication frame with rea"
+                           "son %d to"), nReason );
+    limPrintMacAddr( pMac, pMacHdr->da, LOG1 );)
 
     if( ( SIR_BAND_5_GHZ == limGetRFBand(psessionEntry->currentOperChannel))
        || ( psessionEntry->pePersona == VOS_P2P_CLIENT_MODE ) ||
@@ -5097,16 +5085,7 @@ tSirRetStatus limSendAddBARsp( tpAniSirGlobal pMac,
       frmAddBARsp.AddBAParameterSet.tid = pMlmAddBARsp->baTID;
       frmAddBARsp.AddBAParameterSet.policy = pMlmAddBARsp->baPolicy;
       frmAddBARsp.AddBAParameterSet.bufferSize = pMlmAddBARsp->baBufferSize;
-
-      if(psessionEntry->isAmsduSupportInAMPDU)
-      {
-         frmAddBARsp.AddBAParameterSet.amsduSupported =
-                                          psessionEntry->amsduSupportedInBA;
-      }
-      else
-      {
-         frmAddBARsp.AddBAParameterSet.amsduSupported = 0;
-      }
+      frmAddBARsp.AddBAParameterSet.amsduSupported = psessionEntry->amsduSupportedInBA;
 
       // BA timeout
       // 0 - indicates no BA timeout
