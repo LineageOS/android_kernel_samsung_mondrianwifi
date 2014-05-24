@@ -242,6 +242,8 @@ struct msm_fb_data_type {
 	struct list_head proc_list;
 
 	int blank_mode;
+
+	u32 wait_for_kickoff;
 };
 
 static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)
