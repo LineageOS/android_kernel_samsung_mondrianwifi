@@ -55,7 +55,7 @@ static inline u32 mdss_mdp_pipe_read(struct mdss_mdp_pipe *pipe, u32 reg)
 }
 
 static u32 mdss_mdp_smp_mmb_reserve(struct mdss_mdp_pipe *pipe, struct mdss_mdp_pipe_smp_map *smp_map,
-	size_t n)
+	size_t n, bool force_alloc)
 {
 	u32 i, mmb;
 	u32 fixed_cnt = bitmap_weight(smp_map->fixed, SMP_MB_CNT);
@@ -73,7 +73,7 @@ static u32 mdss_mdp_smp_mmb_reserve(struct mdss_mdp_pipe *pipe, struct mdss_mdp_
 	 * that calls for change in smp configuration (addition/removal
 	 * of smp blocks), so that fallback solution happens.
 	 */
-	if (pipe->src_fmt->is_yuv || (pipe->flags & MDP_BACKEND_COMPOSITION)) {
+	if (pipe->src_fmt->is_yuv || !force_alloc) {
 		if (i != 0 && n != i) {
 			pr_debug("Can't change mmb config, num_blks: %d alloc: %d\n",
 			n, i);
@@ -218,6 +218,7 @@ int mdss_mdp_smp_reserve(struct mdss_mdp_pipe *pipe)
 	struct mdss_mdp_plane_sizes ps;
 	int i;
 	int rc = 0, rot_mode = 0;
+	bool force_alloc = 0;
 	u32 nlines, format;
 	u16 width;
 
@@ -303,6 +304,14 @@ int mdss_mdp_smp_reserve(struct mdss_mdp_pipe *pipe)
 	else
 		nlines = pipe->bwc_mode ? 1 : 2;
 
+	/*
+	 * Don't want to allow SMP changes for backend composition pipes
+	 * inorder to preserve SMPs as much as possible.
+	 * On the contrary for non backend composition pipes we should
+	 * allow SMP allocations to prevent composition failures.
+	 */
+	force_alloc = !(pipe->flags & MDP_BACKEND_COMPOSITION);
+
 	mutex_lock(&mdss_mdp_smp_lock);
 
 #if !defined(CONFIG_FB_MSM_EDP_SAMSUNG)
@@ -337,7 +346,7 @@ int mdss_mdp_smp_reserve(struct mdss_mdp_pipe *pipe)
 		pr_debug("reserving %d mmb for pnum=%d plane=%d\n",
 				num_blks, pipe->num, i);
 		reserved = mdss_mdp_smp_mmb_reserve(pipe, &pipe->smp_map[i],
-			num_blks);
+			num_blks, force_alloc);
 		if (reserved < num_blks)
 			break;
 	}
