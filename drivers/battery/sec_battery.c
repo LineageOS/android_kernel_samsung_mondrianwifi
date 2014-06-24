@@ -2823,9 +2823,6 @@ static int sec_bat_set_property(struct power_supply *psy,
 		}
 		break;
 #endif
-	case POWER_SUPPLY_PROP_CHARGE_TYPE:
-		queue_delayed_work(battery->monitor_wqueue, &battery->monitor_work, 0);
-		break;
 	default:
 		return -EINVAL;
 	}
@@ -3416,7 +3413,6 @@ static int sec_bat_parse_dt(struct device *dev,
 	ret = of_property_read_u32(np, "battery,cable_check_type",
 		&pdata->cable_check_type);
 #if defined(CONFIG_CHARGING_VZWCONCEPT)
-	pdata->cable_check_type &= ~SEC_BATTERY_CABLE_CHECK_NOUSBCHARGE;
 	pdata->cable_check_type |= SEC_BATTERY_CABLE_CHECK_NOINCOMPATIBLECHARGE;
 #endif
 	if (ret)

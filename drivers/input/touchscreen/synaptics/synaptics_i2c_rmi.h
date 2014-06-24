@@ -906,6 +906,7 @@ struct synaptics_rmi4_device_tree_data {
 	int tkey_led_en;
 	int irq_gpio;
 	int reset_gpio;
+	int id_gpio;
 
 	char swap_axes;
 	char x_flip;

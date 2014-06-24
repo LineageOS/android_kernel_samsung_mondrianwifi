@@ -132,9 +132,9 @@ static struct battery_data_t samsung_battery_data[] = {
 #define CAPACITY_MAX_MARGIN	50
 #define CAPACITY_MIN			0
 #elif defined(CONFIG_MACH_MONDRIAN)
-#define CAPACITY_MAX			991
+#define CAPACITY_MAX			1000
 #define CAPACITY_MAX_MARGIN	50
-#define CAPACITY_MIN			-9
+#define CAPACITY_MIN			0
 #elif defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_FRESCO_PROJECT)	/* from H USA/EUR */
 #define CAPACITY_MAX			990
 #define CAPACITY_MAX_MARGIN	50
@@ -491,6 +491,45 @@ static sec_bat_adc_table_data_t temp_table[] = {
 	{-200,	-200},
 	{-300,	-300},
 };
+#elif defined(CONFIG_MACH_MONDRIANWIFI_USA)
+static sec_bat_adc_table_data_t temp_table[] = {
+	{1100,	1165},
+	{1000,	1065},
+	{900,	965},
+	{800,	865},
+	{700,   795},
+	{616,   700},
+	{607,	670},
+	{590,   655},
+	{580,   640},
+	{574,   635},
+	{570,   630},
+	{565,   605},
+	{555,   600},
+	{550,   595},
+	{545,   585},
+	{520,   550},
+	{490,   510},
+	{470,   500},
+	{460,   460},
+	{450,   450},
+	{400,	400},
+	{300,	300},
+	{200,	200},
+	{100,	100},
+	{0,	0},
+	{-10, -10},
+	{-20, -25},
+	{-30, -38},
+	{-40, -52},
+	{-50, -65},
+	{-60, -78},
+	{-70, -90},
+	{-100,  -150},
+	{-200,  -250},
+	{-300,  -350},
+	{-400,  -450},
+};
 #elif defined(CONFIG_MACH_MONDRIAN)
 static sec_bat_adc_table_data_t temp_table[] = {
 	{1100,	1165},
@@ -509,10 +548,10 @@ static sec_bat_adc_table_data_t temp_table[] = {
 	{550,   595},
 	{545,   585},
 	{540,   575},
-	{480,   463},
-	{470,   453},
-	{460,   440},
-	{450,   428},
+	{480,   480},
+	{470,   470},
+	{460,   460},
+	{450,   450},
 	{400,	400},
 	{300,	300},
 	{200,	200},
@@ -739,9 +778,9 @@ static sec_bat_adc_table_data_t temp_table[] = {
 #define TEMP_HIGH_RECOVERY_LPM		450
 #define TEMP_LOW_THRESHOLD_LPM		-50
 #define TEMP_LOW_RECOVERY_LPM		0
-#elif defined(CONFIG_MACH_MONDRIANWIFI_EUR)
-#define TEMP_HIGH_THRESHOLD_EVENT	650
-#define TEMP_HIGH_RECOVERY_EVENT		450
+#elif defined(CONFIG_MACH_MONDRIAN)
+#define TEMP_HIGH_THRESHOLD_EVENT	600
+#define TEMP_HIGH_RECOVERY_EVENT		460
 #define TEMP_LOW_THRESHOLD_EVENT		-50
 #define TEMP_LOW_RECOVERY_EVENT		0
 #define TEMP_HIGH_THRESHOLD_NORMAL	600
@@ -749,7 +788,7 @@ static sec_bat_adc_table_data_t temp_table[] = {
 #define TEMP_LOW_THRESHOLD_NORMAL	-50
 #define TEMP_LOW_RECOVERY_NORMAL	0
 #define TEMP_HIGH_THRESHOLD_LPM		600
-#define TEMP_HIGH_RECOVERY_LPM		450
+#define TEMP_HIGH_RECOVERY_LPM		460
 #define TEMP_LOW_THRESHOLD_LPM		-50
 #define TEMP_LOW_RECOVERY_LPM		0
 #elif defined(CONFIG_SEC_KACTIVE_PROJECT)

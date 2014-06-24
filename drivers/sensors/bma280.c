@@ -979,10 +979,6 @@ static int bma280_setup_pin(struct bma280_p *data)
 		gpio_free(data->acc_int2);
 	}
 
-	wake_lock_init(&data->reactive_wake_lock, WAKE_LOCK_SUSPEND,
-		       "reactive_wake_lock");
-
-	data->irq1 = gpio_to_irq(data->acc_int1);
 	goto exit;
 
 exit_acc_int1:
@@ -1097,6 +1093,7 @@ static int sensor_regulator_onoff(struct device *dev, bool onoff)
 
 	devm_regulator_put(sensor_vcc);
 	devm_regulator_put(sensor_lvs1);
+	mdelay(5);
 
 	return 0;
 }
@@ -1142,6 +1139,8 @@ static int bma280_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, data);
 	data->client = client;
 	mutex_init(&data->mode_mutex);
+	wake_lock_init(&data->reactive_wake_lock, WAKE_LOCK_SUSPEND,
+		       "reactive_wake_lock");
 
 	/* read chip id */
 	bma280_set_mode(data, BMA280_MODE_NORMAL);
@@ -1188,6 +1187,8 @@ static int bma280_probe(struct i2c_client *client,
 	INIT_WORK(&data->work, bma280_work_func);
 	INIT_DELAYED_WORK(&data->irq_work, bma280_irq_work_func);
 
+	data->irq1 = gpio_to_irq(data->acc_int1);
+
 	ret = request_threaded_irq(data->irq1, NULL, bma280_irq_thread,
 		IRQF_TRIGGER_RISING | IRQF_ONESHOT, "bma280_accel", data);
 	if (ret < 0) {
@@ -1220,7 +1221,6 @@ exit_create_workqueue:
 exit_input_init:
 exit_read_chipid:
 	mutex_destroy(&data->mode_mutex);
-	free_irq(data->irq1, data);
 	wake_lock_destroy(&data->reactive_wake_lock);
 	gpio_free(data->acc_int1);
 exit_setup_pin:

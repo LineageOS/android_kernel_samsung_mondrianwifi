@@ -190,6 +190,13 @@ static void hsuart_power(int on)
 	}
 
 	if (on) {
+		if(test_bit(BT_TXDATA, &flags)) {
+			BT_DBG("hsuart_power on");
+			msm_hs_request_clock_on(bsi->uport);
+			msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
+			return;
+		}
+		
 		clk_state = bluesleep_get_uart_state();
 		if(clk_state == MSM_HS_CLK_REQUEST_OFF) {
 			BT_DBG("hsuart_power wait");

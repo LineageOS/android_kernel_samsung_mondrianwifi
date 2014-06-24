@@ -1133,6 +1133,7 @@ static void get_config_ver(void);
 static void get_threshold(void);
 static void module_off_master(void);
 static void module_on_master(void);
+static void get_module_vendor(void);
 static void get_chip_vendor(void);
 static void get_chip_name(void);
 static void get_x_num(void);
@@ -1194,6 +1195,7 @@ struct ft_cmd ft_cmds[] = {
 	{FT_CMD("module_on_master", module_on_master),},
 	{FT_CMD("module_off_slave", not_support_cmd),},
 	{FT_CMD("module_on_slave", not_support_cmd),},
+	{FT_CMD("get_module_vendor", get_module_vendor),},
 	{FT_CMD("get_chip_vendor", get_chip_vendor),},
 	{FT_CMD("get_chip_name", get_chip_name),},
 	{FT_CMD("get_x_num", get_x_num),},
@@ -2904,6 +2906,42 @@ static void module_on_master(void)
 	snprintf(data->cmd_buff, CMD_RESULT_STR_LEN, "%s", tostring(OK));
 	data->cmd_state = CMD_STATUS_OK;
 
+	set_cmd_result(data, data->cmd_buff, strlen(data->cmd_buff));
+}
+
+static void get_module_vendor(void)
+{
+	struct factory_data *data = f54->factory_data;
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+	int val;
+
+	set_default_result(data);
+
+	if (rmi4_data->touch_stopped) {
+		dev_err(&rmi4_data->i2c_client->dev, "%s: [ERROR] Touch is stopped\n",
+				__func__);
+		snprintf(data->cmd_buff, CMD_RESULT_STR_LEN, "%s", "TSP turned off");
+		set_cmd_result(data, data->cmd_buff, strlen(data->cmd_buff));
+		data->cmd_state = CMD_STATUS_NOT_APPLICABLE;
+		return;
+	}
+
+	if (rmi4_data->dt_data->id_gpio > 0) {
+		gpio_tlmm_config(GPIO_CFG(rmi4_data->dt_data->id_gpio, 0,
+				GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+		val = gpio_get_value(rmi4_data->dt_data->id_gpio);
+		dev_info(&rmi4_data->i2c_client->dev,
+			"%s: TSP_ID: %d[%d]\n", __func__, rmi4_data->dt_data->id_gpio, val);
+
+		snprintf(data->cmd_buff, CMD_RESULT_STR_LEN, "%s,%d", tostring(OK), val);
+		data->cmd_state = CMD_STATUS_OK;
+		set_cmd_result(data, data->cmd_buff, strlen(data->cmd_buff));
+
+		return;
+	}
+
+	snprintf(data->cmd_buff, CMD_RESULT_STR_LEN, "%s", tostring(NG));
+	data->cmd_state = CMD_STATUS_FAIL;
 	set_cmd_result(data, data->cmd_buff, strlen(data->cmd_buff));
 }
 
