@@ -635,7 +635,6 @@ static struct gpiomux_setting gpio_uart7_suspend_cfg = {
 };
 
 static struct msm_gpiomux_config msm_blsp2_uart7_configs[] __initdata = {
-#if !defined(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_H)
 	{
 		.gpio	= 41,	/* BLSP2 UART7 TX */
 		.settings = {
@@ -643,6 +642,7 @@ static struct msm_gpiomux_config msm_blsp2_uart7_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_uart7_suspend_cfg,
 		},
 	},
+#if !defined(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)
 	{
 		.gpio	= 42,	/* BLSP2 UART7 RX */
 		.settings = {

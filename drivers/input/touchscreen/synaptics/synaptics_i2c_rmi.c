@@ -259,6 +259,7 @@ static int synaptics_parse_dt(struct device *dev,
 	dt_data->external_ldo = of_get_named_gpio(np, "synaptics,external_ldo", 0);
 	dt_data->irq_gpio = of_get_named_gpio(np, "synaptics,irq-gpio", 0);
 	dt_data->reset_gpio = of_get_named_gpio(np, "synaptics,reset-gpio", 0);
+	dt_data->id_gpio = of_get_named_gpio(np, "synaptics,id-gpio", 0);
 
 	rc = of_property_read_u32_array(np, "synaptics,tsp-coords", coords, 2);
 	if (rc < 0) {
@@ -384,6 +385,15 @@ static void synaptics_request_gpio(struct synaptics_rmi4_data *rmi4_data)
 		if (ret) {
 			pr_err("%s: unable to request reset_gpio [%d]\n",
 					__func__, rmi4_data->dt_data->reset_gpio);
+			return;
+		}
+	}
+
+	if (rmi4_data->dt_data->id_gpio > 0) {
+		ret = gpio_request(rmi4_data->dt_data->id_gpio, "synaptics,id-gpio");
+		if (ret) {
+			pr_err("%s: unable to request id_gpio [%d]\n",
+					__func__, rmi4_data->dt_data->id_gpio);
 			return;
 		}
 	}
@@ -4781,6 +4791,11 @@ void synaptics_power_ctrl(struct synaptics_rmi4_data *rmi4_data, bool enable)
 		dev_info(dev, "%s: reset_gpio[%d] is %s[%s]\n",
 				__func__, rmi4_data->dt_data->reset_gpio,
 				enable ? "enabled" : "disabled", (retval < 0) ? "NG" : "OK");
+	}
+
+	if (rmi4_data->dt_data->id_gpio > 0) {
+		gpio_tlmm_config(GPIO_CFG(rmi4_data->dt_data->id_gpio, 0,
+			GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	}
 
 	return;

@@ -543,13 +543,14 @@ static void smb358_check_slow_charging(struct work_struct *work)
 		container_of(work, struct sec_charger_info, slow_work.work);
 
 	u8 i, aicl_data;
-	int aicl_current = 0;
+	/*
 	union power_supply_propval val;
-
+	*/
 	if (charger->pdata->charging_current
 				[charger->cable_type].input_current_limit <= SLOW_CHARGING_CURRENT_STANDARD) {
 			charger->is_slow_charging = true;
 	} else {
+		int aicl_current = 0;
 		for(i = 0; i < 10; i++) {
 			msleep(200);
 			smb358_i2c_read(charger->client, SMB358_STATUS_E, &aicl_data);
@@ -598,13 +599,14 @@ static void smb358_check_slow_charging(struct work_struct *work)
 		else
 			charger->is_slow_charging = false;
 	}
-
+#if 0
 	pr_info("%s: Slow(%d), aicl_current(%d), input_current(%d)\n",
 		__func__, charger->is_slow_charging, aicl_current, charger->pdata->charging_current
 			[charger->cable_type].input_current_limit);
 
 	psy_do_property("battery", set,
 		POWER_SUPPLY_PROP_CHARGE_TYPE, val);
+#endif
 
 }
 static void smb358_charger_function_control(
@@ -1105,10 +1107,12 @@ bool smb358_hal_chg_get_property(struct i2c_client *client,
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		if (charger->is_charging) {
 			val->intval = POWER_SUPPLY_CHARGE_TYPE_FAST;
+#if 0
 			if (charger->is_slow_charging) {
 				val->intval = POWER_SUPPLY_CHARGE_TYPE_SLOW;
 				pr_info("%s: slow-charging mode\n", __func__);
 			}
+#endif
 		}
 		else
 			val->intval = POWER_SUPPLY_CHARGE_TYPE_NONE;

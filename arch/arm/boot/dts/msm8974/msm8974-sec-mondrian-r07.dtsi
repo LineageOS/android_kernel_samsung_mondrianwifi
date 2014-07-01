@@ -271,6 +271,7 @@
 			synaptics,supply-name = "8941_l22", "8941_l10";	/* the name of regulators, in power-on order */
 			synaptics,irq-gpio = <&pm8941_gpios 30 0x1>;
 			synaptics,reset-gpio = <&msmgpio 41 0x1>;
+			synaptics,id-gpio = <&msmgpio 42 0x0>;
 			synaptics,i2c-pull-up = <1>;
 			synaptics,tsp-project = "Mondrian";
 			synaptics,tsp-coords = <1599 2559>;

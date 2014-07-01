@@ -4,7 +4,7 @@ endif
 obj-$(CONFIG_SAMSUNG_DEBUG_DISPLAY) += dlog.o
 mdss-mdp3-objs = mdp3.o mdp3_dma.o mdp3_ctrl.o
 mdss-mdp3-objs += mdp3_ppp.o mdp3_ppp_hwio.o mdp3_ppp_data.o
-obj-$(CONFIG_FB_MSM_MDSS) += mdss-mdp3.o
+obj-$(CONFIG_FB_MSM_MDSS_MDP3) += mdss-mdp3.o
 
 mdss-mdp-objs := mdss_mdp.o mdss_mdp_ctl.o mdss_mdp_pipe.o mdss_mdp_util.o
 mdss-mdp-objs += mdss_mdp_pp.o
@@ -13,6 +13,7 @@ mdss-mdp-objs += mdss_mdp_intf_cmd.o
 mdss-mdp-objs += mdss_mdp_intf_writeback.o
 mdss-mdp-objs += mdss_mdp_rotator.o
 mdss-mdp-objs += mdss_mdp_overlay.o
+mdss-mdp-objs += mdss_mdp_splash_logo.o
 mdss-mdp-objs += mdss_mdp_wb.o
 obj-$(CONFIG_FB_MSM_MDSS) += mdss-mdp.o
 

@@ -1717,7 +1717,7 @@ void tkey_led_enables(int level)
 #elif defined(CONFIG_SEC_PICASSO_PROJECT)
 		brightness_menu = RGB_MAX_LEVEL_N2_MENU;
 		brightness_back = RGB_MAX_LEVEL_N2_BACK;
-#elif defined(CONFIG_SEC_VIENNA_PROJECT)
+#elif defined(CONFIG_SEC_VIENNA_PROJECT) || defined(CONFIG_SEC_V2_PROJECT)
 		brightness_menu = RGB_MAX_LEVEL_V1;
 		brightness_back = RGB_MAX_LEVEL_V1;
 #else

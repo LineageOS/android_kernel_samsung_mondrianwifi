@@ -39,6 +39,7 @@
 #include <mach/msm_smd.h>
 #include <mach/msm_iomap.h>
 #include <mach/subsystem_restart.h>
+#include <mach/subsystem_notif.h>
 
 #ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
 #include "wcnss_prealloc.h"
@@ -390,6 +391,7 @@ static struct {
 	struct mutex vbat_monitor_mutex;
 	u16 unsafe_ch_count;
 	u16 unsafe_ch_list[WCNSS_MAX_CH_NUM];
+	void *wcnss_notif_hdle;
 } *penv = NULL;
 
 static ssize_t wcnss_wlan_macaddr_store(struct device *dev,
@@ -1721,7 +1723,9 @@ static void wcnss_nvbin_dnld(void)
 	const struct firmware *nv = NULL;
 	struct device *dev = &penv->pdev->dev;
 
+        pr_err("wcnss: wcnss_nvbin_dnld \n");
 	down_read(&wcnss_pm_sem);
+        pr_err("wcnss: request_firmware \n");
 
 	ret = request_firmware(&nv, NVBIN_FILE, dev);
 
@@ -1740,7 +1744,7 @@ static void wcnss_nvbin_dnld(void)
 
 	total_fragments = TOTALFRAGMENTS(nv_blob_size);
 
-	pr_info("wcnss: NV bin size: %d, total_fragments: %d\n",
+        pr_err("wcnss: NV bin size: %d, total_fragments: %d\n",
 		nv_blob_size, total_fragments);
 
 	/* get buffer for nv bin dnld req message */
@@ -2435,6 +2439,21 @@ exit:
 	return rc;
 }
 
+static int wcnss_notif_cb(struct notifier_block *this, unsigned long code,
+				void *ss_handle)
+{
+	pr_debug("%s: wcnss notification event: %lu\n", __func__, code);
+
+	if (SUBSYS_POWERUP_FAILURE == code)
+		wcnss_pronto_log_debug_regs();
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block wnb = {
+	.notifier_call = wcnss_notif_cb,
+};
+
 
 static const struct file_operations wcnss_node_fops = {
 	.owner = THIS_MODULE,
@@ -2475,6 +2494,13 @@ wcnss_wlan_probe(struct platform_device *pdev)
 		return -ENOENT;
 	}
 
+	/* register wcnss event notification */
+	penv->wcnss_notif_hdle = subsys_notif_register_notifier("wcnss", &wnb);
+	if (IS_ERR(penv->wcnss_notif_hdle)) {
+		pr_err("wcnss: register event notification failed!\n");
+		return PTR_ERR(penv->wcnss_notif_hdle);
+	}
+	
 	mutex_init(&penv->dev_lock);
 	mutex_init(&penv->ctrl_lock);
 	mutex_init(&penv->vbat_monitor_mutex);
@@ -2499,6 +2525,10 @@ wcnss_wlan_probe(struct platform_device *pdev)
 static int __devexit
 wcnss_wlan_remove(struct platform_device *pdev)
 {
+
+	if (penv->wcnss_notif_hdle)
+		subsys_notif_unregister_notifier(penv->wcnss_notif_hdle, &wnb);
+		
 	wcnss_remove_sysfs(&pdev->dev);
 	penv = NULL;
 	return 0;
