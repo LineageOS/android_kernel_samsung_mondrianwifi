@@ -37,6 +37,8 @@
 
 static int mxt_power_onoff(struct mxt_data *data, bool enabled);
 
+#define VERBOSE 0
+
 #if ENABLE_TOUCH_KEY
 
 /* support 6 touch key */
@@ -974,6 +976,7 @@ static void mxt_report_input_data(struct mxt_data *data)
 		}
 		report_count++;
 
+#if VERBOSE
 #if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
 		if (data->fingers[i].state == MXT_STATE_PRESS) {
 			dev_info(&data->client->dev, "[P][%d]: T[%d][%d] X[%d],Y[%d],W[%d],Z[%d]\n",
@@ -999,6 +1002,7 @@ static void mxt_report_input_data(struct mxt_data *data)
 				i, data->fingers[i].type,
 				data->fingers[i].event,
 				data->fingers[i].mcount);
+#endif
 
 		if (data->fingers[i].state == MXT_STATE_RELEASE) {
 			data->fingers[i].state = MXT_STATE_INACTIVE;
