@@ -280,7 +280,7 @@ enum {
 #define MXT_REVISION_I	1	/* Support hovering */
 
 /************** Feature **************/
-#define TSP_PATCH				1
+#define TSP_PATCH				0
 #define TSP_BOOSTER				0
 #define MXT_TKEY_BOOSTER			0
 #define TSP_SEC_FACTORY			1
