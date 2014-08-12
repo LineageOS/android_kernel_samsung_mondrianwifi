@@ -98,9 +98,9 @@ extern int msm_show_resume_irq_mask;
 #ifdef CONFIG_ANDROID_PERSISTENT_RAM
 /* CONFIG_SEC_DEBUG reserving memory for persistent RAM*/
 #define RAMCONSOLE_PHYS_ADDR 0x1FB00000
-static struct persistent_ram_descriptor per_ram_descs[] __initdata = {
+static struct persistent_ram_descriptor per_ram_descs[] = {
 {
-	.name = "ram_console",
+	.name = "ram_console.67",
 	.size = SZ_1M,
 }
 };

@@ -74,9 +74,15 @@ static int __devinit ram_console_probe(struct platform_device *pdev)
 	return 0;
 }
 
+static struct of_device_id msm_match_table[] = {
+	{.compatible = "ram_console"},
+	{},
+};
+
 static struct platform_driver ram_console_driver = {
 	.driver		= {
 		.name	= "ram_console",
+		.of_match_table = msm_match_table,
 	},
 	.probe = ram_console_probe,
 };
