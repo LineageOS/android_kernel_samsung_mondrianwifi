@@ -42,6 +42,7 @@
 		reg = <0xfe8050c8 0xc8>;
 		qcom,android-usb-swfi-latency = <1>;
 		qcom,android-usb-uicc-nluns = /bits/ 8 <1>;
+		qcom,android-usb-cdrom;
 	};
 
 	qcom,msm-imem@fe805000 {

@@ -321,9 +321,11 @@ void dwc3_gadget_giveback(struct dwc3_ep *dep, struct dwc3_request *req,
 			req->request.length, status);
 
 	dbg_done(dep->number, req->request.actual, req->request.status);
-	spin_unlock(&dwc->lock);
-	req->request.complete(&dep->endpoint, &req->request);
-	spin_lock(&dwc->lock);
+	if (req->request.complete) {
+		spin_unlock(&dwc->lock);
+		req->request.complete(&dep->endpoint, &req->request);
+		spin_lock(&dwc->lock);
+	}
 }
 
 static const char *dwc3_gadget_ep_cmd_string(u8 cmd)
@@ -1716,6 +1718,12 @@ static int dwc3_gadget_vbus_session(struct usb_gadget *_gadget, int is_active)
 
 	spin_lock_irqsave(&dwc->lock, flags);
 
+	if (dwc->vbus_active == is_active) {
+		printk(KERN_ERR "dwc3 state is same\n");
+		spin_unlock_irqrestore(&dwc->lock, flags);
+		return 0;
+	}
+
 	/* Mark that the vbus was powered */
 	dwc->vbus_active = is_active;
 
@@ -1768,10 +1776,11 @@ void dwc3_gadget_restart(struct dwc3 *dwc)
 
 	/* Enable USB2 LPM and automatic phy suspend only on recent versions */
 	if (dwc->revision >= DWC3_REVISION_194A) {
+#ifndef CONFIG_MACH_TABPRO
 		reg = dwc3_readl(dwc->regs, DWC3_DCFG);
 		reg |= DWC3_DCFG_LPM_CAP;
 		dwc3_writel(dwc->regs, DWC3_DCFG, reg);
-
+#endif
 		reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 		reg &= ~(DWC3_DCTL_HIRD_THRES_MASK | DWC3_DCTL_L1_HIBER_EN);
 
@@ -1810,7 +1819,6 @@ void dwc3_gadget_restart(struct dwc3 *dwc)
 
 	/* Start with SuperSpeed Default */
 	dwc3_gadget_ep0_desc.wMaxPacketSize = cpu_to_le16(512);
-
 	dwc->delayed_status = false;
 	/* reinitialize physical ep0-1 */
 	dep = dwc->eps[0];
@@ -2604,6 +2612,7 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 	 *
 	 * In both cases reset values should be sufficient.
 	 */
+
 }
 
 static void dwc3_gadget_wakeup_interrupt(struct dwc3 *dwc)
@@ -2832,7 +2841,6 @@ static irqreturn_t dwc3_process_event_buf(struct dwc3 *dwc, u32 buf)
 
 		dwc3_writel(dwc->regs, DWC3_GEVNTCOUNT(buf), 4);
 	}
-
 	return IRQ_HANDLED;
 }
 
@@ -2904,7 +2912,11 @@ int __devinit dwc3_gadget_init(struct dwc3 *dwc)
 	dev_set_name(&dwc->gadget.dev, "gadget");
 
 	dwc->gadget.ops			= &dwc3_gadget_ops;
+#if defined(CONFIG_SEC_LT03_PROJECT) || defined(CONFIG_SEC_MONDRIAN_PROJECT)
+	dwc->gadget.max_speed		= USB_SPEED_HIGH;
+#else
 	dwc->gadget.max_speed		= USB_SPEED_SUPER;
+#endif
 	dwc->gadget.speed		= USB_SPEED_UNKNOWN;
 	dwc->gadget.dev.parent		= dwc->dev;
 	dwc->gadget.sg_supported	= true;
@@ -2935,9 +2947,11 @@ int __devinit dwc3_gadget_init(struct dwc3 *dwc)
 		goto err5;
 	}
 
+#ifndef CONFIG_MACH_TABPRO
 	reg = dwc3_readl(dwc->regs, DWC3_DCFG);
 	reg |= DWC3_DCFG_LPM_CAP;
 	dwc3_writel(dwc->regs, DWC3_DCFG, reg);
+#endif
 
 	/* Enable all but Start and End of Frame IRQs */
 	reg = (DWC3_DEVTEN_EVNTOVERFLOWEN |
@@ -2952,9 +2966,11 @@ int __devinit dwc3_gadget_init(struct dwc3 *dwc)
 
 	/* Enable USB2 LPM and automatic phy suspend only on recent versions */
 	if (dwc->revision >= DWC3_REVISION_194A) {
+#ifndef CONFIG_MACH_TABPRO
 		reg = dwc3_readl(dwc->regs, DWC3_DCFG);
 		reg |= DWC3_DCFG_LPM_CAP;
 		dwc3_writel(dwc->regs, DWC3_DCFG, reg);
+#endif
 
 		reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 		reg &= ~(DWC3_DCTL_HIRD_THRES_MASK | DWC3_DCTL_L1_HIBER_EN);
@@ -2998,7 +3014,6 @@ int __devinit dwc3_gadget_init(struct dwc3 *dwc)
 		pm_runtime_enable(&dwc->gadget.dev);
 		pm_runtime_get(&dwc->gadget.dev);
 	}
-
 	return 0;
 
 err7:

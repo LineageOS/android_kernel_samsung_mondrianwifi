@@ -194,6 +194,7 @@ static int dwc3_otg_start_host(struct usb_otg *otg, int on)
 	if (!dwc->xhci)
 		return -EINVAL;
 
+#ifndef CONFIG_MACH_TABPRO
 	if (!dotg->vbus_otg) {
 		dotg->vbus_otg = devm_regulator_get(dwc->dev->parent,
 							"vbus_dwc3");
@@ -204,10 +205,12 @@ static int dwc3_otg_start_host(struct usb_otg *otg, int on)
 			return ret;
 		}
 	}
+#endif
 
 	if (on) {
 		dev_dbg(otg->phy->dev, "%s: turn on host\n", __func__);
 
+#ifndef CONFIG_MACH_TABPRO
 		dwc3_otg_notify_host_mode(otg, on);
 		ret = regulator_enable(dotg->vbus_otg);
 		if (ret) {
@@ -215,6 +218,7 @@ static int dwc3_otg_start_host(struct usb_otg *otg, int on)
 			dwc3_otg_notify_host_mode(otg, 0);
 			return ret;
 		}
+#endif
 
 		/*
 		 * This should be revisited for more testing post-silicon.
@@ -241,10 +245,16 @@ static int dwc3_otg_start_host(struct usb_otg *otg, int on)
 			dev_err(otg->phy->dev,
 				"%s: failed to add XHCI pdev ret=%d\n",
 				__func__, ret);
+#ifndef CONFIG_MACH_TABPRO
 			regulator_disable(dotg->vbus_otg);
 			dwc3_otg_notify_host_mode(otg, 0);
+#endif
 			return ret;
 		}
+
+#ifdef CONFIG_MACH_TABPRO
+		dwc3_otg_notify_host_mode(otg, on);
+#endif
 
 		/* re-init OTG EVTEN register as XHCI reset clears it */
 		if (ext_xceiv && !ext_xceiv->otg_capability)
@@ -252,11 +262,13 @@ static int dwc3_otg_start_host(struct usb_otg *otg, int on)
 	} else {
 		dev_dbg(otg->phy->dev, "%s: turn off host\n", __func__);
 
+#ifndef CONFIG_MACH_TABPRO
 		ret = regulator_disable(dotg->vbus_otg);
 		if (ret) {
 			dev_err(otg->phy->dev, "unable to disable vbus_otg\n");
 			return ret;
 		}
+#endif
 		dwc3_otg_notify_host_mode(otg, on);
 
 		platform_device_del(dwc->xhci);
@@ -330,7 +342,6 @@ static int dwc3_otg_start_peripheral(struct usb_otg *otg, int on)
 	if (on) {
 		dev_dbg(otg->phy->dev, "%s: turn on gadget %s\n",
 					__func__, otg->gadget->name);
-
 		/* Core reset is not required during start peripheral. Only
 		 * DBM reset is required, hence perform only DBM reset here */
 		if (ext_xceiv && ext_xceiv->otg_capability &&
@@ -535,6 +546,9 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 	static int power_supply_type;
 	struct dwc3_otg *dotg = container_of(phy->otg, struct dwc3_otg, otg);
 
+#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+	return 0;
+#endif
 
 	if (!dotg->psy || !dotg->charger) {
 		dev_err(phy->dev, "no usb power supply/charger registered\n");
@@ -718,7 +732,11 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 	case OTG_STATE_UNDEFINED:
 		dwc3_otg_init_sm(dotg);
 		if (!dotg->psy) {
+#ifdef CONFIG_MACH_TABPRO
+			dotg->psy = power_supply_get_by_name("dwc-usb");
+#else
 			dotg->psy = power_supply_get_by_name("usb");
+#endif
 
 			if (!dotg->psy)
 				dev_err(phy->dev,
@@ -854,6 +872,9 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			dotg->vbus_retry_count = 0;
 			work = 1;
 		} else {
+#ifdef CONFIG_MACH_MONDRIAN
+			pm_runtime_get_noresume(phy->dev);
+#endif
 			phy->state = OTG_STATE_A_HOST;
 			ret = dwc3_otg_start_host(&dotg->otg, 1);
 			if ((ret == -EPROBE_DEFER) &&
@@ -862,6 +883,9 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 				 * Get regulator failed as regulator driver is
 				 * not up yet. Will try to start host after 1sec
 				 */
+#ifdef CONFIG_MACH_MONDRIAN
+				pm_runtime_put_noidle(phy->dev);
+#endif
 				phy->state = OTG_STATE_A_IDLE;
 				dev_dbg(phy->dev, "Unable to get vbus regulator. Retrying...\n");
 				delay = VBUS_REG_CHECK_DELAY;
@@ -872,6 +896,9 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 				 * Probably set_host was not called yet.
 				 * We will re-try as soon as it will be called
 				 */
+#ifdef CONFIG_MACH_MONDRIAN
+				pm_runtime_put_noidle(phy->dev);
+#endif
 				dev_dbg(phy->dev, "enter lpm as\n"
 					"unable to start A-device\n");
 				phy->state = OTG_STATE_A_IDLE;
@@ -888,6 +915,9 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			phy->state = OTG_STATE_B_IDLE;
 			dotg->vbus_retry_count = 0;
 			work = 1;
+#ifdef CONFIG_MACH_MONDRIAN
+			pm_runtime_put_noidle(phy->dev);
+#endif
 		}
 		break;
 
@@ -1010,6 +1040,9 @@ int dwc3_otg_init(struct dwc3 *dwc)
 	dotg->otg.phy->set_power = dwc3_otg_set_power;
 	dotg->otg.phy->set_suspend = dwc3_otg_set_suspend;
 	dotg->otg.phy->set_phy_autosuspend = dwc3_otg_set_autosuspend;
+#ifdef CONFIG_USB_HOST_NOTIFY
+	dotg->otg.phy->set_suspend = NULL;
+#endif
 
 	ret = usb_set_transceiver(dotg->otg.phy);
 	if (ret) {

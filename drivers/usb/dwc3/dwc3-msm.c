@@ -1194,7 +1194,6 @@ devote_3p3:
 static int dwc3_hsusb_ldo_enable(struct dwc3_msm *dwc, int on)
 {
 	int rc = 0;
-
 	dev_dbg(dwc->dev, "reg (%s)\n", on ? "HPM" : "LPM");
 
 	if (!on)
@@ -1294,7 +1293,6 @@ static int dwc3_ssusb_ldo_init(struct dwc3_msm *dwc, int init)
 static int dwc3_ssusb_ldo_enable(struct dwc3_msm *dwc, int on)
 {
 	int rc = 0;
-
 	dev_dbg(dwc->dev, "reg (%s)\n", on ? "HPM" : "LPM");
 
 	if (!on)
@@ -1416,7 +1414,11 @@ static void dwc3_msm_ss_phy_reg_init(struct dwc3_msm *mdwc)
 	data &= ~(1 << 6);
 	data |= (1 << 7);
 	data &= ~(0x7 << 8);
+#if defined(CONFIG_SEC_MONDRIAN_PROJECT)
+	data |= (0x5 << 8);
+#else
 	data |= (0x3 << 8);
+#endif
 	data |= (0x1 << 11);
 	dwc3_msm_ssusb_write_phycreg(mdwc->base, 0x1006, data);
 
@@ -2303,6 +2305,7 @@ error:
 
 static irqreturn_t msm_dwc3_irq(int irq, void *data)
 {
+#ifndef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
 	struct dwc3_msm *mdwc = data;
 
 	if (atomic_read(&mdwc->in_lpm)) {
@@ -2313,7 +2316,7 @@ static irqreturn_t msm_dwc3_irq(int irq, void *data)
 	} else {
 		pr_info_ratelimited("%s: IRQ outside LPM\n", __func__);
 	}
-
+#endif
 	return IRQ_HANDLED;
 }
 
@@ -2847,6 +2850,10 @@ unreg_chrdev:
 	return ret;
 }
 
+#ifdef CONFIG_MACH_TABPRO
+#include "dwc3-sec.c"
+#endif
+
 static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
@@ -2988,6 +2995,7 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 	}
 
 	/* SS PHY */
+
 	mdwc->ssusb_vddcx = devm_regulator_get(&pdev->dev, "ssusb_vdd_dig");
 	if (IS_ERR(mdwc->ssusb_vddcx)) {
 		dev_err(&pdev->dev, "unable to get ssusb vddcx\n");
@@ -3201,8 +3209,13 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 	/* usb_psy required only for vbus_notifications or charging support */
 	if (mdwc->ext_xceiv.otg_capability ||
 			!mdwc->charger.charging_disabled) {
+#ifdef CONFIG_MACH_TABPRO
+		mdwc->usb_psy.name = "dwc-usb";
+		mdwc->usb_psy.type = POWER_SUPPLY_TYPE_UNKNOWN;
+#else
 		mdwc->usb_psy.name = "usb";
 		mdwc->usb_psy.type = POWER_SUPPLY_TYPE_USB;
+#endif
 		mdwc->usb_psy.supplied_to = dwc3_msm_pm_power_supplied_to;
 		mdwc->usb_psy.num_supplicants = ARRAY_SIZE(
 						dwc3_msm_pm_power_supplied_to);
@@ -3250,6 +3263,13 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 	/* Register with OTG if present, ignore USB2 OTG using other PHY */
 	if (mdwc->otg_xceiv &&
 			!(mdwc->otg_xceiv->flags & ENABLE_SECONDARY_PHY)) {
+#ifdef CONFIG_MACH_TABPRO
+		pr_info("dwc3-msm: sec_otg_init is called.\n");
+		sec_otg_init(mdwc, mdwc->otg_xceiv);
+#ifdef CONFIG_USB_HOST_NOTIFY
+		get_vbus_detect_gpio(mdwc, &pdev->dev);
+#endif
+#endif
 		/* Skip charger detection for simulator targets */
 		if (!mdwc->charger.skip_chg_detect) {
 			mdwc->charger.start_detection = dwc3_start_chg_det;
