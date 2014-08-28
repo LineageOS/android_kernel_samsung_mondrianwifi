@@ -353,6 +353,25 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	return ret;
 }
 
+#ifdef CONFIG_MACH_TABPRO
+static void lp11_hacks(struct mdss_panel_data *pdata, struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	u32 tmp;
+
+	tmp = MIPI_INP((ctrl_pdata->ctrl_base) + 0xac);
+#ifdef CONFIG_MACH_MONDRIAN
+	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, 0x1F << 16);
+#else
+	tmp &= ~(1<<28);
+	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, tmp);
+#endif
+	wmb();
+	msleep(20);
+	mdss_dsi_panel_reset(pdata, 1);
+	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, tmp);
+}
+#endif
+
 static void __mdss_dsi_ctrl_setup(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -711,12 +730,16 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	mdss_dsi_sw_reset(pdata);
 	mdss_dsi_host_init(pdata);
 
+#ifdef CONFIG_MACH_TABPRO
+	lp11_hacks(pdata, ctrl_pdata);
+#else
 	/*
 	 * Issue hardware reset line after enabling the DSI clocks and data
 	 * data lanes for LP11 init
 	 */
 	if (mipi->lp11_init)
 		mdss_dsi_panel_reset(pdata, 1);
+#endif
 
 	if (mipi->init_delay)
 		usleep(mipi->init_delay);
