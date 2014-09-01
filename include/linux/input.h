@@ -470,6 +470,10 @@ struct input_keymap_entry {
 #define KEY_RFKILL		247	/* Key that controls all radios */
 
 #define KEY_MICMUTE		248	/* Mute / unmute the microphone */
+#define KEY_DUMMY_HOME1		249	/* Dummy Touchkey : HOME1*/
+#define KEY_DUMMY_HOME2		250	/* Dummy Touchkey : HOME2*/
+#define KEY_DUMMY_MENU		251	/* Dummy Touchkey : MENU*/
+#define KEY_DUMMY_BACK		253	/* Dummy Touchkey : BACK*/
 #define KEY_RECENT		254	/* Samsung actionmouse? */
 
 /* Code 255 is reserved for special needs of AT keyboard driver */
@@ -819,6 +823,10 @@ struct input_keymap_entry {
 #define ABS_MT_TRACKING_ID	0x39	/* Unique ID of initiated contact */
 #define ABS_MT_PRESSURE		0x3a	/* Pressure on contact area */
 #define ABS_MT_DISTANCE		0x3b	/* Contact hover distance */
+#define ABS_MT_ANGLE		0x3c	/* touch angle */
+#define ABS_MT_PALM		0x3d	/* palm touch */
+#define ABS_MT_COMPONENT	0x3e	/* touch component */
+#define ABS_MT_SUMSIZE		0x3f	/* touch sumsize */
 
 #ifdef __KERNEL__
 /* Implementation details, userspace should not care about these */
