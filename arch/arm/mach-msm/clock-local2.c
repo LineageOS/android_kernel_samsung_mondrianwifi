@@ -654,6 +654,9 @@ static struct frac_entry frac_table_675m[] = {	/* link rate of 270M */
 	{47, 206},	/* 154 M */
 	{31, 100},	/* 205.25 M */
 	{107, 269},	/* 268.50 M */
+#ifdef CONFIG_MACH_PICASSO
+	{151, 372},	/* 274 M */
+#endif
 	{0, 0},
 };
 
@@ -706,6 +709,7 @@ static int set_rate_edp_pixel(struct clk *clk, unsigned long rate)
 		set_rate_mnd(rcg, pixel_freq);
 		return 0;
 	}
+
 	return -EINVAL;
 }
 
