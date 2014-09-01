@@ -162,7 +162,8 @@ static int eeprom_i2c_write(struct i2c_client *client,
 
 	return err;
 }
-void tcon_i2c_slave_change(void)
+
+void tcon_i2c_slave_change(struct mdss_edp_drv_pdata *ep)
 {
 	unsigned char data[3];
 
@@ -170,12 +171,12 @@ void tcon_i2c_slave_change(void)
 	data[0] = 0x03;
 	data[1] = 0x13;
 	data[2] = 0xBB;
-	aux_tx(0x491, data, 3);
+	edp_aux_write_buf(ep, 0x491, data, 3, 0);
 
 	data[0] = 0x03;
 	data[1] = 0x14;
 	data[2] = 0xBB;
-	aux_tx(0x491, data, 3);
+	edp_aux_write_buf(ep, 0x491, data, 3, 0);
 
 	if (global_pinfo)
 		eeprom_request_gpio_master(global_pinfo->pdata);
@@ -185,11 +186,11 @@ void tcon_i2c_slave_change(void)
 #if defined(CONFIG_EDP_TCON_MDNIE)
 	/* TO enable MDNIE*/
 	data[0] = 0x08;
-	aux_tx(0x720, data, 1);
+	edp_aux_write_buf(ep, 0x720, data, 1, 0);
 	update_mdnie_register();
 #endif
 }
-static void tcon_init_setting(void)
+static void tcon_init_setting(struct mdss_edp_drv_pdata *ep)
 {
 	u16 i2c_addr[4];
 	u8 i2c_data[4];
@@ -199,22 +200,22 @@ static void tcon_init_setting(void)
 	data[0] = 0x03;
 	data[1] = 0x13;
 	data[2] = 0xBB;
-	aux_tx(0x491, data, 3);
+	edp_aux_write_buf(ep, 0x491, data, 3, 0);
 
 	data[0] = 0x03;
 	data[1] = 0x14;
 	data[2] = 0xBB;
-	aux_tx(0x491, data, 3);
+	edp_aux_write_buf(ep, 0x491, data, 3, 0);
 
 	/* TO enable MDNIE*/
 	data[0] = 0x08;
-	aux_tx(0x720, data, 1);
+	edp_aux_write_buf(ep, 0x720, data, 1, 0);
 
 	/* TCON SETTING FOR ESD RECOVERY*/
 	data[0] = 0x81;
 	data[1] = 0x68;
 	data[2] = 0x04;
-	aux_tx(0x491, data, sizeof(data));
+	edp_aux_write_buf(ep, 0x491, data, sizeof(data), 0);
 
 	if (!global_pinfo) {
 		pr_info("%s global_pinfo is NULL", __func__);
@@ -560,10 +561,10 @@ int tcon_tune_value(struct edp_eeprom_info *pinfo)
 	return ret;
 }
 
-void restore_set_tcon(void)
+void restore_set_tcon(struct mdss_edp_drv_pdata *ep)
 {
 	if (global_pinfo) {
-		tcon_init_setting();
+		tcon_init_setting(ep);
 		tcon_tune_value(global_pinfo);
 #if defined(CONFIG_EDP_TCON_MDNIE)
 		update_mdnie_register();

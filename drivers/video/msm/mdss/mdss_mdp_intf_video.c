@@ -24,6 +24,10 @@
 #include "mdss_debug.h"
 #include "mdss_mdp_trace.h"
 
+#if defined(CONFIG_FB_MSM_EDP_SAMSUNG)
+#include "mdss_edp.h"
+#endif
+
 /* wait for at least 2 vsyncs for lowest refresh rate (24hz) */
 #define VSYNC_TIMEOUT_US 100000
 
@@ -755,6 +759,9 @@ static int mdss_mdp_video_display(struct mdss_mdp_ctl *ctl, void *arg)
 		ctx->timegen_en = true;
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_ON, NULL);
 		WARN(rc, "intf %d panel on error (%d)\n", ctl->intf_num, rc);
+#if defined(CONFIG_FB_MSM_EDP_SAMSUNG)
+		set_backlight_first_kick_off(ctl->panel_data);
+#endif
 	}
 
 	return 0;

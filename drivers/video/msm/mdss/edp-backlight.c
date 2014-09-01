@@ -162,7 +162,6 @@ static u8 ndra_setting[][2] ={
 	{0xAF, 0x01},
 };
 
-extern void restore_set_tcon(void);
 void edp_backlight_power_enable(void)
 {
 	int i;
@@ -182,7 +181,7 @@ void edp_backlight_power_enable(void)
 	pr_info("%s LSI_NDRA ", __func__);
 }
 
-void edp_backlight_enable(void)
+void edp_backlight_enable(struct mdss_edp_drv_pdata *ep)
 {
 	int i;
 	struct edp_backlight_info *info = pinfo;
@@ -194,7 +193,7 @@ void edp_backlight_enable(void)
 
 	gpio_set_value(info->pdata->gpio_backlight_en,1);
 
-	restore_set_tcon();
+	restore_set_tcon(ep);
 
 	for (i = 0; i < ARRAY_SIZE(ndra_setting) ;i++) {
 		backlight_i2c_write(info->client, ndra_setting[i][0], ndra_setting[i][1], 1);
