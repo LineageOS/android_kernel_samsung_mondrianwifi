@@ -65,13 +65,9 @@ static int mdss_edp_regulator_init(struct mdss_edp_drv_pdata *edp_drv)
 		return -EINVAL;
 	}
 
-#ifdef CONFIG_MACH_PICASSO
-	config_i2c_lane(true);
-#else
 	ret = mdss_edp_regulator_on(edp_drv);
 	if (ret)
 		return ret;
-#endif
 
 	return 0;
 }
@@ -693,7 +689,6 @@ int mdss_edp_off(struct mdss_panel_data *pdata)
 				edp_read(edp_drv->base + 0x8));
 
 	mutex_unlock(&edp_drv->train_mutex);
-	mdss_edp_regulator_off(edp_drv);
 
 #if defined(CONFIG_FB_MSM_EDP_SAMSUNG)
 	edp_samsung_edp_off_end(edp_drv);
@@ -1219,7 +1214,6 @@ static int __devinit mdss_edp_probe(struct platform_device *pdev)
 	mdss_edp_unprepare_aux_clocks(edp_drv);
 
 	if (edp_drv->cont_splash) { /* vote for clocks */
-		mdss_edp_regulator_on(edp_drv);
 		mdss_edp_prepare_clocks(edp_drv);
 		mdss_edp_clk_enable(edp_drv);
 	}

@@ -528,10 +528,6 @@ int edp_samsung_event_handler(struct mdss_panel_data *pdata, int event, void *ar
 	pr_info("%s: event=%d\n", __func__, event);
 
 	switch (event) {
-	case MDSS_EVENT_RESET:
-		pwm_disable(edp_drv->bl_pwm);
-		edp_backlight_disable();
-		break;
 	case MDSS_EVENT_UNBLANK:
 		rc = mdss_edp_on(pdata);
 		break;
