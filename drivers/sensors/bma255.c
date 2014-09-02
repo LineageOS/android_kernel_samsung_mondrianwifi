@@ -48,7 +48,7 @@
 #define BMA255_CHIP_ID                  0xFA
 
 #define CHIP_ID_RETRIES                 3
-#define ACCEL_LOG_TIME                  15 /* 15 sec */
+#define ACCEL_LOG_TIME                  0 /* logging disabled */
 
 #define SLOPE_X_INT                     0
 #define SLOPE_Y_INT                     1
@@ -455,6 +455,7 @@ static void bma255_work_func(struct work_struct *work)
 	input_sync(data->input);
 
 exit:
+#if ACCEL_LOG_TIME > 0
 	if ((ktime_to_ns(data->poll_delay) * (int64_t)data->time_count)
 		>= ((int64_t)ACCEL_LOG_TIME * NSEC_PER_SEC)) {
 		pr_info("[SENSOR]: %s - x = %d, y = %d, z = %d (ra:%d)\n",
@@ -463,6 +464,9 @@ exit:
 		data->time_count = 0;
 	} else
 		data->time_count++;
+#else
+	return;
+#endif
 }
 
 static void bma255_set_enable(struct bma255_p *data, int enable)

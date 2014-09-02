@@ -46,7 +46,7 @@
 #define REG_BLUE	0x0A
 #define REG_WHITE	0x0B
 
-#define LIGHT_LOG_TIME	15 /* 15 sec */
+#define LIGHT_LOG_TIME	0 /* logging disabled */
 #define ALS_REG_NUM	2
 
 enum {
@@ -162,6 +162,7 @@ static void cm3323_work_func_light(struct work_struct *work)
 	input_report_rel(data->input, REL_WHITE, data->color[3] + 1);
 	input_sync(data->input);
 
+#if LIGHT_LOG_TIME > 0
 	if (((int64_t)atomic_read(&data->delay) * (int64_t)data->time_count)
 		>= ((int64_t)LIGHT_LOG_TIME * NSEC_PER_SEC)) {
 		pr_info("[SENSOR]: %s - r = %u g = %u b = %u w = %u\n",
@@ -171,6 +172,7 @@ static void cm3323_work_func_light(struct work_struct *work)
 	} else {
 		data->time_count++;
 	}
+#endif
 
 	schedule_delayed_work(&data->work, delay);
 }

@@ -2054,7 +2054,7 @@ static int get_fuelgauge_soc(struct i2c_client *client)
 		(ts.tv_sec - fuelgauge->info.fullcap_check_interval);
 	if (fullcap_check_interval >
 		VFFULLCAP_CHECK_INTERVAL) {
-		dev_info(&client->dev,
+		dev_dbg(&client->dev,
 			"%s: check fullcap range (interval:%d)\n",
 			__func__, fullcap_check_interval);
 		fg_check_vf_fullcap_range(client);

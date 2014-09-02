@@ -10,8 +10,6 @@
  * published by the Free Software Foundation.
  */
 
-#define DEBUG
-
 #include <linux/battery/sec_charger.h>
 
 #include <linux/debugfs.h>
