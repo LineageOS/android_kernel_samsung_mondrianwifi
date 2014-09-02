@@ -68,3 +68,14 @@ config SENSORS_BMI055
 	help
 	  If you say yes here you get support for Bosch-Sensortec's
 	  BMI055 Acceleration & Gyroscope Sensor.
+
+config SENSORS_CM3323
+	depends on I2C
+	tristate "CM3323 driver"
+	default n
+	help
+	  Say Y here if you use cm3323.
+	  This option enables RGB sensors using
+	  Capella cm3323 device driver.
+
+	  Say N here if you do not use cm3323.
