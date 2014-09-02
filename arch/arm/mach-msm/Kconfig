@@ -3098,4 +3098,11 @@ config SEC_THERMISTOR
 	  help
 	  Use thermistor driver for checking temperature near AP chip.
 
+config BT_BCM4339
+	bool "Enable BCM4339 driver"
+	default n
+	help
+	  Adds BCM4339 RFKILL driver for Broadcom BCM4339 chipset.
+	  default is n.
+
 endif

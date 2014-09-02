@@ -432,3 +432,4 @@ obj-$(CONFIG_USB_SWITCH_FSA9485) += sec-switch.o
 obj-$(CONFIG_REGULATOR_MAX77888) += sec-regulator-max77888.o
 obj-$(CONFIG_SEC_THERMISTOR) += sec_thermistor.o msm8974-thermistor.o
 obj-$(CONFIG_BCM4339) += board-8974-wifi.o board-8974-bt.o
+obj-$(CONFIG_BT_BCM4339) += board-bluetooth-bcm4339.o
