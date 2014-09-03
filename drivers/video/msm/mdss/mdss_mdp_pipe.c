@@ -304,6 +304,8 @@ int mdss_mdp_smp_reserve(struct mdss_mdp_pipe *pipe)
 		nlines = pipe->bwc_mode ? 1 : 2;
 
 	mutex_lock(&mdss_mdp_smp_lock);
+
+#if !defined(CONFIG_FB_MSM_EDP_SAMSUNG)
 	if (pipe->src_fmt->is_yuv || (pipe->flags & MDP_BACKEND_COMPOSITION)) {
 		for (i = (MAX_PLANES - 1); i >= ps.num_planes; i--) {
 			if (bitmap_weight(pipe->smp_map[i].allocated, SMP_MB_CNT)) {
@@ -314,6 +316,7 @@ int mdss_mdp_smp_reserve(struct mdss_mdp_pipe *pipe)
 			}
 		}
 	}
+#endif
 
 	for (i = 0; i < ps.num_planes; i++) {
 		if (rot_mode) {
@@ -926,8 +929,17 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 	dst = pipe->dst;
 	src = pipe->src;
 
-	if (pipe->mixer->type == MDSS_MDP_MIXER_TYPE_INTF)
+	if (pipe->mixer->type == MDSS_MDP_MIXER_TYPE_INTF) {
 		mdss_mdp_crop_rect(&src, &dst, &sci);
+		if (pipe->flags & MDP_FLIP_LR) {
+			src.x = pipe->src.x + (pipe->src.x + pipe->src.w)
+				- (src.x + src.w);
+		}
+		if (pipe->flags & MDP_FLIP_UD) {
+			src.y = pipe->src.y + (pipe->src.y + pipe->src.h)
+				- (src.y + src.h);
+		}
+	}
 
 	src_size = (src.h << 16) | src.w;
 	src_xy = (src.y << 16) | src.x;
