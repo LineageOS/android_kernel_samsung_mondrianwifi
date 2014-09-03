@@ -90,7 +90,7 @@ extern int get_edp_power_state(void);
 
 static void eeprom_request_gpio_slave(struct edp_eeprom_platform_data *pdata)
 {
-	pr_info("%s gpio_scl : %d , gpio_sda : %d", __func__, pdata->gpio_scl, pdata->gpio_sda);
+	pr_debug("%s gpio_scl : %d , gpio_sda : %d", __func__, pdata->gpio_scl, pdata->gpio_sda);
 
 	gpio_tlmm_config(GPIO_CFG(pdata->gpio_scl, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	gpio_tlmm_config(GPIO_CFG(pdata->gpio_sda, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
@@ -98,7 +98,7 @@ static void eeprom_request_gpio_slave(struct edp_eeprom_platform_data *pdata)
 
 static void eeprom_request_gpio_master(struct edp_eeprom_platform_data *pdata)
 {
-	pr_info("%s gpio_scl : %d , gpio_sda : %d", __func__, pdata->gpio_scl, pdata->gpio_sda);
+	pr_debug("%s gpio_scl : %d , gpio_sda : %d", __func__, pdata->gpio_scl, pdata->gpio_sda);
 
 	gpio_tlmm_config(GPIO_CFG(pdata->gpio_scl, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	gpio_tlmm_config(GPIO_CFG(pdata->gpio_sda, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
@@ -262,7 +262,7 @@ int mdnie_tune_cmd(short *tune_data, int len)
 #if 0
 	for(data_pos = 0;data_pos < len ;data_pos++) {
 		eeprom_i2c_read(global_pinfo->client, tune_data[data_pos * 2], data, 1);
-		pr_info("0x%04x,0x%02x\n", tune_data[data_pos * 2], data[0]);
+		pr_debug("0x%04x,0x%02x\n", tune_data[data_pos * 2], data[0]);
 	}
 #endif
 	mutex_unlock(&edp_power_state_chagne);
@@ -348,7 +348,7 @@ static void sending_tune_cmd(struct edp_eeprom_info *info, char *src, int len)
 
 	for(data_pos = 0;data_pos < cmd_pos ;data_pos++) {
 		eeprom_i2c_read(info->client, mdni_addr[data_pos], data, 1);
-		pr_info("0x%04x,0x%02x\n",mdni_addr[data_pos], data[0]);
+		pr_debug("0x%04x,0x%02x\n",mdni_addr[data_pos], data[0]);
 	}
 
 }
@@ -379,9 +379,9 @@ static void sending_tcon_tuen_cmd(struct edp_eeprom_info *info, char *src, int l
 			data_pos++;
 	}
 
-	pr_info("cmd_pos : %d", cmd_pos);
+	pr_debug("cmd_pos : %d", cmd_pos);
 	for (data_pos = 0; data_pos < cmd_pos ; data_pos++)
-		pr_info("0x%04x,0x%02x", tcon_addr[data_pos],tcon_tuning_val[data_pos]);
+		pr_debug("0x%04x,0x%02x", tcon_addr[data_pos],tcon_tuning_val[data_pos]);
 
 	//Send Tune Commands
 	eeprom_i2c_write(info->client, tcon_addr, tcon_tuning_val, TCON_TUNE_SIZE);
@@ -392,7 +392,7 @@ static void sending_tcon_tuen_cmd(struct edp_eeprom_info *info, char *src, int l
 
 	for(data_pos = 0;data_pos < cmd_pos ;data_pos++) {
 		eeprom_i2c_read(info->client, tcon_addr[data_pos], &data, 1);
-		pr_info("0x%04x,0x%02x\n",tcon_addr[data_pos], data);
+		pr_debug("0x%04x,0x%02x\n",tcon_addr[data_pos], data);
 	}
 
 }
@@ -406,7 +406,7 @@ static void load_tuning_file(struct edp_eeprom_info *info, char *filename, int m
 	int ret;
 	mm_segment_t fs;
 
-	pr_info("%s called loading file name : [%s]\n", __func__,
+	pr_debug("%s called loading file name : [%s]\n", __func__,
 	       filename);
 
 	fs = get_fs();
@@ -419,23 +419,23 @@ static void load_tuning_file(struct edp_eeprom_info *info, char *filename, int m
 	}
 
 	l = filp->f_path.dentry->d_inode->i_size;
-	pr_info("%s Loading File Size : %ld(bytes)", __func__, l);
+	pr_debug("%s Loading File Size : %ld(bytes)", __func__, l);
 
 	dp = kmalloc(l + 10, GFP_KERNEL);
 	if (dp == NULL) {
-		pr_info("Can't not alloc memory for tuning file load\n");
+		pr_debug("Can't not alloc memory for tuning file load\n");
 		filp_close(filp, current->files);
 		return;
 	}
 	pos = 0;
 	memset(dp, 0, l);
 
-	pr_info("%s before vfs_read()\n", __func__);
+	pr_debug("%s before vfs_read()\n", __func__);
 	ret = vfs_read(filp, (char __user *)dp, l, &pos);
-	pr_info("%s after vfs_read()\n", __func__);
+	pr_debug("%s after vfs_read()\n", __func__);
 
 	if (ret != l) {
-		pr_info("vfs_read() filed ret : %d\n", ret);
+		pr_debug("vfs_read() filed ret : %d\n", ret);
 		kfree(dp);
 		filp_close(filp, current->files);
 		return;
@@ -451,7 +451,7 @@ static void load_tuning_file(struct edp_eeprom_info *info, char *filename, int m
 		else
 			sending_tcon_tuen_cmd(info, dp, l);
 	} else
-		pr_info("%s get_edp_power_state off", __func__);
+		pr_debug("%s get_edp_power_state off", __func__);
 
 	kfree(dp);
 }
@@ -490,7 +490,7 @@ static ssize_t tuning_store(struct device *dev,
 		pt++;
 	}
 
-	pr_info("%s:%s\n", __func__, tuning_file);
+	pr_debug("%s:%s\n", __func__, tuning_file);
 
 	load_tuning_file(info, tuning_file, 1);
 
@@ -523,7 +523,7 @@ int tcon_tune_value(struct edp_eeprom_info *pinfo)
 		return -EINVAL;
 	}
 
-	pr_info("%s [set tcon] : mode : %d, br : %d, lux : %d power_save_mode : %d", __func__,
+	pr_debug("%s [set tcon] : mode : %d, br : %d, lux : %d power_save_mode : %d", __func__,
 		pdata->mode, pdata->auto_br, pdata->lux, pdata->power_save_mode);
 
 	if (pdata->power_save_mode) {
@@ -552,7 +552,7 @@ int tcon_tune_value(struct edp_eeprom_info *pinfo)
 	for(loop = 0; loop < tune_value->reg_cnt; loop++) {
 		unsigned char val;
 		eeprom_i2c_read(pinfo->client, tune_value->addr[loop], &val, 1);
-		pr_info("%s read addr : 0x%x data : 0x%x", __func__, tune_value->addr[loop], val);
+		pr_debug("%s read addr : 0x%x data : 0x%x", __func__, tune_value->addr[loop], val);
 	}
 #endif
 	mutex_unlock(&edp_power_state_chagne);
@@ -604,16 +604,16 @@ void tcon_pwm_duty(int pwm_duty, int updata_from_backlight)
 		if (pwm_duty < lowest_pwm_duty && pre_duty >= lowest_pwm_duty) {
 			pre_duty = pwm_duty;
 			tcon_under_lowest_percentage_duty();
-			pr_info("%s pwm under 20%% duty ratio : %d backlight update : %d", __func__, pwm_duty, updata_from_backlight);
+			pr_debug("%s pwm under 20%% duty ratio : %d backlight update : %d", __func__, pwm_duty, updata_from_backlight);
 		} else if (pwm_duty >= lowest_pwm_duty && pre_duty < lowest_pwm_duty) {
 			pre_duty = pwm_duty;
 			tcon_tune_value(global_pinfo);
-			pr_info("%s pwm over 20%% duty ratio : %d", __func__, pwm_duty);
+			pr_debug("%s pwm over 20%% duty ratio : %d", __func__, pwm_duty);
 		}
 	} else {
 		if (pre_duty < lowest_pwm_duty) {
 			tcon_under_lowest_percentage_duty();
-			pr_info("%s pwm under 20%% duty ratio : %d backlight update : %d", __func__, pwm_duty, updata_from_backlight);
+			pr_debug("%s pwm under 20%% duty ratio : %d backlight update : %d", __func__, pwm_duty, updata_from_backlight);
 		}
 	}
 }
@@ -802,7 +802,7 @@ static ssize_t store_black_test(struct device *dev,
 		tcon_tune_value(pinfo);
 	}
 
-	pr_info("%s value : %d", __func__, value);
+	pr_debug("%s value : %d", __func__, value);
 
 	return count;
 }
@@ -864,7 +864,7 @@ static ssize_t store_tcon_test(struct device *dev,
 		pt++;
 	}
 
-	pr_info("%s:%s\n", __func__, tuning_file);
+	pr_debug("%s:%s\n", __func__, tuning_file);
 
 	load_tuning_file(info, tuning_file, 0);
 
@@ -900,7 +900,7 @@ static int edp_eeprom_parse_dt(struct device *dev,
 	pdata->gpio_sda = of_get_named_gpio_flags(np, "edp,sda-gpio",
 				0, &pdata->sda_gpio_flags);
 
-	pr_info("%s gpio_scl : %d , gpio_sda : %d", __func__, pdata->gpio_scl, pdata->gpio_sda);
+	pr_debug("%s gpio_scl : %d , gpio_sda : %d", __func__, pdata->gpio_scl, pdata->gpio_sda);
 	return 0;
 }
 
@@ -919,7 +919,7 @@ static int __devinit edp_eeprom_probe(struct i2c_client *client,
 	struct backlight_device *bd = NULL;
 #endif
 
-	pr_info("%s", __func__);
+	pr_debug("%s", __func__);
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_I2C))
 		return -EIO;
@@ -1069,7 +1069,7 @@ static int __init edp_eeprom_init(void)
 
 	int ret = 0;
 
-	pr_info("%s", __func__);
+	pr_debug("%s", __func__);
 
 	ret = i2c_add_driver(&edp_eeprom_driver);
 	if (ret) {
@@ -1082,7 +1082,7 @@ static int __init edp_eeprom_init(void)
 
 static void __exit edp_eeprom_exit(void)
 {
-	pr_info("%s", __func__);
+	pr_debug("%s", __func__);
 	i2c_del_driver(&edp_eeprom_driver);
 }
 

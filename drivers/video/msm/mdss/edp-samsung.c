@@ -283,7 +283,7 @@ void edp_samsung_set_backlight(struct mdss_edp_drv_pdata *edp_drv, u32 bl_level)
 #endif
 	edp_drv->duty_level = duty_level;
 
-	pr_info("%s bl_level : %d duty_level : %d duty_period : %d  duty_ratio : %d",
+	pr_debug("%s bl_level : %d duty_level : %d duty_period : %d  duty_ratio : %d",
 				__func__, bl_level, duty_level, duty_period,
 				duty_ratio_table[bl_level]);
 }
@@ -412,14 +412,14 @@ static void edp_esd_work_func(struct work_struct *work)
 		return ;
 	}
 
-	pr_info("%s start", __func__);
+	pr_debug("%s start", __func__);
 
 	edp_drv->panel_data.event_handler(&edp_drv->panel_data, MDSS_EVENT_PANEL_OFF, NULL);
 	edp_drv->panel_data.event_handler(&edp_drv->panel_data, MDSS_EVENT_UNBLANK, NULL);
 
 	mdss_edp_set_backlight(&edp_drv->panel_data, edp_drv->current_bl);
 
-	pr_info("%s end", __func__);
+	pr_debug("%s end", __func__);
 }
 #endif
 
@@ -525,7 +525,7 @@ int edp_samsung_event_handler(struct mdss_panel_data *pdata, int event, void *ar
 
 	mutex_lock(&edp_event_state_chagne);
 
-	pr_info("%s: event=%d\n", __func__, event);
+	pr_debug("%s: event=%d\n", __func__, event);
 
 	switch (event) {
 	case MDSS_EVENT_UNBLANK:
@@ -535,7 +535,7 @@ int edp_samsung_event_handler(struct mdss_panel_data *pdata, int event, void *ar
 		rc = mdss_edp_off(pdata);
 		break;
 	default:
-		pr_info("%s : Unknown event (%d)\n", __func__, event);
+		pr_debug("%s : Unknown event (%d)\n", __func__, event);
 		break;
 	}
 
@@ -569,7 +569,7 @@ static int __init edp_current_boot_mode(char *mode)
 	else
 		recovery_mode = 0;
 
-	pr_info("%s %s", __func__, recovery_mode ?
+	pr_debug("%s %s", __func__, recovery_mode ?
 						"recovery" : "normal");
 	return 1;
 }
