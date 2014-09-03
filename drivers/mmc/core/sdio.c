@@ -1347,3 +1347,9 @@ void sdio_ctrl_power(struct mmc_host *host, bool onoff)
 		mmc_release_host(host);
 }
 EXPORT_SYMBOL(sdio_ctrl_power);
+
+void sdio_ctrl_card_power(struct mmc_card *card, bool onoff)
+{
+	sdio_ctrl_power(card->host, onoff);
+}
+EXPORT_SYMBOL(sdio_ctrl_card_power);
