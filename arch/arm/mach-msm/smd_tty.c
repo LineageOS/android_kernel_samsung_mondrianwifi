@@ -849,6 +849,9 @@ static int smd_tty_core_init(void)
 			 */
 			int legacy_ds = 0;
 
+#ifdef CONFIG_MACH_TABPRO
+			legacy_ds = 1;
+#else
 			legacy_ds |= cpu_is_msm7x01() || cpu_is_msm7x25();
 			legacy_ds |= cpu_is_msm7x27() || cpu_is_msm7x30();
 			legacy_ds |= cpu_is_qsd8x50() || cpu_is_msm8x55();
@@ -857,6 +860,7 @@ static int smd_tty_core_init(void)
 			 */
 			legacy_ds |= cpu_is_msm8x60() &&
 					(socinfo_get_platform_subtype() == 0x0);
+#endif
 
 			if (!legacy_ds)
 				continue;
