@@ -295,6 +295,10 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x6f656d00 | code, restart_reason);
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
+#ifdef CONFIG_MACH_TABPRO
+		} else if (strlen(cmd) == 0) {
+			__raw_writel(0x12345678, restart_reason);
+#endif
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
