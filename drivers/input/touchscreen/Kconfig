@@ -549,14 +549,6 @@ config TOUCHSCREEN_ATMEL_MXT1188S
 	  To compile this driver as a module, choose M here: the
 	  module will be called mxt1188s
 
-config TOUCHSCREEN_CYTTSP4
-	tristate "CYPRESS TMA445 Touchscreen Interface"
-	depends on I2C
-	default n
-	help
-	  Say Y here if you want support for cypress TMA445 touchscreen controllers.
-	  To compile this driver as a module, choose M here: the
-	  module will be called mxt1188s
 config TOUCHSCREEN_TOUCHRIGHT
 	tristate "Touchright serial touchscreen"
 	select SERIO
