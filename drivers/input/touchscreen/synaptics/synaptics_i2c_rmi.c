@@ -169,6 +169,27 @@ static ssize_t synaptics_rmi4_0dbutton_store(struct device *dev,
 static ssize_t synaptics_rmi4_suspend_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
+static bool tsp_keys_enabled = true;
+
+static ssize_t synaptics_rmi4_show_tsp_keys_enabled(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%u\n", tsp_keys_enabled);
+}
+
+static ssize_t synaptics_rmi4_tsp_keys_enabled_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int input;
+
+	if (sscanf(buf, "%u", &input) != 1)
+		return -EINVAL;
+
+	tsp_keys_enabled = (input != 0);
+
+	return count;
+}
+
 static struct device_attribute attrs[] = {
 	__ATTR(regval, (S_IRUGO | S_IWUSR | S_IWGRP),
 			NULL,
@@ -218,6 +239,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(suspend, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			synaptics_rmi4_suspend_store),
+	__ATTR(tsp_keys_enabled, S_IRUGO | S_IWUSR | S_IWGRP,
+			synaptics_rmi4_show_tsp_keys_enabled,
+			synaptics_rmi4_tsp_keys_enabled_store),
 };
 
 #ifdef READ_LCD_ID
@@ -1796,7 +1820,7 @@ static void synaptics_rmi4_f1a_report(struct synaptics_rmi4_data *rmi4_data,
 
 	data = f1a->button_data_buffer;
 
-	for (button = 0; button < f1a->valid_button_count; button++) {
+	for (button = 0; tsp_keys_enabled && button < f1a->valid_button_count; button++) {
 		index = button / 8;
 		shift = button % 8;
 		status = ((data[index] >> shift) & MASK_1BIT);
