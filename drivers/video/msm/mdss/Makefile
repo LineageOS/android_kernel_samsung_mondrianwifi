@@ -44,3 +44,8 @@ obj-$(CONFIG_FB_MSM_QPIC_ILI_QVGA_PANEL) += qpic_panel_ili_qvga.o
 obj-$(CONFIG_FB_MSM_MDSS) += mdss_fb.o
 
 obj-$(CONFIG_FB_MSM_MDSS_DSI_CTRL_STATUS) += mdss_dsi_status.o
+
+obj-$(CONFIG_FB_MSM_EDP_SAMSUNG) += edp-eeprom.o edp-backlight.o
+ifeq ($(CONFIG_FB_MSM_EDP_SAMSUNG),y)
+obj-$(CONFIG_EDP_TCON_MDNIE) += edp_tcon_mdnie.o
+endif
