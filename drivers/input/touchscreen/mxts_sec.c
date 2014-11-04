@@ -2093,6 +2093,25 @@ static ssize_t boost_level_store(struct device *dev,
 }
 #endif
 
+static ssize_t show_tsp_keys_enabled(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%u\n", tsp_keys_enabled);
+}
+
+static ssize_t tsp_keys_enabled_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int input;
+
+	if (sscanf(buf, "%u", &input) != 1)
+		return -EINVAL;
+
+	tsp_keys_enabled = (input != 0);
+
+	return count;
+}
+
 static DEVICE_ATTR(touchkey_d_menu, S_IRUGO | S_IWUSR | S_IWGRP, touchkey_d_menu_show, NULL);
 static DEVICE_ATTR(touchkey_d_home1, S_IRUGO | S_IWUSR | S_IWGRP, touchkey_d_home1_show, NULL);
 static DEVICE_ATTR(touchkey_d_home2, S_IRUGO | S_IWUSR | S_IWGRP, touchkey_d_home2_show, NULL);
@@ -2110,6 +2129,8 @@ static DEVICE_ATTR(extra_button_event, S_IRUGO | S_IWUSR | S_IWGRP,
 #if MXT_TKEY_BOOSTER
 static DEVICE_ATTR(boost_level, S_IWUSR | S_IWGRP, NULL, boost_level_store);
 #endif
+static DEVICE_ATTR(tsp_keys_enabled, S_IRUGO | S_IWUSR | S_IWGRP,
+			show_tsp_keys_enabled, tsp_keys_enabled_store);
 
 static struct attribute *touchkey_attributes[] = {
 	&dev_attr_touchkey_d_menu.attr,
@@ -2128,6 +2149,7 @@ static struct attribute *touchkey_attributes[] = {
 #if MXT_TKEY_BOOSTER
 	&dev_attr_boost_level.attr,
 #endif
+	&dev_attr_tsp_keys_enabled.attr,
 	NULL,
 };
 
