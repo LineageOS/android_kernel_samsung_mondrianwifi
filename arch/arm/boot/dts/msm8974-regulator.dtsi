@@ -570,6 +570,8 @@
 	regulator-name = "8941_smbb_otg";
 };
 
+/*
 &pm8941_chg_chgr {
 	regulator-name = "flash_wa";
 };
+*/

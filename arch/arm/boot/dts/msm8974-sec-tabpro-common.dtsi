@@ -82,15 +82,6 @@
 
 &soc {
 	qcom,ion {
-		qcom,ion-heap@16 {
-			compatible = "qcom,msm-ion-reserve";
-			reg = <0x10>;
-			qcom,heap-align = <0x1000>;
-			qcom,memory-reservation-type = "EBI1";
-			qcom,memory-reservation-size = <0x1e00000>;
-			qcom,ion-heap-type = "CARVEOUT";
-		};
-
 		qcom,ion-heap@23 { /* OTHER PIL HEAP */
 			qcom,memory-fixed = <0xf500000 0x500000>;
 		};
