@@ -223,7 +223,9 @@ struct msm_hs_port {
 	bool rx_bam_inprogress;
 };
 
-unsigned int regmap_nonblsp[UART_DM_LAST] = {
+#define UART_DM_MAX	1024
+
+unsigned int regmap_nonblsp[UART_DM_MAX] = {
 		[UART_DM_MR1] = UARTDM_MR1_ADDR,
 		[UART_DM_MR2] = UARTDM_MR2_ADDR,
 		[UART_DM_IMR] = UARTDM_IMR_ADDR,
@@ -246,7 +248,7 @@ unsigned int regmap_nonblsp[UART_DM_LAST] = {
 		[UART_DM_RX_TRANS_CTRL] = UARTDM_RX_TRANS_CTRL_ADDR,
 };
 
-unsigned int regmap_blsp[UART_DM_LAST] = {
+unsigned int regmap_blsp[UART_DM_MAX] = {
 		[UART_DM_MR1] = 0x0,
 		[UART_DM_MR2] = 0x4,
 		[UART_DM_IMR] = 0xb0,

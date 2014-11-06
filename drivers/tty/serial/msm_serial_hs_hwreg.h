@@ -82,6 +82,7 @@ enum msm_hs_regs {
 	UART_DM_RXFS = 0x50,
 	UART_DM_RX_TRANS_CTRL = 0xcc,
 	UART_DM_BCR = 0xc8,
+UART_DM_LAST
 };
 
 #define UARTDM_MR1_ADDR 0x0
