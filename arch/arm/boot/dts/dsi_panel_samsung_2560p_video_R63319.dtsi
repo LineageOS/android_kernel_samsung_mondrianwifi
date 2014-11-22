@@ -98,6 +98,8 @@
 			05 01 00 00 00 00 02 00 00];
 
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+
+		qcom,panel-roi-alignment = <4 4 2 2 20 20>;
 	};
 
 	dsi_dual_2560p_vid_left: qcom,mdss_dsi_samsung_dual_2560p_video_left {
@@ -179,5 +181,7 @@
 					05 01 00 00 32 00 02 10 00
 					];
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+
+		qcom,panel-roi-alignment = <4 4 2 2 20 20>;
 	};
 };
