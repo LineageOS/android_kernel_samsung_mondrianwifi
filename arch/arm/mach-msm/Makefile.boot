@@ -46,6 +46,13 @@ endif
    zreladdr-$(CONFIG_ARCH_APQ8064)	:= 0x80208000
 
 # MSM8974
+ifeq ($(CONFIG_MACH_MONDRIAN),y)
+   zreladdr-y				:= 0x00008000
+   dtb-y				+= apq8074-sec-mondrianwifi-r00.dtb
+   dtb-y				+= apq8074-sec-mondrianwifi-r07.dtb
+   dtb-y				+= apq8074-sec-mondrianwifi-r08.dtb
+   dtb-y				+= apq8074-sec-mondrianwifi-r12.dtb
+else
    zreladdr-$(CONFIG_ARCH_MSM8974)	:= 0x00008000
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v1-cdp.dtb
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v1-fluid.dtb
@@ -76,6 +83,7 @@ endif
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-pm8941-liquid.dtb
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-pm8941-mtp.dtb
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-pma8084-pm8941-mtp.dtb
+endif
 
 # APQ8084
    zreladdr-$(CONFIG_ARCH_APQ8084)	:= 0x00008000
