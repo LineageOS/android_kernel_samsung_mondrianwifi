@@ -257,10 +257,12 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	}
 	pr_debug("%s : bl_level = %d\n", __func__, bl_level);
 
-	if(bl_level)
+	if(bl_level) {
 		bl_backup = bl_level;
-
-	bl_level = (DOWN_COEF_VALUE * bl_level) / left_back_up_data->bklt_max;
+		bl_level = (DOWN_COEF_VALUE * bl_level) / left_back_up_data->bklt_max;
+		if (bl_level == 0)
+			bl_level = 1;
+	}
 
 	pr_debug("%s : Actual bl_level = %d\n", __func__, bl_level);
 
