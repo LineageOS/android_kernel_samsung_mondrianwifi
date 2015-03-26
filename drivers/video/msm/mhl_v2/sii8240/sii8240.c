@@ -57,7 +57,7 @@
 #define dev_dbg dev_info
 #endif
 
-#define CONFIG_MHL_SWING_LEVEL 1
+//#define CONFIG_MHL_SWING_LEVEL 1
 
 #ifdef CONFIG_EXTCON
 static struct sec_mhl_cable support_cable_list[] = {
@@ -1701,7 +1701,7 @@ static int sii8240_init_regs(struct sii8240_data *sii8240)
 		return ret;
 	}
 
-#if CONFIG_MHL_SWING_LEVEL
+#ifdef CONFIG_MHL_SWING_LEVEL
 	ret = mhl_modify_reg(hdmi, MHLTX_CTL4_REG, BIT_CLK_SWING_CTL_MASK |
 			BIT_DATA_SWING_CTL_MASK, sii8240->pdata->swing_level);
 	if (unlikely(ret < 0)) {
@@ -1734,7 +1734,7 @@ static int sii8240_init_regs(struct sii8240_data *sii8240)
 			return ret;
 		}
 
-#if CONFIG_MHL_SWING_LEVEL
+#ifdef CONFIG_MHL_SWING_LEVEL
 		ret = mhl_modify_reg(hdmi,
 				MHLTX_CTL4_REG, BIT_CLK_SWING_CTL_MASK |
 				BIT_DATA_SWING_CTL_MASK
@@ -5190,7 +5190,7 @@ static ssize_t sii8240_rda_mhl_version(struct device *dev,
 static DEVICE_ATTR(mhl_version, 0644, sii8240_rda_mhl_version, NULL);
 
 
-#if CONFIG_MHL_SWING_LEVEL
+#ifdef CONFIG_MHL_SWING_LEVEL
 static ssize_t sii8240_swing_test_show(struct class *dev,
 		struct class_attribute *attr, char *buf)
 {
@@ -5353,7 +5353,7 @@ static int __init sii8240_init(void)
 		goto err_create_file_2;
 	}
 #endif
-#if CONFIG_MHL_SWING_LEVEL
+#ifdef CONFIG_MHL_SWING_LEVEL
 	ret = class_create_file(sec_mhl, &class_attr_swing);
 	if (ret) {
 		pr_err("[ERROR] failed to create swing sysfs file\n");
@@ -5369,12 +5369,12 @@ static int __init sii8240_init(void)
 
 	uevent_mhl = &(mhl_dev->kobj);
 	return 0;
-#if CONFIG_MHL_SWING_LEVEL
+#ifdef CONFIG_MHL_SWING_LEVEL
 err_create_file_4:
 	class_remove_file(sec_mhl, &class_attr_swing);
 err_create_file_3:
 #endif
-#if CONFIG_MHL_SWING_LEVEL
+#ifdef CONFIG_MHL_SWING_LEVEL
 	class_remove_file(sec_mhl, &class_attr_test_result);
 err_create_file_2:
 #endif

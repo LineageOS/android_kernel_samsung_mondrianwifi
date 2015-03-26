@@ -42,6 +42,9 @@
 #define  MIN(x, y) (((x) < (y)) ? (x) : (y))
 #endif
 
+#define MDP_PP_AD_BL_LINEAR	0x0
+#define MDP_PP_AD_BL_LINEAR_INV	0x1
+
 /**
  * enum mdp_notify_event - Different frame events to indicate frame update state
  *
@@ -122,12 +125,15 @@ struct msm_mdp_interface {
 	int (*lut_update)(struct msm_fb_data_type *mfd, struct fb_cmap *cmap);
 	int (*do_histogram)(struct msm_fb_data_type *mfd,
 				struct mdp_histogram *hist);
-	int (*update_ad_input)(struct msm_fb_data_type *mfd);
+	int (*ad_calc_bl)(struct msm_fb_data_type *mfd, int bl_in,
+		int *bl_out, bool *bl_out_notify);
 	int (*panel_register_done)(struct mdss_panel_data *pdata);
 	u32 (*fb_stride)(u32 fb_index, u32 xres, int bpp);
 	int (*splash_init_fnc)(struct msm_fb_data_type *mfd);
 	struct msm_sync_pt_data *(*get_sync_fnc)(struct msm_fb_data_type *mfd,
 				const struct mdp_buf_sync *buf_sync);
+	void (*check_dsi_status)(struct work_struct *work, uint32_t interval);
+	int (*configure_panel)(struct msm_fb_data_type *mfd, int mode);
 	void *private1;
 };
 
@@ -171,7 +177,6 @@ struct msm_fb_data_type {
 	int panel_reconfig;
 
 	u32 dst_format;
-	int resume_state;
 	int panel_power_on;
 	struct disp_info_type_suspend suspend;
 
@@ -184,12 +189,14 @@ struct msm_fb_data_type {
 	int ext_ad_ctrl;
 	u32 ext_bl_ctrl;
 	u32 calib_mode;
+	u32 ad_bl_level;
 	u32 bl_level;
 	u32 bl_scale;
 	u32 bl_min_lvl;
 	u32 unset_bl_level;
 	u32 bl_updated;
-	u32 bl_level_old;
+	u32 bl_level_scaled;
+	u32 bl_level_prev_scaled;
 	struct mutex bl_lock;
 
 	struct platform_device *pdev;
@@ -204,17 +211,6 @@ struct msm_fb_data_type {
 
 	struct msm_sync_pt_data mdp_sync_pt_data;
 
-	u32 acq_fen_cnt;
-	struct sync_fence *acq_fen[MDP_MAX_FENCE_FD];
-	int cur_rel_fen_fd;
-	struct sync_pt *cur_rel_sync_pt;
-	struct sync_fence *cur_rel_fence;
-	struct sync_fence *last_rel_fence;
-	struct sw_sync_timeline *timeline;
-	int timeline_value;
-	u32 last_acq_fen_cnt;
-	struct sync_fence *last_acq_fen[MDP_MAX_FENCE_FD];
-	struct mutex sync_mutex;
 	/* for non-blocking */
 	struct task_struct *disp_thread;
 	atomic_t commits_pending;
@@ -235,14 +231,9 @@ struct msm_fb_data_type {
 
 	u32 dcm_state;
 	struct list_head proc_list;
-
-	int blank_mode;
-
+	u32 wait_for_kickoff;
 	struct ion_client *fb_ion_client;
 	struct ion_handle *fb_ion_handle;
-	struct dma_buf *fbmem_buf;
-
-	u32 wait_for_kickoff;
 };
 
 static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)
@@ -263,31 +254,7 @@ static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)
 		mutex_unlock(&mfd->no_update.lock);
 	}
 }
-#ifdef CONFIG_FB_MSM_CAMERA_CSC
-extern u8 csc_update;
-extern u8 pre_csc_update;
-#endif
-#if defined (CONFIG_FB_MSM_MDSS_DBG_SEQ_TICK)
 
-enum{
-	COMMIT,
-	KICKOFF,
-	PP_DONE
-};
-
-struct mdss_tick_debug {
-	u64 commit[10];
-	u64 kickoff[10];
-	u64 pingpong_done[10];
-	u8 commit_cnt;
-	u8 kickoff_cnt;
-	u8 pingpong_done_cnt;
-};
-void mdss_dbg_tick_save(int op_name);
-
-#endif
-
-extern int boot_mode_lpm, boot_mode_recovery;
 int mdss_fb_get_phys_info(unsigned long *start, unsigned long *len, int fb_num);
 void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl);
 void mdss_fb_update_backlight(struct msm_fb_data_type *mfd);
@@ -296,9 +263,6 @@ void mdss_fb_signal_timeline(struct msm_sync_pt_data *sync_pt_data);
 struct sync_fence *mdss_fb_sync_get_fence(struct sw_sync_timeline *timeline,
 				const char *fence_name, int val);
 int mdss_fb_register_mdp_instance(struct msm_mdp_interface *mdp);
-#if defined(CONFIG_MDNIE_TFT_MSM8X26)
-void mdss_negative_color(int is_negative_on);
-#endif
 int mdss_fb_dcm(struct msm_fb_data_type *mfd, int req_state);
 int mdss_fb_suspres_panel(struct device *dev, void *data);
 #endif /* MDSS_FB_H */
