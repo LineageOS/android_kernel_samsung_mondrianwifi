@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -66,33 +66,17 @@ char *mdss_dsi_buf_init(struct dsi_buf *dp)
 		off = 8 - off;
 	dp->data += off;
 	dp->len = 0;
+	dp->read_cnt = 0;
 	return dp->data;
 }
 
 int mdss_dsi_buf_alloc(struct dsi_buf *dp, int size)
 {
-	int off;
 
-	dp->start = kmalloc(size, GFP_KERNEL);
+	dp->start = dma_alloc_writecombine(NULL, size, &dp->dmap, GFP_KERNEL);
 	if (dp->start == NULL) {
 		pr_err("%s:%u\n", __func__, __LINE__);
 		return -ENOMEM;
-	}
-
-	/* PAGE_SIZE align */
-	if ((u32)dp->start & (SZ_4K - 1)) {
-		kfree(dp->start);
-	dp->start = kmalloc(size * 2, GFP_KERNEL);
-	if (dp->start == NULL) {
-		pr_err("%s:%u\n", __func__, __LINE__);
-		return -ENOMEM;
-	}
-
-	off = (int)dp->start;
-	off &= (SZ_4K - 1);
-	if (off)
-		off = SZ_4K - off;
-		dp->start += off;
 	}
 
 	dp->end = dp->start + size;
@@ -103,6 +87,7 @@ int mdss_dsi_buf_alloc(struct dsi_buf *dp, int size)
 
 	dp->data = dp->start;
 	dp->len = 0;
+	dp->read_cnt = 0;
 	return size;
 }
 
@@ -591,6 +576,7 @@ int mdss_dsi_short_read1_resp(struct dsi_buf *rp)
 	/* strip out dcs type */
 	rp->data++;
 	rp->len = 1;
+	rp->read_cnt -= 3;
 	return rp->len;
 }
 
@@ -602,6 +588,7 @@ int mdss_dsi_short_read2_resp(struct dsi_buf *rp)
 	/* strip out dcs type */
 	rp->data++;
 	rp->len = 2;
+	rp->read_cnt -= 2;
 	return rp->len;
 }
 
@@ -610,6 +597,7 @@ int mdss_dsi_long_read_resp(struct dsi_buf *rp)
 	/* strip out dcs header */
 	rp->data += 4;
 	rp->len -= 4;
+	rp->read_cnt -= 6;
 	return rp->len;
 }
 
@@ -630,7 +618,6 @@ void mdss_dsi_set_tear_on(struct mdss_dsi_ctrl_pdata *ctrl)
 	cmdreq.flags = CMD_REQ_COMMIT;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
-	cmdreq.rbuf = ctrl->rx_buf.data;
 
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
@@ -644,7 +631,6 @@ void mdss_dsi_set_tear_off(struct mdss_dsi_ctrl_pdata *ctrl)
 	cmdreq.flags = CMD_REQ_COMMIT;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
-	cmdreq.rbuf = ctrl->rx_buf.data;
 
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }

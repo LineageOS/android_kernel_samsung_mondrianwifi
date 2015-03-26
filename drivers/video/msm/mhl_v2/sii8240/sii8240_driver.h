@@ -38,7 +38,7 @@
 
 #undef MHL_2X_3D
 /* for factory test process */
-#define CONFIG_SS_FACTORY
+// #define CONFIG_SS_FACTORY
 #define SFEATURE_UNSTABLE_SOURCE_WA
 #define SFEATURE_HDCP_SUPPORT
 #define SII8240_CHECK_MONITOR

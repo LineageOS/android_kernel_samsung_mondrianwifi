@@ -4007,4 +4007,10 @@ config SIMPLE_PLUG_STATS
 	  This adds a slight CPU cost and therefore is disabled
 	  by default.
 
+config MACH_TABPRO
+	bool "Support for Samsung tabpro family of devices"
+	help
+	  Support for common elements between mondrianwifi, mondrian3g,
+	  mondrianlte, picassolte and viennalte.
+
 endif
