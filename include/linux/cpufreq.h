@@ -349,7 +349,7 @@ static inline unsigned int cpufreq_quick_get_max(unsigned int cpu)
 }
 #endif
 
-#if defined (CONFIG_SEC_DVFS) || defined (CONFIG_CPU_FREQ_LIMIT_USERSPACE)
+#if defined (CONFIG_SEC_DVFS)
 enum {
 	BOOT_CPU = 0,
 #if defined(CONFIG_SEC_MILLET_PROJECT) || defined(CONFIG_SEC_MATISSE_PROJECT) || defined(CONFIG_SEC_VICTOR_PROJECT) || 	defined(CONFIG_SEC_BERLUTI_PROJECT)|| defined(CONFIG_SEC_FRESCONEOLTE_PROJECT) || defined(CONFIG_SEC_AFYON_PROJECT) || defined(CONFIG_SEC_S3VE_PROJECT)
