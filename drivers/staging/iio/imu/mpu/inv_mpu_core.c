@@ -3314,7 +3314,7 @@ static ssize_t inv_mpu_selftest_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct inv_mpu_state *st;
-	int result, success, hwsuccess;
+	int result, success, hwsuccess = -1;
 	int scaled_gyro_bias[3] = {0};
 	int scaled_gyro_rms[3] = {0};
 	int packet_count[3] = {0};
@@ -3527,7 +3527,7 @@ static ssize_t inv_mag_adc_show(struct device *dev,
 	struct inv_mpu_state *st;
 	struct inv_chip_config_s *conf;
 	int result, success = 0;
-	short sen[3];
+	short sen[3] = {-1,};
 	u8 data[8] = {0,}, enable;
 	pr_info("%s", __func__);
 	st = dev_get_drvdata(dev);
@@ -3683,7 +3683,7 @@ static ssize_t inv_mag_selftest_show(struct device *dev,
 	s8 iResult[7] = {-1, };
 	short x = 0, y = 0 , z = 0;
 	unsigned char *sens;
-	short sen[3];
+	short sen[3] = {-1, };
 	struct inv_mpu_state *st = dev_get_drvdata(dev);
 	sens = st->chip_info.compass_sens;
 	pr_info("%s", __func__);
