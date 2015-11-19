@@ -43,7 +43,7 @@ struct qpnp_local_int {
  * Standard Device Tree init routine to be called from
  * of_irq_init().
  */
-int __init qpnpint_of_init(struct device_node *node,
+int qpnpint_of_init(struct device_node *node,
 			   struct device_node *parent);
 
 /**
@@ -94,7 +94,7 @@ static inline bool qpnpint_show_resume_irq(void)
 #endif
 
 #else
-static inline int __init qpnpint_of_init(struct device_node *node,
+static inline int qpnpint_of_init(struct device_node *node,
 				  struct device_node *parent)
 {
 	return -ENXIO;

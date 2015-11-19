@@ -41,7 +41,7 @@ struct sys_timer msm_dt_timer = {
 	.init = msm_dt_timer_init
 };
 
-static struct of_device_id irq_match[] __initdata  = {
+static struct of_device_id irq_match[] = {
 	{ .compatible = "qcom,msm-qgic2", .data = gic_of_init, },
 	{ .compatible = "qcom,msm-gpio", .data = msm_gpio_of_init, },
 	{ .compatible = "qcom,spmi-pmic-arb", .data = qpnpint_of_init, },
@@ -49,7 +49,7 @@ static struct of_device_id irq_match[] __initdata  = {
 	{}
 };
 
-static struct of_device_id mpm_match[] __initdata = {
+static struct of_device_id mpm_match[] = {
 	{.compatible = "qcom,mpm-v2", },
 	{}
 };

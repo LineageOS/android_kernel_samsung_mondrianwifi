@@ -556,7 +556,7 @@ static int wcd9xxx_map_irq(
 	return phyirq_to_virq(wcd9xxx_core_res, irq);
 }
 #else
-int __init wcd9xxx_irq_of_init(struct device_node *node,
+int wcd9xxx_irq_of_init(struct device_node *node,
 			       struct device_node *parent)
 {
 	struct wcd9xxx_irq_drv_data *data;

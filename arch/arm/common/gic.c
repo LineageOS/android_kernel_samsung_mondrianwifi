@@ -290,7 +290,7 @@ static struct syscore_ops gic_syscore_ops = {
 	.resume = gic_resume,
 };
 
-static int __init gic_init_sys(void)
+static int gic_init_sys(void)
 {
 	register_syscore_ops(&gic_syscore_ops);
 	return 0;
@@ -503,7 +503,7 @@ static struct irq_chip gic_chip = {
 	.irq_set_wake		= gic_set_wake,
 };
 
-void __init gic_cascade_irq(unsigned int gic_nr, unsigned int irq)
+void gic_cascade_irq(unsigned int gic_nr, unsigned int irq)
 {
 	if (gic_nr >= MAX_GIC_NR)
 		BUG();
@@ -512,7 +512,7 @@ void __init gic_cascade_irq(unsigned int gic_nr, unsigned int irq)
 	irq_set_chained_handler(irq, gic_handle_cascade_irq);
 }
 
-static void __init gic_dist_init(struct gic_chip_data *gic)
+static void gic_dist_init(struct gic_chip_data *gic)
 {
 	unsigned int i;
 	u32 cpumask;
@@ -569,7 +569,7 @@ static void __init gic_dist_init(struct gic_chip_data *gic)
 	mb();
 }
 
-static void __cpuinit gic_cpu_init(struct gic_chip_data *gic)
+static void gic_cpu_init(struct gic_chip_data *gic)
 {
 	void __iomem *dist_base = gic_data_dist_base(gic);
 	void __iomem *base = gic_data_cpu_base(gic);
@@ -804,7 +804,7 @@ static struct notifier_block gic_notifier_block = {
 	.notifier_call = gic_notifier,
 };
 
-static void __init gic_pm_init(struct gic_chip_data *gic)
+static void gic_pm_init(struct gic_chip_data *gic)
 {
 	gic->saved_ppi_enable = __alloc_percpu(DIV_ROUND_UP(32, 32) * 4,
 		sizeof(u32));
@@ -818,7 +818,7 @@ static void __init gic_pm_init(struct gic_chip_data *gic)
 		cpu_pm_register_notifier(&gic_notifier_block);
 }
 #else
-static void __init gic_pm_init(struct gic_chip_data *gic)
+static void gic_pm_init(struct gic_chip_data *gic)
 {
 }
 
@@ -882,7 +882,7 @@ const struct irq_domain_ops gic_irq_domain_ops = {
 	.xlate = gic_irq_domain_xlate,
 };
 
-void __init gic_init_bases(unsigned int gic_nr, int irq_start,
+void gic_init_bases(unsigned int gic_nr, int irq_start,
 			   void __iomem *dist_base, void __iomem *cpu_base,
 			   u32 percpu_offset, struct device_node *node)
 {
@@ -1037,9 +1037,9 @@ void gic_set_irq_secure(unsigned int irq)
 }
 
 #ifdef CONFIG_OF
-static int gic_cnt __initdata = 0;
+static int gic_cnt = 0;
 
-int __init gic_of_init(struct device_node *node, struct device_node *parent)
+int gic_of_init(struct device_node *node, struct device_node *parent)
 {
 	void __iomem *cpu_base;
 	void __iomem *dist_base;

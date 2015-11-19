@@ -658,7 +658,7 @@ int qpnpint_show_irq(struct spmi_controller *spmi_ctrl,
 }
 EXPORT_SYMBOL(qpnpint_show_irq);
 
-int __init qpnpint_of_init(struct device_node *node, struct device_node *parent)
+int qpnpint_of_init(struct device_node *node, struct device_node *parent)
 {
 	struct q_chip_data *chip_d;
 

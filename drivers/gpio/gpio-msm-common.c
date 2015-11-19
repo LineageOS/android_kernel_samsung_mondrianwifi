@@ -597,7 +597,7 @@ static void __exit msm_gpio_exit(void)
 }
 module_exit(msm_gpio_exit);
 
-static int __init msm_gpio_init(void)
+static int msm_gpio_init(void)
 {
 	return platform_driver_register(&msm_gpio_driver);
 }
@@ -640,7 +640,7 @@ static struct irq_domain_ops msm_gpio_irq_domain_ops = {
 	.map = msm_gpio_irq_domain_map,
 };
 
-int __init msm_gpio_of_init(struct device_node *node,
+int msm_gpio_of_init(struct device_node *node,
 			    struct device_node *parent)
 {
 	int ngpio, ret;
