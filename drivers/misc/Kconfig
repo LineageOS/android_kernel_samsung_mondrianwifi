@@ -665,6 +665,7 @@ config TI_DRV2667
 	  To compile this driver as a module, choose M here: the
 	  module will be called ti_drv2667.
 
+
 config MUIC_MAX77888_SUPPORT_MHL_CABLE_DETECTION
 	  bool "MUIC_MAX77888_SUPPORT_MHL_CABLE_DETECTION"
 	  depends on MFD_MAX77888
@@ -692,6 +693,12 @@ config USB_SWITCH_FSA9485
 	  The FSA9485 is fully controlled using I2C and enables USB data,
 	  stereo and mono audio, video, microphone and UART data to use
 	  a common connector port.
+
+config UID_CPUTIME
+	tristate "Per-UID cpu time statistics"
+	depends on PROFILING
+	help
+	  Per UID based cpu time statistics exported to /proc/uid_cputime
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
