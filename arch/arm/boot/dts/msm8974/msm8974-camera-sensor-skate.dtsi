@@ -181,12 +181,14 @@
 		status = "ok";
 	};
 
+        /* This is mondrian's rear camera */
 	qcom,camera@0 {
 		cell-index = <0>;
 		compatible = "qcom,camera";
 		reg = <0x0>;
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
+		qcom,mount-angle = <270>;
 		qcom,actuator-src = <&actuator1>;
 		qcom,led-flash-src = <&led_flash0>;
 		cam_vdig-supply = <&pm8941_lvs2>;
@@ -219,6 +221,7 @@
 		status = "ok";
 	};
 
+        /* This is mondrian's front camera */
  	qcom,camera@2 {
 		cell-index = <2>;
 		compatible = "qcom,camera";
