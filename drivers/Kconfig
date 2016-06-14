@@ -90,7 +90,13 @@ source "sound/Kconfig"
 
 source "drivers/hid/Kconfig"
 
+if MACH_TABPRO
+source "drivers/usb-tabpro/Kconfig"
+endif
+
+if !MACH_TABPRO
 source "drivers/usb/Kconfig"
+endif
 
 source "drivers/uwb/Kconfig"
 
