@@ -152,6 +152,7 @@ static int mdss_fb_notify_update(struct msm_fb_data_type *mfd,
 	if (notify > NOTIFY_UPDATE_POWER_OFF)
 		return -EINVAL;
 
+#ifndef CONFIG_MACH_TABPRO
 	if (notify == NOTIFY_UPDATE_INIT) {
 		mutex_lock(&mfd->update.lock);
 		mfd->update.init_done = true;
@@ -164,7 +165,9 @@ static int mdss_fb_notify_update(struct msm_fb_data_type *mfd,
 		complete(&mfd->update.comp);
 		complete(&mfd->no_update.comp);
 		ret = 1;
-	} else if (mfd->update.is_suspend) {
+	} else
+#endif
+	 if (mfd->update.is_suspend) {
 		to_user = NOTIFY_TYPE_SUSPEND;
 		mfd->update.is_suspend = 0;
 		ret = 1;
