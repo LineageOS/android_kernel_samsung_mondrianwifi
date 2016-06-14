@@ -591,6 +591,13 @@ static int __init early_mem(char *p)
 }
 early_param("mem", early_mem);
 
+static int __init msm_hw_rev_setup(char *p)
+{
+	system_rev = memparse(p, NULL);
+	return 0;
+}
+early_param("samsung.board_rev", msm_hw_rev_setup);
+
 static void __init
 setup_ramdisk(int doload, int prompt, int image_start, unsigned int rd_sz)
 {
