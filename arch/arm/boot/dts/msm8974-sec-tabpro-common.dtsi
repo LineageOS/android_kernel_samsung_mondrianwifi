@@ -63,6 +63,17 @@
 	parent-supply = <&pm8941_boost>;
 };
 
+&pm8941_lsid1 {
+        qcom,leds@d000 {
+                qcom,rgb_0 {
+			status = "disabled";
+		};
+                qcom,rgb_1 {
+			status = "disabled";
+		};
+	};
+};
+
 /* -------------------------------------------------------- */
 
 &slim_msm {
