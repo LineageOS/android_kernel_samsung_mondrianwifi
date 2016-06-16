@@ -46,12 +46,19 @@ endif
    zreladdr-$(CONFIG_ARCH_APQ8064)	:= 0x80208000
 
 # MSM8974
-ifeq ($(CONFIG_MACH_MONDRIAN),y)
+ifeq ($(CONFIG_MACH_TABPRO),y)
    zreladdr-y				:= 0x00008000
-   dtb-y				+= apq8074-sec-mondrianwifi-r00.dtb
-   dtb-y				+= apq8074-sec-mondrianwifi-r07.dtb
-   dtb-y				+= apq8074-sec-mondrianwifi-r08.dtb
-   dtb-y				+= apq8074-sec-mondrianwifi-r12.dtb
+   dtb-$(CONFIG_MACH_MONDRIAN)		+= msm8974-sec-mondrianlte-r00.dtb
+   dtb-$(CONFIG_MACH_MONDRIAN)		+= msm8974-sec-mondrianlte-r07.dtb
+   dtb-$(CONFIG_MACH_MONDRIAN)		+= msm8974-sec-mondrianlte-r08.dtb
+   dtb-$(CONFIG_MACH_MONDRIAN)		+= msm8974-sec-mondrianlte-r12.dtb
+   dtb-$(CONFIG_MACH_MONDRIAN)		+= apq8074-sec-mondrianwifi-r00.dtb
+   dtb-$(CONFIG_MACH_MONDRIAN)		+= apq8074-sec-mondrianwifi-r07.dtb
+   dtb-$(CONFIG_MACH_MONDRIAN)		+= apq8074-sec-mondrianwifi-r08.dtb
+   dtb-$(CONFIG_MACH_MONDRIAN)		+= apq8074-sec-mondrianwifi-r12.dtb
+   dtb-$(CONFIG_MACH_PICASSOLTE)	+= msm8974-sec-picasso-r11.dtb
+   dtb-$(CONFIG_MACH_PICASSOLTE)	+= msm8974-sec-picasso-r12.dtb
+   dtb-$(CONFIG_MACH_PICASSOLTE)	+= msm8974-sec-picasso-r14.dtb
 else
    zreladdr-$(CONFIG_ARCH_MSM8974)	:= 0x00008000
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v1-cdp.dtb
