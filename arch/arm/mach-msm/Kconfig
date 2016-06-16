@@ -3059,6 +3059,7 @@ config MACH_MONDRIAN
 	select MACH_MONDRIANWIFI_USA
 	select MACH_MONDRIAN_LTE
 	select SEC_MONDRIAN_PROJECT
+	select MUIC_RESET_PIN_ENABLE
 	help
 	  Support for common elements between mondrianwifi, mondrian3g
 	  and mondrianlte.
@@ -3093,6 +3094,13 @@ config MACH_PICASSO_LTE
 config SEC_PICASSO_PROJECT
 	bool "Support for Samsung picassolte devices (synonym of MACH_PICASSO)"
 	select MACH_TABPRO
+
+config MUIC_RESET_PIN_ENABLE
+        bool "Sudden mUIC reset issue W/A"
+        default n
+        help 
+                This request is from H/W team
+                In case of mUIC voltage drop, mUIC will be reset
 
 config MACH_TABPRO
 	bool "Support for Samsung tabpro family of devices"
