@@ -251,6 +251,73 @@ static irqreturn_t resout_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+#ifdef CONFIG_MACH_TABPRO
+
+static void msm_restart_prepare(const char *cmd)
+{
+	unsigned long value;
+
+	pm8xxx_reset_pwr_off(1);
+
+	qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+
+	if (!restart_reason)
+		restart_reason = ioremap_nocache((unsigned long)(MSM_IMEM_BASE \
+						+ RESTART_REASON_ADDR), SZ_4K);
+
+	if (cmd != NULL) {
+		if (!strncmp(cmd, "bootloader", 10)) {
+			__raw_writel(0x77665500, restart_reason);
+		} else if (!strncmp(cmd, "recovery", 8)) {
+			__raw_writel(0x77665502, restart_reason);
+		} else if (!strcmp(cmd, "rtc")) {
+			__raw_writel(0x77665503, restart_reason);
+		} else if (!strncmp(cmd, "oem-", 4)) {
+			unsigned long code;
+			code = simple_strtoul(cmd + 4, NULL, 16) & 0xff;
+			__raw_writel(0x6f656d00 | code, restart_reason);
+		} else if (!strncmp(cmd, "sec_debug_hw_reset", 18)) {
+			__raw_writel(0x776655ee, restart_reason);
+		} else if (!strncmp(cmd, "download", 8)) {
+			__raw_writel(0x12345671, restart_reason);
+		} else if (!strncmp(cmd, "sud", 3)) {
+			__raw_writel(0xabcf0000 | (cmd[3] - '0'),
+					restart_reason);
+		} else if (!strncmp(cmd, "debug", 5)
+				&& !kstrtoul(cmd + 5, 0, &value)) {
+			__raw_writel(0xabcd0000 | value, restart_reason);
+		} else if (!strncmp(cmd, "cpdebug", 7) /* set cp debug level */
+				&& !kstrtoul(cmd + 7, 0, &value)) {
+			__raw_writel(0xfedc0000 | value, restart_reason);
+		} else if (!strncmp(cmd, "nvbackup", 8)) {
+			__raw_writel(0x77665511, restart_reason);
+		} else if (!strncmp(cmd, "nvrestore", 9)) {
+			__raw_writel(0x77665512, restart_reason);
+		} else if (!strncmp(cmd, "nverase", 7)) {
+			__raw_writel(0x77665514, restart_reason);
+		} else if (!strncmp(cmd, "nvrecovery", 10)) {
+			__raw_writel(0x77665515, restart_reason);
+		} else if (!strncmp(cmd, "edl", 3)) {
+			enable_emergency_dload_mode();
+		} else if (strlen(cmd) == 0) {
+			printk(KERN_NOTICE "%s : value of cmd is NULL.\n", __func__);
+			__raw_writel(0x12345678, restart_reason);
+		} else {
+			__raw_writel(0x77665501, restart_reason);
+		}
+		printk(KERN_NOTICE "%s : restart_reason = 0x%x\n",
+				__func__, __raw_readl(restart_reason));
+	} else {
+		printk(KERN_NOTICE "%s: clear reset flag\n", __func__);
+		__raw_writel(0x12345678, restart_reason);
+	}
+
+	flush_cache_all();
+	outer_flush_all();
+}
+
+#else
+
 static void msm_restart_prepare(const char *cmd)
 {
 #ifdef CONFIG_MSM_DLOAD_MODE
@@ -272,15 +339,11 @@ static void msm_restart_prepare(const char *cmd)
 
 	pm8xxx_reset_pwr_off(1);
 
-#ifdef CONFIG_MACH_TABPRO
-	qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
-#else
 	/* Hard reset the PMIC unless memory contents must be maintained. */
 	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0'))
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 	else
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
-#endif
 
 	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
@@ -295,17 +358,16 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x6f656d00 | code, restart_reason);
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
-#ifdef CONFIG_MACH_TABPRO
-		} else if (strlen(cmd) == 0) {
-			__raw_writel(0x12345678, restart_reason);
-#endif
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}
+
 	flush_cache_all();
 	outer_flush_all();
 }
+
+#endif
 
 void msm_restart(char mode, const char *cmd)
 {
@@ -339,6 +401,48 @@ void msm_restart(char mode, const char *cmd)
 	printk(KERN_ERR "Restarting has failed\n");
 }
 
+#ifdef CONFIG_MACH_TABPRO
+static void set_qc_dload_magic(int on)
+{
+	pr_info("%s: on=%d\n", __func__, on);
+	set_dload_mode(on);
+}
+
+//#define RESTART_REASON_ADDR 0x65C
+static void set_upload_magic(unsigned magic)
+{
+	pr_emerg("(%s) %x\n", __func__, magic);
+
+	if (magic)
+		set_qc_dload_magic(1);
+
+	restart_reason = MSM_IMEM_BASE + RESTART_REASON_ADDR;
+	__raw_writel(magic, restart_reason);
+
+	flush_cache_all();
+	outer_flush_all();
+}
+
+static int normal_reboot_handler(struct notifier_block *nb,
+				unsigned long l, void *p)
+{
+	set_dload_mode(0);
+	set_upload_magic(0x0);
+	return 0;
+}
+
+static struct notifier_block dload_reboot_block = {
+	.notifier_call = normal_reboot_handler
+};
+
+static void tabpro_restart_init(void)
+{
+	set_upload_magic(0x776655ee);
+	register_reboot_notifier(&dload_reboot_block);
+}
+
+#endif
+
 static int __init msm_pmic_restart_init(void)
 {
 	int rc;
@@ -366,12 +470,17 @@ static int __init msm_restart_init(void)
 #ifdef CONFIG_MSM_DLOAD_MODE
 	atomic_notifier_chain_register(&panic_notifier_list, &panic_blk);
 	dload_mode_addr = MSM_IMEM_BASE + DLOAD_MODE_ADDR;
+#ifdef CONFIG_MACH_TABPRO
+	tabpro_restart_init();
+#endif
 	emergency_dload_mode_addr = MSM_IMEM_BASE +
 		EMERGENCY_DLOAD_MODE_ADDR;
 	set_dload_mode(download_mode);
 #endif
 	msm_tmr0_base = msm_timer_get_timer0_base();
+#ifndef CONFIG_MACH_TABPRO
 	restart_reason = MSM_IMEM_BASE + RESTART_REASON_ADDR;
+#endif
 	pm_power_off = msm_power_off;
 
 	if (scm_is_call_available(SCM_SVC_PWR, SCM_IO_DISABLE_PMIC_ARBITER) > 0)
