@@ -824,10 +824,10 @@ static ssize_t environ_read(struct file *file, char __user *buf,
 	if (!page)
 		goto out;
 
-
 	mm = mm_for_maps(task);
 	ret = PTR_ERR(mm);
-	if (!mm || IS_ERR(mm))
+	/* Ensure the process spawned far enough to have an environment. */
+	if (!mm || IS_ERR(mm) || !mm->env_end)
 		goto out_free;
 
 	ret = 0;
